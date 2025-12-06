@@ -187,6 +187,34 @@ export class LexSona {
   }
 
   /**
+   * Get rules from Lex storage with optional filtering
+   */
+  async getRules(filter?: {
+    domain?: string;
+    minConfidence?: number;
+  }): Promise<import("@smartergpt/lex/lexsona").BehaviorRuleWithConfidence[]> {
+    if (!this.storageClient?.isConnected()) {
+      return [];
+    }
+
+    const db = this.storageClient.getDatabase();
+    const context: RuleContext = {
+      module_id: filter?.domain,
+    };
+
+    const rules = getRules(db, context);
+
+    // Apply confidence filter
+    if (filter?.minConfidence !== undefined) {
+      return rules.filter(
+        (r) => r.effective_confidence >= filter.minConfidence!
+      );
+    }
+
+    return rules;
+  }
+
+  /**
    * Close the connection
    */
   close(): void {
