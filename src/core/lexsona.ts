@@ -1,14 +1,16 @@
 /**
  * LexSona Core - Main Runtime Engine
- * 
- * The central orchestrator for persona activation and constraint derivation.
+ *
+ * The central engine for persona activation and constraint derivation.
  * Connects to Lex for behavioral rule storage.
- * 
+ *
+ * Invariant: LexSona returns constraints, never executes work.
+ *
  * @module
  */
 
 import type { DeriveContext, ConstraintSet } from "../constraints/derive.js";
-import type { Correction } from "../rules/types.js";
+import type { CorrectionInput } from "../rules/types.js";
 
 /**
  * Configuration for LexSona connection
@@ -16,7 +18,7 @@ import type { Correction } from "../rules/types.js";
 export interface LexSonaConfig {
   /** Path to Lex database (uses default if not provided) */
   lexDb?: string;
-  /** Active persona name (optional) */
+  /** Active persona ID (behavioral naming, e.g., 'quality-first_engineering') */
   persona?: string;
   /** Domain/namespace for rule scoping */
   domain?: string;
@@ -24,11 +26,14 @@ export interface LexSonaConfig {
 
 /**
  * LexSona Runtime Engine
- * 
+ *
  * Provides the public API for:
  * - Persona activation
  * - Constraint derivation
  * - Behavioral learning
+ *
+ * This is a constraint engine, NOT an orchestrator.
+ * It returns constraints for consumers to apply.
  */
 export class LexSona {
   private config: LexSonaConfig;
@@ -50,24 +55,24 @@ export class LexSona {
 
   /**
    * Activate a named persona
-   * 
-   * @param name - Persona identifier (e.g., 'quality-first_engineering', 'momentum-first_product')
+   *
+   * @param personaId - Persona identifier (behavioral naming, e.g., 'quality-first_engineering')
    */
-  async activate(name: string): Promise<void> {
+  async activate(personaId: string): Promise<void> {
     // TODO: Load persona manifest
     // TODO: Validate persona exists
     // TODO: Set as active
-    this.activePersona = name;
+    this.activePersona = personaId;
   }
 
   /**
    * Derive constraints for the current context
-   * 
+   *
    * Combines:
    * - Lex baseline constraints
    * - Active persona rules
    * - Learned behavioral rules from Lex store
-   * 
+   *
    * @returns Deterministic constraint set
    */
   async deriveConstraints(context: DeriveContext): Promise<ConstraintSet> {
@@ -76,28 +81,33 @@ export class LexSona {
     // TODO: Load learned rules from Lex store
     // TODO: Merge and prioritize
     return {
-      version: 1,
-      persona: this.activePersona,
-      domain: context.domain,
+      personaId: this.activePersona ?? "none",
+      derivedAt: new Date().toISOString(),
+      context,
       constraints: [],
       principles: [],
+      metadata: {
+        rulesConsidered: 0,
+        rulesFiltered: 0,
+        confidenceThreshold: 0.3,
+      },
     };
   }
 
   /**
    * Learn from a behavioral correction
-   * 
+   *
    * Records the correction to Lex's behavioral rules store
    * for future constraint derivation.
    */
-  async learn(correction: Correction): Promise<void> {
+  async learn(correction: CorrectionInput): Promise<void> {
     // TODO: Validate correction
     // TODO: Call Lex recordCorrection API
     // TODO: Update local state if needed
   }
 
   /**
-   * Get the currently active persona
+   * Get the currently active persona ID
    */
   getActivePersona(): string | null {
     return this.activePersona;

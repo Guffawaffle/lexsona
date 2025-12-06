@@ -2,13 +2,24 @@
 
 ## Architecture
 
-LexSona is the **persona engine layer** in the Lex ecosystem:
+LexSona is the **constraint engine layer** in the Lex ecosystem:
 
 ```
-LexRunner (orchestration) → LexSona (personas) → Lex (memory + policy)
+LexRunner (execution) → LexSona (constraints) → Lex (memory + policy)
 ```
 
-**Key constraint:** LexSona **returns constraints**, it never orchestrates or tool-calls.
+**Key constraint:** LexSona **returns constraints**, it never executes or tool-calls.
+
+## Naming Policy
+
+Persona IDs use **behavioral naming**, not behavioral patterns:
+
+| ✅ Use | ❌ Avoid |
+|--------|----------|
+| `quality-first_engineering` | `quality-first_engineering` |
+| `momentum-first_product` | `momentum-first_product` |
+
+Format: `{behavior-focus}_{domain}`
 
 ## CLI Syntax
 
@@ -28,7 +39,7 @@ Examples:
 1. **Deterministic outputs** - Same inputs → same constraint sets
 2. **Auditable** - All rules and derivations are inspectable
 3. **Scoped** - Rules are namespaced to prevent cross-domain pollution
-4. **Never orchestrates** - Returns data, never executes
+4. **Never executes** - Returns constraints, never does work
 
 ## Directory Structure
 
