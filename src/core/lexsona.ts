@@ -107,8 +107,11 @@ export class LexSona {
     let rulesConsidered = 0;
 
     // Load learned rules from Lex store if connected
-    if (this.storageClient?.isConnected()) {
-      const db = this.storageClient.getDatabase();
+    // Determine connection state
+    const hasLexConnection = this.storageClient?.isConnected() ?? false;
+
+    if (hasLexConnection) {
+      const db = this.storageClient!.getDatabase();
       const ruleContext: RuleContext = {
         module_id: context.module_id,
         task_type: context.taskType,
@@ -136,6 +139,8 @@ export class LexSona {
         rulesConsidered,
         rulesFiltered: 0,
         confidenceThreshold: 0.3,
+        offlineMode: !hasLexConnection,
+        confidenceCeiling: undefined,
       },
     };
   }

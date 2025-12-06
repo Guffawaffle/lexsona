@@ -24,9 +24,12 @@ describe("Persona Loader", () => {
       const persona = loadPersonaFromFile(filePath);
 
       expect(persona.id).toBe("quality-first_engineering");
-      expect(persona.version).toBe("1.0.0");
+      expect(persona.version).toBe("1.1.0");
       expect(persona.behavior.primaryFocus).toBe("quality-first");
       expect(persona.behavior.domain).toBe("engineering");
+      expect(persona.requires_memory).toBe(false);
+      expect(persona.offline_safe).toBeDefined();
+      expect(persona.offline_safe?.confidence_ceiling).toBe(0.7);
     });
 
     it("parses duties correctly", () => {

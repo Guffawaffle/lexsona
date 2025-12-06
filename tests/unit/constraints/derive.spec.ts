@@ -5,22 +5,38 @@ import { describe, it, expect } from "vitest";
 import {
   deriveConstraints,
   scopeMatches,
+  PersonaRequiresMemoryError,
   type DeriveContext,
   type Constraint,
   type Principle,
 } from "../../../src/constraints/derive.js";
 import type { BehaviorRuleWithConfidence } from "../../../src/rules/types.js";
-import type { Persona } from "../../../src/persona/types.js";
+import type { Persona, OfflineSafeConfig } from "../../../src/persona/types.js";
 
 // Test fixtures
 function createTestPersona(overrides: Partial<Persona> = {}): Persona {
   return {
     id: "quality-first_engineering",
-    name: "Quality First Engineering",
-    description: "Prioritizes correctness and testing",
     version: "1.0.0",
+    behavior: {
+      primaryFocus: "quality-first",
+      domain: "engineering",
+      description: "Prioritizes correctness and testing",
+    },
+    duties: {
+      mustDo: ["Write tests"],
+      mustNotDo: ["Skip validation"],
+    },
+    triggers: {
+      phrases: ["senior dev mode"],
+      keywords: ["implementation"],
+    },
     ruleCategories: ["testing", "code-quality", "documentation"],
-    triggers: [],
+    requires_memory: false,
+    offline_safe: {
+      confidence_ceiling: 0.7,
+      no_memory_disclaimer: "Operating without Lex memory connection.",
+    },
     ...overrides,
   };
 }
@@ -28,16 +44,23 @@ function createTestPersona(overrides: Partial<Persona> = {}): Persona {
 function createTestRule(
   overrides: Partial<BehaviorRuleWithConfidence> = {}
 ): BehaviorRuleWithConfidence {
+  const now = new Date().toISOString();
   return {
     rule_id: "test-rule-1",
     text: "Always write tests before implementation",
     severity: "should",
     category: "testing",
-    source: "learned",
     scope: {},
+    alpha: 3,
+    beta: 1,
+    observation_count: 4,
+    decay_tau: 180,
+    created_at: now,
+    updated_at: now,
+    last_observed: now,
+    confidence: 0.75,
+    decay_factor: 1.0,
     effective_confidence: 0.8,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
     ...overrides,
   };
 }
@@ -289,7 +312,8 @@ describe("deriveConstraints", () => {
         }),
       ];
 
-      const result = deriveConstraints(persona, rules, [], {});
+      // Use hasLexConnection: true to avoid confidence ceiling
+      const result = deriveConstraints(persona, rules, [], {}, { hasLexConnection: true });
 
       expect(result.constraints[0]).toEqual({
         rule_id: "test-id",
@@ -344,6 +368,129 @@ describe("deriveConstraints", () => {
 
       expect(result.constraints).toHaveLength(0);
       expect(result.metadata.rulesFiltered).toBe(1);
+    });
+  });
+
+  describe("offline-safe guard (contract v0.2)", () => {
+    it("throws PersonaRequiresMemoryError when persona requires memory but none available", () => {
+      const persona = createTestPersona({
+        requires_memory: true,
+        offline_safe: undefined,
+      });
+      const rules = [createTestRule()];
+
+      // Default config: hasLexConnection = false
+      expect(() => deriveConstraints(persona, rules, [], {})).toThrow(PersonaRequiresMemoryError);
+      expect(() => deriveConstraints(persona, rules, [], {})).toThrow(
+        'Persona "quality-first_engineering" requires Lex memory connection'
+      );
+    });
+
+    it("allows memory-requiring persona when Lex connection is available", () => {
+      const persona = createTestPersona({
+        requires_memory: true,
+        offline_safe: undefined,
+      });
+      const rules = [createTestRule()];
+
+      const result = deriveConstraints(persona, rules, [], {}, { hasLexConnection: true });
+
+      expect(result.constraints).toHaveLength(1);
+      expect(result.metadata.offlineMode).toBe(false);
+    });
+
+    it("allows offline-safe persona without Lex connection", () => {
+      const persona = createTestPersona({
+        requires_memory: false,
+        offline_safe: {
+          confidence_ceiling: 0.7,
+          no_memory_disclaimer: "Operating offline.",
+        },
+      });
+      const rules = [createTestRule()];
+
+      const result = deriveConstraints(persona, rules, [], {});
+
+      expect(result.constraints).toHaveLength(1);
+      expect(result.metadata.offlineMode).toBe(true);
+    });
+
+    it("includes offlineMode and confidenceCeiling in metadata", () => {
+      const persona = createTestPersona({
+        requires_memory: false,
+        offline_safe: {
+          confidence_ceiling: 0.6,
+          no_memory_disclaimer: "No memory.",
+        },
+      });
+      const rules = [createTestRule()];
+
+      const result = deriveConstraints(persona, rules, [], {});
+
+      expect(result.metadata.offlineMode).toBe(true);
+      expect(result.metadata.confidenceCeiling).toBe(0.6);
+    });
+  });
+
+  describe("confidence ceiling enforcement (contract v0.2)", () => {
+    it("caps constraint confidence to offline_safe.confidence_ceiling", () => {
+      const persona = createTestPersona({
+        requires_memory: false,
+        offline_safe: {
+          confidence_ceiling: 0.5,
+          no_memory_disclaimer: "Capped confidence.",
+        },
+      });
+      const rules = [
+        createTestRule({ rule_id: "r1", effective_confidence: 0.9 }),
+        createTestRule({ rule_id: "r2", effective_confidence: 0.4 }),
+      ];
+
+      const result = deriveConstraints(persona, rules, [], {});
+
+      // Rule with 0.9 confidence should be capped to 0.5
+      const r1 = result.constraints.find((c) => c.rule_id === "r1");
+      expect(r1?.confidence).toBe(0.5);
+
+      // Rule with 0.4 confidence should remain unchanged (below ceiling)
+      const r2 = result.constraints.find((c) => c.rule_id === "r2");
+      expect(r2?.confidence).toBe(0.4);
+    });
+
+    it("does not cap confidence when Lex connection is available", () => {
+      const persona = createTestPersona({
+        requires_memory: false,
+        offline_safe: {
+          confidence_ceiling: 0.5,
+          no_memory_disclaimer: "Should not apply.",
+        },
+      });
+      const rules = [createTestRule({ rule_id: "r1", effective_confidence: 0.9 })];
+
+      const result = deriveConstraints(persona, rules, [], {}, { hasLexConnection: true });
+
+      const r1 = result.constraints.find((c) => c.rule_id === "r1");
+      expect(r1?.confidence).toBe(0.9);
+      expect(result.metadata.offlineMode).toBe(false);
+      expect(result.metadata.confidenceCeiling).toBeUndefined();
+    });
+
+    it("applies ceiling even when all constraints exceed it", () => {
+      const persona = createTestPersona({
+        requires_memory: false,
+        offline_safe: {
+          confidence_ceiling: 0.3,
+          no_memory_disclaimer: "Very conservative.",
+        },
+      });
+      const rules = [
+        createTestRule({ rule_id: "r1", effective_confidence: 0.95 }),
+        createTestRule({ rule_id: "r2", effective_confidence: 0.85 }),
+      ];
+
+      const result = deriveConstraints(persona, rules, [], {});
+
+      expect(result.constraints.every((c) => c.confidence === 0.3)).toBe(true);
     });
   });
 });

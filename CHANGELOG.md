@@ -61,7 +61,41 @@ These are explicitly **out of scope** and will not be added in patch releases:
 
 ## [Unreleased]
 
-### Planned for 0.2.0
+## [0.2.0] - 2025-12-06
+
+### Added
+
+- **Offline-Safe Persona Support** (Version Contract v0.2)
+  - `requires_memory` field on persona manifests (required)
+  - `offline_safe` configuration for disconnected operation
+    - `confidence_ceiling`: Maximum confidence for any derived constraint
+    - `no_memory_disclaimer`: Human-readable warning for agents
+  - `PersonaRequiresMemoryError` thrown when persona requires memory but none available
+  - Hard selection rule: fail loud, no silent fallback
+
+- **Confidence Ceiling Enforcement**
+  - Offline-safe personas cap all derived constraint confidence
+  - Metadata includes `offlineMode` and `confidenceCeiling` flags
+
+- **DeriveConfig.hasLexConnection**
+  - Caller must declare connection state (default: false = conservative)
+
+### Changed
+
+- Bundled personas updated to v1.1.0 with `requires_memory: false`
+- `ConstraintSet.metadata` now includes `offlineMode` and `confidenceCeiling`
+
+### Non-Goals (Hard Banned by Contract)
+
+Per Version Contract v0.2, these are **explicitly prohibited**:
+
+- Universal export format for "any runtime"
+- Runtime auto-detection (Copilot/Cursor/etc.)
+- Silent fallback to safe personas
+- Prompt assembly or disclaimer injection
+- New persona/mode runtime features in Lex
+
+### Planned for 0.3.0
 
 - Baseline principle loading from `canon/constraints/baseline.yaml`
 - Frame integration for auditability

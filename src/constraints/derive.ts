@@ -8,12 +8,26 @@
  * - Derivation is pure (no side effects)
  * - Same inputs → same outputs (deterministic)
  * - No network requests during derivation
+ * - Offline-safe personas are enforced: if requires_memory=true and no connection, fail loud
  *
  * @module
  */
 
 import type { BehaviorRuleWithConfidence, RuleScope } from "../rules/types.js";
 import type { Persona } from "../persona/types.js";
+
+/**
+ * Error thrown when a persona requires memory but none is available
+ */
+export class PersonaRequiresMemoryError extends Error {
+  constructor(personaId: string) {
+    super(
+      `Persona "${personaId}" requires Lex memory connection, but none is available. ` +
+        `Use an offline-safe persona (requires_memory: false) when disconnected.`
+    );
+    this.name = "PersonaRequiresMemoryError";
+  }
+}
 
 /**
  * Context for constraint derivation
@@ -81,6 +95,10 @@ export interface ConstraintSet {
     rulesFiltered: number;
     /** Minimum confidence threshold applied */
     confidenceThreshold: number;
+    /** True if operating in offline mode (no Lex connection) */
+    offlineMode: boolean;
+    /** Confidence ceiling applied (if offline-safe persona) */
+    confidenceCeiling?: number;
   };
 }
 
@@ -94,12 +112,20 @@ export interface DeriveConfig {
   maxConstraints?: number;
   /** Include style-level constraints (default: true) */
   includeStyle?: boolean;
+  /**
+   * Whether a Lex memory connection is available
+   * If false and persona requires_memory=true, derivation will fail
+   */
+  hasLexConnection?: boolean;
 }
 
-const DEFAULT_CONFIG: Required<DeriveConfig> = {
+const DEFAULT_CONFIG: Required<Omit<DeriveConfig, "hasLexConnection">> & {
+  hasLexConnection: boolean;
+} = {
   confidenceThreshold: 0.3,
   maxConstraints: 50,
   includeStyle: true,
+  hasLexConnection: false, // Conservative default: assume disconnected
 };
 
 /**
@@ -146,6 +172,8 @@ export function scopeMatches(scope: RuleScope, context: DeriveContext): boolean 
  * Derive constraints from rules and persona
  *
  * This is a PURE function - no side effects, no network requests.
+ *
+ * @throws {PersonaRequiresMemoryError} If persona requires memory and no Lex connection is available
  */
 export function deriveConstraints(
   persona: Persona,
@@ -155,6 +183,17 @@ export function deriveConstraints(
   config: DeriveConfig = {}
 ): ConstraintSet {
   const cfg = { ...DEFAULT_CONFIG, ...config };
+
+  // === OFFLINE-SAFE GUARD ===
+  // Hard selection rule: fail loud if persona requires memory but none available
+  if (persona.requires_memory && !cfg.hasLexConnection) {
+    throw new PersonaRequiresMemoryError(persona.id);
+  }
+
+  // Determine if we're in offline mode
+  const isOfflineMode = !cfg.hasLexConnection;
+  const confidenceCeiling =
+    isOfflineMode && persona.offline_safe ? persona.offline_safe.confidence_ceiling : undefined;
 
   // Filter rules by:
   // 1. Category matches persona's ruleCategories
@@ -198,12 +237,15 @@ export function deriveConstraints(
   // Limit to maxConstraints
   const limitedRules = sortedRules.slice(0, cfg.maxConstraints);
 
-  // Convert to constraints
+  // Convert to constraints, applying confidence ceiling if in offline mode
   const constraints: Constraint[] = limitedRules.map((rule) => ({
     rule_id: rule.rule_id,
     text: rule.text,
     severity: rule.severity,
-    confidence: rule.effective_confidence,
+    confidence:
+      confidenceCeiling !== undefined
+        ? Math.min(rule.effective_confidence, confidenceCeiling)
+        : rule.effective_confidence,
     category: rule.category,
   }));
 
@@ -217,6 +259,8 @@ export function deriveConstraints(
       rulesConsidered: rules.length,
       rulesFiltered: rules.length - matchingRules.length,
       confidenceThreshold: cfg.confidenceThreshold,
+      offlineMode: isOfflineMode,
+      confidenceCeiling,
     },
   };
 }
