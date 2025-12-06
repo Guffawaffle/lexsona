@@ -2,7 +2,10 @@
  * Persona Types
  *
  * Type definitions for persona manifests and configuration.
- * Uses behavioral naming for public IDs.
+ *
+ * To maintain clear behavioral classification, LexSona uses decision-style
+ * naming for persona IDs. This convention describes *how* an agent approaches
+ * decisions rather than *what* it is.
  *
  * @module
  */
@@ -12,7 +15,7 @@ import { z } from "zod";
 /**
  * Persona behavioral focus
  *
- * Describes the operating lens/behavioral style, NOT a job role.
+ * Describes the decision-making lens and behavioral style.
  */
 export interface PersonaBehavior {
   /**
@@ -58,15 +61,15 @@ export interface PersonaTriggers {
  */
 export interface Persona {
   /**
-   * Public persona identifier (behavioral naming)
-   * Format: "{focus}_{domain}" e.g., "quality-first_engineering"
+   * Public persona identifier (behavioral classification)
+   * Format: "{behavioral-focus}_{domain}" e.g., "quality-first_engineering"
    */
   id: string;
 
   /** Version string */
   version: string;
 
-  /** Behavioral focus (operating lens) */
+  /** Behavioral focus (decision-making lens) */
   behavior: PersonaBehavior;
 
   /** Behavioral invariants */
@@ -98,7 +101,7 @@ export interface PersonaManifest {
 }
 
 /**
- * Behavioral focus patterns (approved)
+ * Approved behavioral focus patterns
  */
 export const APPROVED_FOCUS_PATTERNS = [
   "quality-first",
@@ -116,13 +119,16 @@ export type ApprovedFocusPattern = (typeof APPROVED_FOCUS_PATTERNS)[number];
 
 /**
  * Zod schema for persona manifest validation
+ *
+ * ID format enforces behavioral classification naming:
+ * {behavioral-focus}_{domain}
  */
 export const PersonaManifestSchema = z.object({
   id: z
     .string()
     .min(1)
     .regex(/^[a-z0-9-]+_[a-z0-9-]+$/, {
-      message: "ID must be behavioral-style: 'focus_domain' (e.g., 'quality-first_engineering')",
+      message: "ID must use behavioral classification: 'focus_domain' (e.g., 'quality-first_engineering')",
     }),
   version: z.string().regex(/^\d+\.\d+\.\d+$/),
   behavior: z.object({

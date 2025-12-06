@@ -10,16 +10,16 @@ LexRunner (execution) → LexSona (constraints) → Lex (memory + policy)
 
 **Key constraint:** LexSona **returns constraints**, it never executes or tool-calls.
 
-## Naming Policy
+## Naming Convention
 
-Persona IDs use **behavioral naming**, not behavioral patterns:
+To maintain clear behavioral classification, LexSona uses **decision-style naming** for persona IDs:
 
-| ✅ Use | ❌ Avoid |
-|--------|----------|
-| `quality-first_engineering` | `quality-first_engineering` |
-| `momentum-first_product` | `momentum-first_product` |
+| Persona ID | Behavioral Focus |
+|------------|------------------|
+| `quality-first_engineering` | Prioritizes thoroughness, testing |
+| `momentum-first_product` | Prioritizes velocity, shipping |
 
-Format: `{behavior-focus}_{domain}`
+**Format:** `{behavioral-focus}_{domain}`
 
 ## CLI Syntax
 

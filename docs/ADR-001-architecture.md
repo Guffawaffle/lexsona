@@ -51,24 +51,19 @@ interface LexSona {
 
 LexSona **plugs into** Lex's socket. It never duplicates storage or query logic.
 
-### Naming Policy
+### Naming Convention
 
-**Requirement:** Persona IDs use **behavioral naming**, not behavioral patterns or naming conventions.
+To maintain clear behavioral classification, LexSona uses **decision-style naming** for persona IDs. This convention describes *how* an agent approaches decisions rather than *what* it is.
 
-**Format:** `{behavior-focus}_{domain}`
+**Format:** `{behavioral-focus}_{domain}`
 
-| Persona ID | Behavior |
-|------------|----------|
-| `quality-first_engineering` | Prioritizes quality, thorough testing |
-| `momentum-first_product` | Prioritizes velocity, ships fast |
-| `risk-reducer_operations` | Conservative, asks when uncertain |
+| Persona ID | Behavioral Focus |
+|------------|------------------|
+| `quality-first_engineering` | Prioritizes thoroughness, testing, correctness |
+| `momentum-first_product` | Prioritizes velocity, shipping, iteration |
+| `risk-reducer_operations` | Prioritizes safety, asks when uncertain |
 
-**Rules:**
-- Behavioral naming (e.g., no "alpha", "beta")
-- Behavioral classification (e.g., no "quality-first", "PM")
-- Behavioral/decision-style names only
-
-**Approved Patterns:**
+**Approved Behavioral Patterns:**
 - `quality-first`
 - `momentum-first`
 - `risk-reducer`
@@ -95,7 +90,7 @@ LexSona does **NOT** do:
 
 1. **LexSona remains small and focused** - it's a constraint derivation engine, nothing more
 2. **Clean separation enables independent versioning** - Lex, LexSona, LexRunner can evolve at different paces
-3. **Behavioral naming reduces confusion** - users and agents know what behavior to expect
+3. **Behavioral naming provides clarity** - users and agents understand what decision-making style to expect
 
 ## Implementation Notes
 
@@ -117,4 +112,4 @@ LexSona does **NOT** do:
 This ADR should be reviewed if:
 - The dependency chain needs to change
 - New non-goals emerge
-- The naming policy proves inadequate
+- The naming convention proves inadequate

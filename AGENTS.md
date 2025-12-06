@@ -55,33 +55,27 @@ LexSona **never duplicates** storage or query logic.
 
 ---
 
-## 3) Naming Policy
+## 3) Naming Convention
 
-### Requirement
+### Behavioral Classification
 
-Persona IDs use **behavioral naming**, not behavioral patterns or naming conventions.
+To maintain clear behavioral classification, LexSona uses **decision-style naming** for persona IDs. This convention describes *how* an agent approaches decisions rather than *what* it is.
 
 ### Format
 
 ```
-{behavior-focus}_{domain}
+{behavioral-focus}_{domain}
 ```
 
 ### Examples
 
-| Persona ID | Behavior |
-|------------|----------|
-| `quality-first_engineering` | Prioritizes quality, thorough testing |
-| `momentum-first_product` | Prioritizes velocity, ships fast |
-| `risk-reducer_operations` | Conservative, asks when uncertain |
+| Persona ID | Behavioral Focus |
+|------------|------------------|
+| `quality-first_engineering` | Prioritizes thoroughness, testing, correctness |
+| `momentum-first_product` | Prioritizes velocity, shipping, iteration |
+| `risk-reducer_operations` | Prioritizes safety, asks when uncertain |
 
-### Rules
-
-- ❌ Behavioral naming
-- ❌ Behavioral classification
-- ✅ Behavioral/decision-style patterns only
-
-### Approved Patterns
+### Approved Behavioral Patterns
 
 ```
 quality-first       momentum-first      risk-reducer
@@ -164,7 +158,7 @@ LexSona does **NOT** do:
 - Constraint derivation is pure (no side effects)
 - All personas are loadable without network access
 - Rule learning delegates to Lex's `recordCorrection` API
-- Persona IDs use behavioral naming (behavioral classification)
+- Persona IDs use behavioral classification naming
 
 ---
 

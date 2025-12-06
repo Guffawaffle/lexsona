@@ -91,20 +91,17 @@ await sona.learn({
 
 ## Persona Naming
 
-LexSona uses **behavioral naming** for persona IDs:
+To maintain clear behavioral classification, LexSona uses **decision-style naming** for persona IDs. This convention describes *how* an agent approaches decisions rather than *what* it is.
 
-| Persona ID | Behavior |
-|------------|----------|
-| `quality-first_engineering` | Prioritizes quality, thorough testing |
-| `momentum-first_product` | Prioritizes velocity, ships fast |
-| `risk-reducer_operations` | Conservative, asks when uncertain |
+**Format:** `{behavioral-focus}_{domain}`
 
-**Naming Rules:**
-- Behavioral naming
-- Behavioral classification
-- Use behavioral/decision-style patterns
+| Persona ID | Behavioral Focus |
+|------------|------------------|
+| `quality-first_engineering` | Prioritizes thoroughness, testing, correctness |
+| `momentum-first_product` | Prioritizes velocity, shipping, iteration |
+| `risk-reducer_operations` | Prioritizes safety, asks when uncertain |
 
-**Approved patterns:** `quality-first`, `momentum-first`, `risk-reducer`, `scope-warden`, `test-first`, `minimal-diff`, `user-advocate`
+**Approved behavioral patterns:** `quality-first`, `momentum-first`, `risk-reducer`, `scope-warden`, `test-first`, `minimal-diff`, `user-advocate`
 
 ## Non-Goals
 
