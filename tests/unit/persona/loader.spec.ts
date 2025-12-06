@@ -54,9 +54,7 @@ describe("Persona Loader", () => {
     });
 
     it("throws for non-existent file", () => {
-      expect(() => loadPersonaFromFile("/nonexistent/path.md")).toThrow(
-        "Persona file not found"
-      );
+      expect(() => loadPersonaFromFile("/nonexistent/path.md")).toThrow("Persona file not found");
     });
 
     it("includes ruleCategories", () => {
