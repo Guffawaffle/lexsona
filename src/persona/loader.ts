@@ -1,0 +1,211 @@
+/**
+ * Persona Loader
+ *
+ * Loads persona manifests from YAML/Markdown files.
+ * Supports multiple search paths with precedence:
+ * 1. Project-local: .smartergpt/personas/
+ * 2. User-global: ~/.smartergpt/personas/
+ * 3. Bundled: LexSona package personas/
+ *
+ * @module
+ */
+
+import { existsSync, readdirSync, readFileSync } from "fs";
+import { join, dirname } from "path";
+import { homedir } from "os";
+import { fileURLToPath } from "url";
+import { parse as parseYaml } from "yaml";
+import { PersonaManifestSchema, type Persona, type PersonaManifest } from "./types.js";
+
+/**
+ * Get the directory containing bundled personas
+ */
+function getBundledPersonasDir(): string {
+  // In ESM, we need to derive __dirname from import.meta.url
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
+  // Go up from dist/persona to package root, then into personas/
+  return join(__dirname, "..", "..", "personas");
+}
+
+/**
+ * Search paths for personas (in precedence order)
+ */
+export function getPersonaSearchPaths(): string[] {
+  const paths: string[] = [];
+
+  // 1. Project-local
+  const localPath = join(process.cwd(), ".smartergpt", "personas");
+  if (existsSync(localPath)) {
+    paths.push(localPath);
+  }
+
+  // 2. User-global
+  const globalPath = join(homedir(), ".smartergpt", "personas");
+  if (existsSync(globalPath)) {
+    paths.push(globalPath);
+  }
+
+  // 3. Bundled (always available)
+  const bundledPath = getBundledPersonasDir();
+  if (existsSync(bundledPath)) {
+    paths.push(bundledPath);
+  }
+
+  return paths;
+}
+
+/**
+ * Parse frontmatter from a markdown file
+ * Returns { frontmatter: object, body: string }
+ */
+function parseFrontmatter(content: string): { frontmatter: Record<string, unknown>; body: string } {
+  const match = content.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+  if (!match) {
+    return { frontmatter: {}, body: content };
+  }
+
+  try {
+    const frontmatter = parseYaml(match[1]) as Record<string, unknown>;
+    return { frontmatter, body: match[2].trim() };
+  } catch {
+    return { frontmatter: {}, body: content };
+  }
+}
+
+/**
+ * Load a persona from a file path
+ */
+export function loadPersonaFromFile(filePath: string): Persona {
+  if (!existsSync(filePath)) {
+    throw new Error(`Persona file not found: ${filePath}`);
+  }
+
+  const content = readFileSync(filePath, "utf-8");
+  const { frontmatter, body } = parseFrontmatter(content);
+
+  // Validate manifest against schema
+  const result = PersonaManifestSchema.safeParse(frontmatter);
+  if (!result.success) {
+    const errors = result.error.errors.map((e) => `${e.path.join(".")}: ${e.message}`).join(", ");
+    throw new Error(`Invalid persona manifest in ${filePath}: ${errors}`);
+  }
+
+  const manifest = result.data as PersonaManifest;
+
+  return {
+    ...manifest,
+    body: body || undefined,
+  };
+}
+
+/**
+ * Find persona file by name/id
+ * Searches in precedence order and returns first match
+ */
+export function findPersonaPath(nameOrId: string): string | null {
+  const searchPaths = getPersonaSearchPaths();
+
+  // Try exact match first (with .md extension)
+  for (const searchPath of searchPaths) {
+    const exactPath = join(searchPath, `${nameOrId}.md`);
+    if (existsSync(exactPath)) {
+      return exactPath;
+    }
+  }
+
+  // Try matching by persona ID in files
+  for (const searchPath of searchPaths) {
+    if (!existsSync(searchPath)) continue;
+
+    const files = readdirSync(searchPath).filter((f) => f.endsWith(".md"));
+    for (const file of files) {
+      const filePath = join(searchPath, file);
+      try {
+        const persona = loadPersonaFromFile(filePath);
+        if (persona.id === nameOrId) {
+          return filePath;
+        }
+      } catch {
+        // Skip invalid personas
+        continue;
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Load a persona by name or ID
+ */
+export async function loadPersona(nameOrId: string): Promise<Persona> {
+  const filePath = findPersonaPath(nameOrId);
+  if (!filePath) {
+    throw new Error(`Persona not found: ${nameOrId}`);
+  }
+  return loadPersonaFromFile(filePath);
+}
+
+/**
+ * List all available personas
+ */
+export async function listPersonas(): Promise<{ id: string; path: string }[]> {
+  const searchPaths = getPersonaSearchPaths();
+  const seen = new Set<string>();
+  const result: { id: string; path: string }[] = [];
+
+  for (const searchPath of searchPaths) {
+    if (!existsSync(searchPath)) continue;
+
+    const files = readdirSync(searchPath).filter((f) => f.endsWith(".md"));
+    for (const file of files) {
+      const filePath = join(searchPath, file);
+      try {
+        const persona = loadPersonaFromFile(filePath);
+        // Skip duplicates (earlier paths take precedence)
+        if (!seen.has(persona.id)) {
+          seen.add(persona.id);
+          result.push({ id: persona.id, path: filePath });
+        }
+      } catch {
+        // Skip invalid personas
+        continue;
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Match input against persona triggers
+ * Returns the first matching persona ID or null
+ */
+export async function matchTrigger(input: string): Promise<string | null> {
+  const personas = await listPersonas();
+  const lowerInput = input.toLowerCase();
+
+  for (const { id } of personas) {
+    try {
+      const persona = await loadPersona(id);
+      for (const phrase of persona.triggers.phrases) {
+        if (lowerInput.includes(phrase.toLowerCase())) {
+          return id;
+        }
+      }
+      // Check keywords if present
+      if (persona.triggers.keywords) {
+        for (const keyword of persona.triggers.keywords) {
+          if (lowerInput.includes(keyword.toLowerCase())) {
+            return id;
+          }
+        }
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
+}
