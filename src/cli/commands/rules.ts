@@ -56,7 +56,9 @@ export function registerRulesCommands(program: Command): void {
         const scopeStr = rule.scope.module_id ? ` [${rule.scope.module_id}]` : "";
         console.log(`  ${rule.rule_id}${scopeStr}`);
         console.log(`    ${rule.text}`);
-        console.log(`    severity: ${rule.severity}, confidence: ${rule.effective_confidence.toFixed(2)}`);
+        console.log(
+          `    severity: ${rule.severity}, confidence: ${rule.effective_confidence.toFixed(2)}`
+        );
         console.log("");
       }
     });

@@ -206,9 +206,7 @@ export class LexSona {
 
     // Apply confidence filter
     if (filter?.minConfidence !== undefined) {
-      return rules.filter(
-        (r) => r.effective_confidence >= filter.minConfidence!
-      );
+      return rules.filter((r) => r.effective_confidence >= filter.minConfidence!);
     }
 
     return rules;
