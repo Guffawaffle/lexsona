@@ -85,6 +85,23 @@ LexSona does **NOT** do:
 | **Gates/CI execution** | That's LexRunner |
 | **Frame storage** | That's Lex |
 | **Network requests during derivation** | Constraints must be derivable offline |
+| **Universal export format** | No "constraint packs for any runtime" |
+| **Runtime auto-detection** | Caller declares connection state |
+| **Silent fallback** | Connected personas fail explicitly |
+
+## Developer Notes: Local Testing and Disconnected Mode
+
+Key principles for local testing and disconnected operation:
+
+1. **Disconnected mode is first-class** — Constraint derivation without a Lex DB is valid behavior, not a fallback.
+
+2. **Offline-safe personas must declare safety parameters** — `confidence_ceiling` and `no_memory_disclaimer` are required when `requires_memory: false`.
+
+3. **No export/adapter commitments** — LexSona does not provide serialization for "any runtime." Personas are `.yaml` files; runtimes read them directly.
+
+4. **Local testing is a separate initiative** — See `lex/docs/stash/local-testing/` for the stashed local testing plan. It is explicitly deferred and does not affect LexSona's core design.
+
+5. **Hard selection rule** — If `requires_memory: true` and no Lex connection, `deriveConstraints()` throws `PersonaRequiresMemoryError`. No silent substitution.
 
 ## Consequences
 

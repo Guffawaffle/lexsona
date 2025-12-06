@@ -1,7 +1,7 @@
 # LexSona
 
 **Behavioral constraint engine for AI agents.**
-  
+
 LexSona derives behavioral constraints from personas and rules. It returns constraints — it never executes work.
 
 ## Dependency Chain
@@ -53,7 +53,7 @@ lexsona persona list                           # List available personas
 lexsona persona activate quality-first_engineering
 lexsona persona show quality-first_engineering
 
-# Rules management  
+# Rules management
 lexsona rules list                             # List active rules
 lexsona rules learn <correction>               # Record a behavioral correction
 
@@ -113,6 +113,23 @@ LexSona explicitly does **NOT** do:
 - ❌ Gates/CI execution (that's LexRunner)
 - ❌ Frame storage (that's Lex)
 - ❌ Network requests during derivation
+- ❌ Universal export formats or runtime adapters
+- ❌ Silent fallback to "safe" personas
+
+## Offline-Safe Personas
+
+LexSona distinguishes between connected and offline-safe personas:
+
+| Persona Type | `requires_memory` | Behavior |
+|--------------|-------------------|----------|
+| **Connected** | `true` | Expects Lex memory connection; fails explicitly if unavailable |
+| **Offline-safe** | `false` | Functions without Lex connection; enforces confidence ceiling |
+
+Offline-safe personas must declare:
+- `confidence_ceiling` — Maximum confidence for any derived constraint
+- `no_memory_disclaimer` — Human-readable warning about limitations
+
+**Hard selection rule:** If a persona requires memory and none is available, derivation fails loudly. No silent substitution.
 
 ## Core Principles
 
@@ -120,7 +137,8 @@ LexSona explicitly does **NOT** do:
 2. **Deterministic** - Same inputs produce same constraint sets
 3. **Auditable** - All rules and derivations are inspectable
 4. **Scoped** - Rules are namespaced to prevent cross-domain pollution
-5. **Offline-capable** - Constraint derivation requires no network access
+5. **Degrades gracefully** - Offline-safe personas work when memory is unavailable
+6. **Fails explicitly** - Connected personas fail loudly when disconnected (no silent fallback)
 
 ## Documentation
 
