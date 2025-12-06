@@ -1,0 +1,71 @@
+{
+  "name": "@smartergpt/lexsona",
+  "version": "0.1.0",
+  "description": "Behavioral memory and persona engine for AI agents. Requires Lex for storage.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "lexsona": "./dist/cli/lexsona.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./rules": {
+      "import": "./dist/rules/index.js",
+      "types": "./dist/rules/index.d.ts"
+    },
+    "./persona": {
+      "import": "./dist/persona/index.js",
+      "types": "./dist/persona/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b tsconfig.build.json",
+    "postbuild": "chmod +x dist/cli/lexsona.js",
+    "clean": "rm -rf dist",
+    "dev": "tsc -b tsconfig.build.json --watch",
+    "lint": "eslint src --ext .ts",
+    "format": "prettier --write .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "local-ci": "npm run lint && npm run typecheck && npm run test && npm run build"
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "persona",
+    "behavioral-memory",
+    "lex",
+    "constraints"
+  ],
+  "author": "Guff",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Guffawaffle/lexsona.git"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "peerDependencies": {
+    "@smartergpt/lex": "^2.0.0"
+  },
+  "devDependencies": {
+    "@smartergpt/lex": "^2.0.0",
+    "@types/node": "^20.10.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^2.0.0",
+    "zod": "^3.22.0"
+  },
+  "dependencies": {
+    "commander": "^12.0.0",
+    "yaml": "^2.3.0",
+    "zod": "^3.22.0"
+  }
+}
