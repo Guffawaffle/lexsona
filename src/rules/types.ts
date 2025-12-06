@@ -86,12 +86,16 @@ export interface BehaviorRuleWithConfidence extends BehaviorRule {
 export interface CorrectionInput {
   /** The correction statement */
   correction: string;
-  /** Polarity: 1 = reinforce, -1 = weaken, 0 = neutral observation */
-  polarity: -1 | 0 | 1;
+  /** Polarity: 1 = reinforce, -1 = weaken */
+  polarity?: 1 | -1;
   /** Context where the correction applies */
   context: RuleScope;
   /** Optional rule ID if correcting a specific rule */
   rule_id?: string;
+  /** Optional category for the rule */
+  category?: string;
+  /** Optional severity level */
+  severity?: RuleSeverity;
   /** Optional reason for the correction */
   reason?: string;
 }
@@ -110,9 +114,11 @@ export const RuleScopeSchema = z.object({
 
 export const CorrectionInputSchema = z.object({
   correction: z.string().min(1),
-  polarity: z.union([z.literal(-1), z.literal(0), z.literal(1)]),
+  polarity: z.union([z.literal(-1), z.literal(1)]).optional(),
   context: RuleScopeSchema,
   rule_id: z.string().optional(),
+  category: z.string().optional(),
+  severity: z.enum(["must", "should", "style"]).optional(),
   reason: z.string().optional(),
 });
 

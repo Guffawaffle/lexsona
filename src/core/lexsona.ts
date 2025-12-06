@@ -11,6 +11,11 @@
 
 import type { DeriveContext, ConstraintSet } from "../constraints/derive.js";
 import type { CorrectionInput } from "../rules/types.js";
+import { LexStorageClient, type LexConnectionConfig } from "./lexConnection.js";
+
+// Import Lex APIs through the lexsona subpath
+import { getRules, recordCorrection } from "@smartergpt/lex/lexsona";
+import type { RuleContext, Correction } from "@smartergpt/lex/lexsona";
 
 /**
  * Configuration for LexSona connection
@@ -38,6 +43,7 @@ export interface LexSonaConfig {
 export class LexSona {
   private _config: LexSonaConfig;
   private activePersona: string | null = null;
+  private storageClient: LexStorageClient | null = null;
 
   private constructor(config: LexSonaConfig) {
     this._config = config;
@@ -48,9 +54,31 @@ export class LexSona {
    * Connect to LexSona with the given configuration
    */
   static async connect(config: LexSonaConfig = {}): Promise<LexSona> {
-    // TODO: Initialize Lex connection
-    // TODO: Load active persona if specified
-    return new LexSona(config);
+    const instance = new LexSona(config);
+
+    // Initialize Lex connection
+    const connectionConfig: LexConnectionConfig = {};
+    if (config.lexDb) {
+      connectionConfig.dbPath = config.lexDb;
+    }
+
+    try {
+      instance.storageClient = LexStorageClient.connect(connectionConfig);
+    } catch (error) {
+      // Log warning but allow LexSona to work in disconnected mode
+      console.warn(
+        `LexSona: Could not connect to Lex database: ${error instanceof Error ? error.message : error}`
+      );
+    }
+
+    return instance;
+  }
+
+  /**
+   * Check if connected to Lex storage
+   */
+  isConnected(): boolean {
+    return this.storageClient?.isConnected() ?? false;
   }
 
   /**
@@ -76,10 +104,28 @@ export class LexSona {
    * @returns Deterministic constraint set
    */
   async deriveConstraints(context: DeriveContext): Promise<ConstraintSet> {
-    // TODO: Load baseline from Lex
-    // TODO: Load persona-specific rules
-    // TODO: Load learned rules from Lex store
-    // TODO: Merge and prioritize
+    let rulesConsidered = 0;
+
+    // Load learned rules from Lex store if connected
+    if (this.storageClient?.isConnected()) {
+      const db = this.storageClient.getDatabase();
+      const ruleContext: RuleContext = {
+        module_id: context.module_id,
+        task_type: context.taskType,
+        environment: context.environment,
+        agent_family: context.agent_family,
+        context_tags: context.context_tags,
+      };
+
+      const rules = getRules(db, ruleContext);
+      rulesConsidered = rules.length;
+
+      // TODO: Convert rules to constraints
+      // TODO: Load baseline from Lex
+      // TODO: Load persona-specific rules
+      // TODO: Merge and prioritize
+    }
+
     return {
       personaId: this.activePersona ?? "none",
       derivedAt: new Date().toISOString(),
@@ -87,7 +133,7 @@ export class LexSona {
       constraints: [],
       principles: [],
       metadata: {
-        rulesConsidered: 0,
+        rulesConsidered,
         rulesFiltered: 0,
         confidenceThreshold: 0.3,
       },
@@ -100,10 +146,30 @@ export class LexSona {
    * Records the correction to Lex's behavioral rules store
    * for future constraint derivation.
    */
-  async learn(_correction: CorrectionInput): Promise<void> {
-    // TODO: Validate correction
-    // TODO: Call Lex recordCorrection API
-    // TODO: Update local state if needed
+  async learn(correction: CorrectionInput): Promise<void> {
+    if (!this.storageClient?.isConnected()) {
+      throw new Error("LexSona: Not connected to Lex database. Cannot record correction.");
+    }
+
+    const db = this.storageClient.getDatabase();
+
+    // Convert CorrectionInput to Lex's Correction type
+    const lexCorrection: Correction = {
+      context: {
+        module_id: correction.context.module_id,
+        task_type: correction.context.task_type,
+        environment: correction.context.environment,
+        project: correction.context.project,
+        agent_family: correction.context.agent_family,
+        context_tags: correction.context.context_tags,
+      },
+      correction: correction.correction,
+      category: correction.category,
+      severity: correction.severity,
+      polarity: correction.polarity,
+    };
+
+    recordCorrection(db, lexCorrection);
   }
 
   /**
@@ -118,5 +184,13 @@ export class LexSona {
    */
   getConfig(): LexSonaConfig {
     return this._config;
+  }
+
+  /**
+   * Close the connection
+   */
+  close(): void {
+    this.storageClient?.close();
+    this.storageClient = null;
   }
 }
