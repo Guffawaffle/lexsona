@@ -1,0 +1,26 @@
+# Test Rules: Coding Style
+
+# These are sample rules for testing rule loading and scoping.
+
+rules:
+  - id: use-editing-tools
+    category: tool_preference
+    text: Use editing tools (replace_string_in_file), never sed
+    severity: must
+    scope:
+      project: lex-pr-runner
+
+  - id: run-tests-before-commit
+    category: testing
+    text: Run tests before committing code
+    severity: must
+    scope: {}
+
+  - id: prefer-const
+    category: code_quality
+    text: Prefer const over let when variable is not reassigned
+    severity: style
+    scope:
+      context_tags:
+        - typescript
+        - javascript

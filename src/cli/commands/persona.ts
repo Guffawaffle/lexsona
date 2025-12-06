@@ -1,6 +1,6 @@
 /**
  * Persona Commands - lexsona persona <verb>
- * 
+ *
  * @module
  */
 
@@ -10,9 +10,7 @@ import { Command } from "commander";
  * Register persona noun commands
  */
 export function registerPersonaCommands(program: Command): void {
-  const persona = program
-    .command("persona")
-    .description("Manage personas");
+  const persona = program.command("persona").description("Manage personas");
 
   // lexsona persona list
   persona
@@ -31,7 +29,7 @@ export function registerPersonaCommands(program: Command): void {
     .description("Activate a persona")
     .action(async (name: string) => {
       // TODO: Implement persona activation
-      console.log(\`Activating persona: \${name}\`);
+      console.log(`Activating persona: ${name}`);
     });
 
   // lexsona persona show <name>
@@ -40,7 +38,7 @@ export function registerPersonaCommands(program: Command): void {
     .description("Show persona details")
     .action(async (name: string) => {
       // TODO: Implement persona details
-      console.log(\`Persona: \${name}\`);
+      console.log(`Persona: ${name}`);
     });
 
   // lexsona persona deactivate

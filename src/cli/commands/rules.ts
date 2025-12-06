@@ -1,6 +1,6 @@
 /**
  * Rules Commands - lexsona rules <verb>
- * 
+ *
  * @module
  */
 
@@ -10,9 +10,7 @@ import { Command } from "commander";
  * Register rules noun commands
  */
 export function registerRulesCommands(program: Command): void {
-  const rules = program
-    .command("rules")
-    .description("Manage behavioral rules");
+  const rules = program.command("rules").description("Manage behavioral rules");
 
   // lexsona rules list
   rules
@@ -20,7 +18,7 @@ export function registerRulesCommands(program: Command): void {
     .description("List active behavioral rules")
     .option("--domain <domain>", "Filter by domain")
     .option("--min-confidence <n>", "Minimum confidence threshold", parseFloat)
-    .action(async (options) => {
+    .action(async (_options) => {
       // TODO: Implement rules listing
       console.log("Active behavioral rules:");
       console.log("  (none yet)");
@@ -38,7 +36,7 @@ export function registerRulesCommands(program: Command): void {
     .action(async (correction: string, options) => {
       const polarity = options.counter ? -1 : 1;
       // TODO: Implement learning
-      console.log(\`Recording correction: "\${correction}" (polarity: \${polarity})\`);
+      console.log(`Recording correction: "${correction}" (polarity: ${polarity})`);
     });
 
   // lexsona rules apply
@@ -46,7 +44,7 @@ export function registerRulesCommands(program: Command): void {
     .command("apply")
     .description("Apply rules to derive current constraints")
     .option("--domain <domain>", "Domain context")
-    .action(async (options) => {
+    .action(async (_options) => {
       // TODO: Implement rules application
       console.log("Applying rules to derive constraints...");
     });
@@ -56,8 +54,8 @@ export function registerRulesCommands(program: Command): void {
     .command("forget <id>")
     .description("Forget a specific rule")
     .option("--force", "Skip confirmation")
-    .action(async (id: string, options) => {
+    .action(async (id: string, _options) => {
       // TODO: Implement rule forgetting
-      console.log(\`Forgetting rule: \${id}\`);
+      console.log(`Forgetting rule: ${id}`);
     });
 }

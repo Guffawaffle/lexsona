@@ -36,11 +36,11 @@ export interface LexSonaConfig {
  * It returns constraints for consumers to apply.
  */
 export class LexSona {
-  private config: LexSonaConfig;
+  private _config: LexSonaConfig;
   private activePersona: string | null = null;
 
   private constructor(config: LexSonaConfig) {
-    this.config = config;
+    this._config = config;
     this.activePersona = config.persona ?? null;
   }
 
@@ -100,7 +100,7 @@ export class LexSona {
    * Records the correction to Lex's behavioral rules store
    * for future constraint derivation.
    */
-  async learn(correction: CorrectionInput): Promise<void> {
+  async learn(_correction: CorrectionInput): Promise<void> {
     // TODO: Validate correction
     // TODO: Call Lex recordCorrection API
     // TODO: Update local state if needed
@@ -111,5 +111,12 @@ export class LexSona {
    */
   getActivePersona(): string | null {
     return this.activePersona;
+  }
+
+  /**
+   * Get the current configuration
+   */
+  getConfig(): LexSonaConfig {
+    return this._config;
   }
 }

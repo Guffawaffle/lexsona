@@ -1,6 +1,6 @@
 /**
  * Constraints Commands - lexsona constraints <verb>
- * 
+ *
  * @module
  */
 
@@ -10,9 +10,7 @@ import { Command } from "commander";
  * Register constraints noun commands
  */
 export function registerConstraintsCommands(program: Command): void {
-  const constraints = program
-    .command("constraints")
-    .description("View and derive constraints");
+  const constraints = program.command("constraints").description("View and derive constraints");
 
   // lexsona constraints derive
   constraints
@@ -21,7 +19,7 @@ export function registerConstraintsCommands(program: Command): void {
     .option("--domain <domain>", "Domain context")
     .option("--task <type>", "Task type context")
     .option("--persona <name>", "Override active persona")
-    .action(async (options) => {
+    .action(async (_options) => {
       // TODO: Implement constraint derivation
       console.log("Deriving constraints...");
       console.log("  Persona: (none)");
@@ -45,6 +43,6 @@ export function registerConstraintsCommands(program: Command): void {
     .description("Explain why a constraint is active")
     .action(async (id: string) => {
       // TODO: Implement constraint explanation
-      console.log(\`Explaining constraint: \${id}\`);
+      console.log(`Explaining constraint: ${id}`);
     });
 }

@@ -1,15 +1,15 @@
 /**
  * LexSona - Behavioral Memory and Persona Engine
- * 
+ *
  * Public API surface for the LexSona persona engine.
- * 
+ *
  * @module
  */
 
 export { LexSona, type LexSonaConfig } from "./core/lexsona.js";
 export { deriveConstraints, type DeriveContext, type ConstraintSet } from "./constraints/derive.js";
 export { type Persona, type PersonaManifest } from "./persona/types.js";
-export { type BehaviorRule, type Correction } from "./rules/types.js";
+export { type BehaviorRule, type CorrectionInput } from "./rules/types.js";
 
 // Re-export version
 export const VERSION = "0.1.0";

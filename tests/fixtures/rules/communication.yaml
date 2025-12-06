@@ -1,0 +1,24 @@
+# Test Rules: Communication
+
+# Sample rules for testing communication-style constraints.
+
+rules:
+  - id: clear-commit-messages
+    category: communication
+    text: Write clear, imperative commit messages
+    severity: should
+    scope: {}
+
+  - id: document-decisions
+    category: communication
+    text: Document major decisions in ADRs or issue comments
+    severity: should
+    scope:
+      task_type: planning
+
+  - id: avoid-jargon
+    category: communication
+    text: Avoid unexplained jargon in documentation
+    severity: style
+    scope:
+      module_id: docs/*
