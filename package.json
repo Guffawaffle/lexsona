@@ -51,6 +51,10 @@
   "engines": {
     "node": ">=20.0.0"
   },
+  "files": [
+    "dist",
+    "personas"
+  ],
   "peerDependencies": {
     "@smartergpt/lex": "^2.0.0"
   },
