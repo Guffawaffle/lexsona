@@ -2,6 +2,9 @@
  * Tests for constraint derivation engine
  */
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "fs";
+import { join } from "path";
+import { parse as parseYaml } from "yaml";
 import {
   deriveConstraints,
   scopeMatches,
@@ -12,6 +15,7 @@ import {
 } from "../../../src/constraints/derive.js";
 import type { BehaviorRuleWithConfidence } from "../../../src/rules/types.js";
 import type { Persona, OfflineSafeConfig } from "../../../src/persona/types.js";
+import { PersonaManifestSchema } from "../../../src/persona/types.js";
 
 // Test fixtures
 function createTestPersona(overrides: Partial<Persona> = {}): Persona {
@@ -491,6 +495,113 @@ describe("deriveConstraints", () => {
       const result = deriveConstraints(persona, rules, [], {});
 
       expect(result.constraints.every((c) => c.confidence === 0.3)).toBe(true);
+    });
+  });
+
+  describe("with fixture data", () => {
+    it("derives constraints using senior-dev persona and coding-style rules", () => {
+      // Load persona fixture
+      const personaPath = join(__dirname, "..", "..", "fixtures", "personas", "senior-dev.yaml");
+      const personaData = parseYaml(readFileSync(personaPath, "utf-8"));
+      const personaResult = PersonaManifestSchema.safeParse(personaData);
+      expect(personaResult.success).toBe(true);
+
+      if (!personaResult.success) return;
+      const persona = personaResult.data as Persona;
+
+      // Load rule fixtures
+      const rulesPath = join(__dirname, "..", "..", "fixtures", "rules", "coding-style.yaml");
+      const rulesData = parseYaml(readFileSync(rulesPath, "utf-8")) as { rules: unknown[] };
+
+      // Convert to BehaviorRuleWithConfidence (adding required fields for testing)
+      const rules: BehaviorRuleWithConfidence[] = rulesData.rules.map((rule: any) => ({
+        ...rule,
+        rule_id: rule.id,
+        alpha: 3,
+        beta: 1,
+        observation_count: 4,
+        decay_tau: 180,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        last_observed: new Date().toISOString(),
+        confidence: 0.75,
+        decay_factor: 1.0,
+        effective_confidence: 0.8,
+      }));
+
+      // Derive constraints with context
+      const context: DeriveContext = {
+        domain: "engineering",
+        module_id: "core",
+      };
+
+      const result = deriveConstraints(persona, rules, [], context);
+
+      // Verify structure
+      expect(result.personaId).toBe("quality-first_engineering");
+      expect(result.context).toEqual(context);
+
+      // Should include constraints from matching categories
+      // senior-dev persona has categories: tool_preference, testing, code_quality
+      // coding-style rules have: tool_preference, testing, code_quality
+      expect(result.constraints.length).toBeGreaterThan(0);
+
+      // Verify at least one constraint is from the fixtures
+      const hasToolPreference = result.constraints.some((c) => c.category === "tool_preference");
+      const hasTesting = result.constraints.some((c) => c.category === "testing");
+      const hasCodeQuality = result.constraints.some((c) => c.category === "code_quality");
+
+      expect(hasToolPreference || hasTesting || hasCodeQuality).toBe(true);
+    });
+
+    it("derives constraints using eager-pm persona and communication rules", () => {
+      // Load persona fixture
+      const personaPath = join(__dirname, "..", "..", "fixtures", "personas", "eager-pm.yaml");
+      const personaData = parseYaml(readFileSync(personaPath, "utf-8"));
+      const personaResult = PersonaManifestSchema.safeParse(personaData);
+      expect(personaResult.success).toBe(true);
+
+      if (!personaResult.success) return;
+      const persona = personaResult.data as Persona;
+
+      // Load rule fixtures
+      const rulesPath = join(__dirname, "..", "..", "fixtures", "rules", "communication.yaml");
+      const rulesData = parseYaml(readFileSync(rulesPath, "utf-8")) as { rules: unknown[] };
+
+      // Convert to BehaviorRuleWithConfidence
+      const rules: BehaviorRuleWithConfidence[] = rulesData.rules.map((rule: any) => ({
+        ...rule,
+        rule_id: rule.id,
+        alpha: 3,
+        beta: 1,
+        observation_count: 4,
+        decay_tau: 180,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        last_observed: new Date().toISOString(),
+        confidence: 0.75,
+        decay_factor: 1.0,
+        effective_confidence: 0.8,
+      }));
+
+      // Derive constraints
+      const context: DeriveContext = {
+        domain: "product",
+      };
+
+      const result = deriveConstraints(persona, rules, [], context);
+
+      // Verify structure
+      expect(result.personaId).toBe("momentum-first_product");
+      expect(result.context).toEqual(context);
+
+      // Should include communication constraints
+      // eager-pm persona has categories: workflow, completion, communication
+      // communication rules have: communication
+      const communicationConstraints = result.constraints.filter(
+        (c) => c.category === "communication"
+      );
+      expect(communicationConstraints.length).toBeGreaterThan(0);
     });
   });
 });
