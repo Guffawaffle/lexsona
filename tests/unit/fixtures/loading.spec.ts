@@ -11,12 +11,23 @@ import type { MockCorrection } from "../../mocks/lex-client.js";
 
 const fixturesDir = join(process.cwd(), "tests", "fixtures");
 
+// Polarity constants for correction records
+const POLARITY_POSITIVE = 1;
+const POLARITY_NEGATIVE = -1;
+
+/**
+ * Helper function to load and parse corrections fixture
+ */
+function loadCorrectionsFixture() {
+  const filePath = join(fixturesDir, "corrections", "sample-corrections.json");
+  const content = readFileSync(filePath, "utf-8");
+  return JSON.parse(content);
+}
+
 describe("Test Fixtures", () => {
   describe("Corrections Fixture", () => {
     it("loads sample corrections from JSON", () => {
-      const filePath = join(fixturesDir, "corrections", "sample-corrections.json");
-      const content = readFileSync(filePath, "utf-8");
-      const data = JSON.parse(content);
+      const data = loadCorrectionsFixture();
 
       expect(data.corrections).toBeDefined();
       expect(Array.isArray(data.corrections)).toBe(true);
@@ -24,15 +35,13 @@ describe("Test Fixtures", () => {
     });
 
     it("corrections have required fields", () => {
-      const filePath = join(fixturesDir, "corrections", "sample-corrections.json");
-      const content = readFileSync(filePath, "utf-8");
-      const data = JSON.parse(content);
+      const data = loadCorrectionsFixture();
 
       for (const correction of data.corrections) {
         expect(correction.correction).toBeDefined();
         expect(typeof correction.correction).toBe("string");
         expect(correction.polarity).toBeDefined();
-        expect([-1, 1]).toContain(correction.polarity);
+        expect([POLARITY_NEGATIVE, POLARITY_POSITIVE]).toContain(correction.polarity);
         expect(correction.context).toBeDefined();
         expect(typeof correction.context).toBe("object");
         expect(correction.recordedAt).toBeDefined();
@@ -40,27 +49,25 @@ describe("Test Fixtures", () => {
     });
 
     it("includes corrections with positive polarity", () => {
-      const filePath = join(fixturesDir, "corrections", "sample-corrections.json");
-      const content = readFileSync(filePath, "utf-8");
-      const data = JSON.parse(content);
+      const data = loadCorrectionsFixture();
 
-      const positive = data.corrections.filter((c: MockCorrection) => c.polarity === 1);
+      const positive = data.corrections.filter(
+        (c: MockCorrection) => c.polarity === POLARITY_POSITIVE
+      );
       expect(positive.length).toBeGreaterThan(0);
     });
 
     it("includes corrections with negative polarity", () => {
-      const filePath = join(fixturesDir, "corrections", "sample-corrections.json");
-      const content = readFileSync(filePath, "utf-8");
-      const data = JSON.parse(content);
+      const data = loadCorrectionsFixture();
 
-      const negative = data.corrections.filter((c: MockCorrection) => c.polarity === -1);
+      const negative = data.corrections.filter(
+        (c: MockCorrection) => c.polarity === POLARITY_NEGATIVE
+      );
       expect(negative.length).toBeGreaterThan(0);
     });
 
     it("includes corrections with different context scopes", () => {
-      const filePath = join(fixturesDir, "corrections", "sample-corrections.json");
-      const content = readFileSync(filePath, "utf-8");
-      const data = JSON.parse(content);
+      const data = loadCorrectionsFixture();
 
       const withModuleId = data.corrections.filter(
         (c: MockCorrection) => c.context.module_id !== undefined
