@@ -146,8 +146,6 @@ export class MockLexClient {
 /**
  * Factory function to create a mock Lex client
  */
-export function createMockLexClient(
-  options?: MockLexClientOptions
-): MockLexClient {
+export function createMockLexClient(options?: MockLexClientOptions): MockLexClient {
   return new MockLexClient(options);
 }
