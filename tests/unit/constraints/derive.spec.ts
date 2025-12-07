@@ -74,6 +74,27 @@ const testPrinciples: Principle[] = [
   { id: "p2", description: "Deterministic outputs" },
 ];
 
+/**
+ * Helper to convert fixture rules to BehaviorRuleWithConfidence for testing
+ */
+function convertFixtureRulesToTestRules(fixtureRules: unknown[]): BehaviorRuleWithConfidence[] {
+  const now = new Date().toISOString();
+  return fixtureRules.map((rule: any) => ({
+    ...rule,
+    rule_id: rule.id,
+    alpha: 3,
+    beta: 1,
+    observation_count: 4,
+    decay_tau: 180,
+    created_at: now,
+    updated_at: now,
+    last_observed: now,
+    confidence: 0.75,
+    decay_factor: 1.0,
+    effective_confidence: 0.8,
+  }));
+}
+
 describe("scopeMatches", () => {
   it("matches empty scope with any context", () => {
     const scope = {};
@@ -513,21 +534,8 @@ describe("deriveConstraints", () => {
       const rulesPath = join(__dirname, "..", "..", "fixtures", "rules", "coding-style.yaml");
       const rulesData = parseYaml(readFileSync(rulesPath, "utf-8")) as { rules: unknown[] };
 
-      // Convert to BehaviorRuleWithConfidence (adding required fields for testing)
-      const rules: BehaviorRuleWithConfidence[] = rulesData.rules.map((rule: any) => ({
-        ...rule,
-        rule_id: rule.id,
-        alpha: 3,
-        beta: 1,
-        observation_count: 4,
-        decay_tau: 180,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        last_observed: new Date().toISOString(),
-        confidence: 0.75,
-        decay_factor: 1.0,
-        effective_confidence: 0.8,
-      }));
+      // Convert to BehaviorRuleWithConfidence
+      const rules = convertFixtureRulesToTestRules(rulesData.rules);
 
       // Derive constraints with context
       const context: DeriveContext = {
@@ -569,20 +577,7 @@ describe("deriveConstraints", () => {
       const rulesData = parseYaml(readFileSync(rulesPath, "utf-8")) as { rules: unknown[] };
 
       // Convert to BehaviorRuleWithConfidence
-      const rules: BehaviorRuleWithConfidence[] = rulesData.rules.map((rule: any) => ({
-        ...rule,
-        rule_id: rule.id,
-        alpha: 3,
-        beta: 1,
-        observation_count: 4,
-        decay_tau: 180,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        last_observed: new Date().toISOString(),
-        confidence: 0.75,
-        decay_factor: 1.0,
-        effective_confidence: 0.8,
-      }));
+      const rules = convertFixtureRulesToTestRules(rulesData.rules);
 
       // Derive constraints
       const context: DeriveContext = {
