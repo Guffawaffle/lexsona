@@ -1,0 +1,53 @@
+{
+  "corrections": [
+    {
+      "correction": "Use editing tools (replace_string_in_file), never sed",
+      "polarity": 1,
+      "context": {
+        "module_id": "cli",
+        "project": "lex-pr-runner"
+      },
+      "recordedAt": "2024-01-15T10:00:00.000Z"
+    },
+    {
+      "correction": "Run tests before committing code",
+      "polarity": 1,
+      "context": {
+        "task_type": "implementation"
+      },
+      "recordedAt": "2024-01-15T10:05:00.000Z"
+    },
+    {
+      "correction": "Don't skip type checking",
+      "polarity": -1,
+      "context": {
+        "module_id": "core"
+      },
+      "recordedAt": "2024-01-15T10:10:00.000Z"
+    },
+    {
+      "correction": "Write clear, imperative commit messages",
+      "polarity": 1,
+      "context": {},
+      "recordedAt": "2024-01-15T10:15:00.000Z"
+    },
+    {
+      "correction": "Document major decisions in ADRs",
+      "polarity": 1,
+      "context": {
+        "task_type": "planning",
+        "module_id": "docs"
+      },
+      "recordedAt": "2024-01-15T10:20:00.000Z"
+    },
+    {
+      "correction": "Avoid unexplained jargon in documentation",
+      "polarity": 1,
+      "context": {
+        "module_id": "docs/*",
+        "context_tags": ["documentation"]
+      },
+      "recordedAt": "2024-01-15T10:25:00.000Z"
+    }
+  ]
+}
