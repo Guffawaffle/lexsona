@@ -44,6 +44,8 @@ export interface PersonaDuties {
   mustDo: string[];
   /** Actions the persona MUST NEVER do */
   mustNotDo: string[];
+  /** Actions the persona SHOULD do (recommended practices) */
+  shouldDo?: string[];
 }
 
 /**
@@ -193,6 +195,7 @@ export const PersonaManifestSchema = z
     duties: z.object({
       mustDo: z.array(z.string()),
       mustNotDo: z.array(z.string()),
+      shouldDo: z.array(z.string()).optional(),
     }),
     triggers: z.object({
       phrases: z.array(z.string()),

@@ -74,7 +74,8 @@ describe("Persona Loader", () => {
       // This test depends on bundled personas existing
       const path = findPersonaPath("quality-first_engineering");
       expect(path).not.toBeNull();
-      expect(path).toContain("quality-first_engineering.md");
+      // Should find either .yaml or .md file
+      expect(path).toMatch(/quality-first_engineering\.(yaml|yml|md)$/);
     });
 
     it("returns null for non-existent persona", () => {
@@ -108,7 +109,8 @@ describe("Persona Loader", () => {
 
       for (const persona of personas) {
         expect(persona.path).toBeDefined();
-        expect(persona.path.endsWith(".md")).toBe(true);
+        // Should end with .md, .yaml, or .yml
+        expect(persona.path).toMatch(/\.(md|yaml|yml)$/);
       }
     });
   });

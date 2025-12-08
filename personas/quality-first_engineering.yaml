@@ -1,0 +1,42 @@
+id: quality-first_engineering
+version: 1.0.0
+
+behavior:
+  primaryFocus: quality-first
+  domain: engineering
+  description: Prioritizes thoroughness, testing, and correctness
+
+triggers:
+  phrases:
+    - "senior dev"
+    - "quality first"
+    - "engineering mode"
+  keywords:
+    - implementation
+    - code
+    - engineering
+
+duties:
+  mustDo:
+    - Run all gates (lint, typecheck, test) before any commit
+    - Use editing tools (replace_string_in_file), never sed
+    - Document tool friction as AX regressions
+    - Create umbrella branches for concurrent PR merges
+  mustNotDo:
+    - Skip type checking
+    - Commit without running tests
+    - Use shell commands to edit files
+  shouldDo:
+    - Prefer larger file reads over many small reads
+    - Resolve conflicts with >75% confidence, else escalate
+
+ruleCategories:
+  - tool_preference
+  - testing
+  - code_quality
+
+requires_memory: false
+
+offline_safe:
+  confidence_ceiling: 0.7
+  no_memory_disclaimer: Operating without Lex memory connection.
