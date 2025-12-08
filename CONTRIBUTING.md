@@ -1,0 +1,140 @@
+# Contributing to LexSona
+
+## Overview
+
+LexSona is the constraint engine layer in the Lex ecosystem. Before contributing, please review:
+
+- [AGENTS.md](./AGENTS.md) - Architecture and operating principles
+- [README.md](./README.md) - Project overview and usage
+
+## Development Setup
+
+```bash
+# Install dependencies
+npm ci
+
+# Build
+npm run build
+
+# Run tests
+npm test
+
+# Lint
+npm run lint
+
+# Type check
+npm run typecheck
+```
+
+## Pull Request Workflow
+
+### Single PR (Simple Changes)
+
+For small, independent changes:
+
+1. Create a feature branch from `main`
+2. Make changes, ensure all gates pass locally
+3. Open PR against `main`
+4. Request review and merge when approved
+
+### Umbrella Branch Pattern (Concurrent PRs)
+
+When multiple PRs are in flight and need coordinated integration:
+
+1. **Create umbrella branch:**
+   ```bash
+   git fetch origin
+   git checkout -b integration/umbrella-YYYYMMDD origin/main
+   ```
+
+2. **Merge feature PRs into umbrella:**
+   ```bash
+   git merge --no-ff origin/feature-branch-1 -m "Merge PR #X: Description"
+   git merge --no-ff origin/feature-branch-2 -m "Merge PR #Y: Description"
+   # Resolve conflicts as needed
+   ```
+
+3. **Run all gates on umbrella:**
+   ```bash
+   npm run lint && npm run typecheck && npm test
+   ```
+
+4. **Push umbrella and create PR to main:**
+   ```bash
+   git push origin integration/umbrella-YYYYMMDD
+   gh pr create --base main --title "Umbrella: Merge PRs #X, #Y, #Z"
+   ```
+
+5. **After umbrella merges:** Individual PRs auto-close when their commits reach main.
+
+### Conflict Resolution
+
+When merging concurrent PRs creates conflicts:
+
+| File Type | Strategy | Example |
+|-----------|----------|---------|
+| **Documentation (*.md)** | Take latest version, manually merge content if needed | tests/README.md |
+| **Test Fixtures (*.yaml, *.json)** | Merge both versions | fixtures/personas/*.yaml |
+| **Source Code (*.ts)** | Manual resolution required | src/**/*.ts |
+| **Config Files** | Take feature branch (`--theirs`) | package.json, tsconfig.json |
+
+**When uncertain:** Stop and ask. Document the conflict in the PR description.
+
+## Commit Style
+
+Use imperative mood with optional prefixes:
+
+```
+feat: Add persona loading from YAML
+fix: Handle missing database path gracefully
+test: Add integration tests for MCP server
+docs: Update README with usage examples
+refactor: Extract constraint derivation logic
+```
+
+## Testing
+
+### Running Tests
+
+```bash
+# All tests
+npm test
+
+# Specific test file
+npm test -- tests/unit/core/lexsona.spec.ts
+
+# With coverage
+npm run test:coverage
+```
+
+### Test Fixtures
+
+Test fixtures are located in `tests/fixtures/`:
+
+- `personas/` - Sample persona manifests (YAML)
+- `rules/` - Sample behavior rules (YAML)
+- `corrections/` - Sample correction records (JSON)
+
+See [tests/README.md](./tests/README.md) for detailed fixture documentation.
+
+## Code Style
+
+- **Language:** TypeScript only
+- **Schemas:** Zod for validation
+- **CLI:** Commander with noun-verb syntax
+- **Tests:** Vitest
+
+## Architecture Principles
+
+From [AGENTS.md](./AGENTS.md):
+
+1. **Constraint Engine, Not Executor** - LexSona returns constraints, never executes
+2. **Lex is the Foundation** - LexSona uses Lex's storage APIs
+3. **Deterministic Outputs** - Same inputs = same constraint sets
+4. **Scoped by Design** - Rules are namespaced by domain/module
+
+## Questions?
+
+- Check [AGENTS.md](./AGENTS.md) for architecture questions
+- Check [README.mcp.md](./README.mcp.md) for MCP server usage
+- Open an issue for bugs or feature requests
