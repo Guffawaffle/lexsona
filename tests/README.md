@@ -1,185 +1,312 @@
 # LexSona Test Infrastructure
 
-This directory contains the test infrastructure for LexSona, including fixtures, mocks, utilities, and test suites.
+This directory contains the test infrastructure for LexSona, including fixtures, mocks, and utilities to simplify writing tests.
 
 ## Directory Structure
 
 ```
 tests/
-├── fixtures/           # Test data and sample files
-│   ├── personas/       # Sample persona manifests
-│   ├── rules/          # Sample behavior rules
-│   └── corrections/    # Sample correction records
-├── mocks/              # Mock implementations for dependencies
-│   └── lex-client.ts   # Mock Lex storage client
-├── utils/              # Test utilities and helpers
-│   └── test-helpers.ts # Factory functions for test objects
-├── unit/               # Unit tests
-│   ├── core/           # Core LexSona tests
-│   ├── rules/          # Rule engine tests
-│   ├── constraints/    # Constraint derivation tests
-│   ├── persona/        # Persona loader tests
-│   ├── mocks/          # Mock implementation tests
-│   └── utils/          # Test utilities tests
-└── integration/        # Integration tests (future)
-    └── cli/            # CLI integration tests (future)
+├── fixtures/          # Test data files
+│   ├── personas/     # Persona YAML fixtures
+│   └── rules/        # Rule YAML fixtures
+├── mocks/            # Mock implementations
+│   └── lex-client.ts # Mock Lex database client
+├── utils/            # Test utilities
+│   └── test-helpers.ts # Helper functions for creating test data
+├── unit/             # Unit tests
+├── shared/           # Shared integration tests
+│   └── lexsona/     # LexSona-specific shared tests
+└── README.md         # This file
 ```
 
-## Fixtures
+## Test Fixtures
 
-### Personas (`tests/fixtures/personas/`)
+### Personas
 
-Sample persona manifests in Markdown format with YAML frontmatter:
+Persona fixtures are YAML files that represent different behavioral modes for testing:
 
-- **`senior-dev.md`** - Quality-first engineering persona
-  - ID: `quality-first_engineering`
+- **`senior-dev.yaml`** - Quality-first engineering persona
   - Focus: Thoroughness, testing, correctness
-  - Use for: Implementation, bug fixes, code review
-
-- **`eager-pm.md`** - Momentum-first product persona
-  - ID: `momentum-first_product`
+  - Use for: Testing quality-oriented constraints
+  
+- **`eager-pm.yaml`** - Momentum-first product persona
   - Focus: Velocity, shipping, iteration
-  - Use for: Planning, triage, workflow coordination
+  - Use for: Testing completion-oriented constraints
 
-**Format:**
-```markdown
----
-id: quality-first_engineering
-version: 1.1.0
-behavior:
-  primaryFocus: quality-first
-  domain: engineering
-  description: Prioritizes thoroughness, testing, correctness
-duties:
-  mustDo:
-    - Run local-ci before any commit
-  mustNotDo:
-    - Skip type checking
-triggers:
-  phrases:
-    - ok senior dev
-ruleCategories:
-  - tool_preference
-  - testing
----
+**Usage:**
 
-# Persona Name
+```typescript
+import { readFileSync } from "fs";
+import { join } from "path";
+import { parse as parseYaml } from "yaml";
+import { PersonaManifestSchema } from "../../src/persona/types.js";
 
-Markdown body with additional documentation...
+const personaPath = join(__dirname, "..", "fixtures", "personas", "senior-dev.yaml");
+const personaData = parseYaml(readFileSync(personaPath, "utf-8"));
+const persona = PersonaManifestSchema.parse(personaData);
 ```
 
-### Rules (`tests/fixtures/rules/`)
+### Rules
 
-Sample behavior rules in YAML format:
+Rule fixtures contain behavioral rules for testing constraint derivation:
 
-- **`coding-style.yaml`** - Code quality and style rules
-  - `use-editing-tools` - Tool preference rule
-  - `run-tests-before-commit` - Testing requirement
-  - `prefer-const` - Style guideline
+- **`coding-style.yaml`** - Tool preferences, testing, code quality rules
+- **`communication.yaml`** - Communication style and documentation rules
 
-- **`communication.yaml`** - Communication and documentation rules
-  - `clear-commit-messages` - Git commit style
-  - `document-decisions` - ADR requirement
-  - `avoid-jargon` - Documentation clarity
+**Usage:**
 
-**Format:**
-```yaml
-rules:
-  - id: use-editing-tools
-    category: tool_preference
-    text: Use editing tools (replace_string_in_file), never sed
-    severity: must
-    scope:
-      project: lex-pr-runner
+```typescript
+import { readFileSync } from "fs";
+import { join } from "path";
+import { parse as parseYaml } from "yaml";
+
+const rulesPath = join(__dirname, "..", "fixtures", "rules", "coding-style.yaml");
+const rulesData = parseYaml(readFileSync(rulesPath, "utf-8"));
+const rules = rulesData.rules; // Array of BehaviorRule objects
 ```
 
-### Corrections (`tests/fixtures/corrections/`)
+## Test Mocks
 
-Sample correction records for testing learning functionality:
+### MockLexClient
 
-- **`sample-corrections.json`** - Example correction records with various scopes and polarities
-
-**Format:**
-```json
-{
-  "corrections": [
-    {
-      "correction": "Use editing tools (replace_string_in_file), never sed",
-      "polarity": 1,
-      "context": {
-        "module_id": "cli",
-        "project": "lex-pr-runner"
-      },
-      "recordedAt": "2024-01-15T10:00:00.000Z"
-    }
-  ]
-}
-```
-
-## Mocks
-
-### Lex Client (`tests/mocks/lex-client.ts`)
-
-Mock implementation of Lex storage APIs for isolated testing.
+A lightweight mock implementation of the Lex database client for isolated testing.
 
 **Features:**
 - In-memory rule storage
 - Correction recording with tracking
-- Configurable failure modes
-- Scope-based rule filtering
+- Configurable failure modes for error testing
 
 **Usage:**
-```typescript
-import { createMockLexClient } from '../mocks/lex-client.js';
 
-const client = createMockLexClient({
-  rules: [testRule1, testRule2],
-  recordSuccess: true,
-  connectionFailed: false,
+```typescript
+import { createMockLexClient, MockLexClient } from "../mocks/lex-client.js";
+import { createTestRule } from "../utils/test-helpers.js";
+
+// Create a mock client with pre-loaded rules
+const mockClient = createMockLexClient({
+  rules: [
+    createTestRule({ 
+      rule_id: "test-1", 
+      category: "testing",
+      text: "Always write tests"
+    })
+  ],
+  recordSuccess: true, // recordCorrection will succeed
+  connectionFailed: false // Connection available
 });
 
 // Use in tests
-const rules = await client.getRules({ module_id: 'cli' });
-await client.recordCorrection({ correction: 'Test', polarity: 1, context: {} });
+const rules = await mockClient.getRules();
+const result = await mockClient.recordCorrection({
+  correction: "Add missing test",
+  polarity: -1,
+  context: {}
+});
+
+// Verify corrections were recorded
+const corrections = mockClient.getRecordedCorrections();
+expect(corrections).toHaveLength(1);
 ```
 
-**API:**
-- `isConnected()` - Check connection status
-- `getRules(filter?)` - Get rules with optional filtering
-- `recordCorrection(correction)` - Record a correction
-- `getRecordedCorrections()` - Get all recorded corrections (test helper)
-- `addRule(rule)` - Add a rule (test helper)
-- `reset()` - Clear all state (test helper)
-- `setConnectionFailed(failed)` - Simulate connection failure (test helper)
+**Error Testing:**
+
+```typescript
+// Simulate connection failure
+const failingClient = createMockLexClient({ connectionFailed: true });
+await expect(failingClient.getRules()).rejects.toThrow("connection failed");
+
+// Simulate recording failure
+const recordFailClient = createMockLexClient({ recordSuccess: false });
+const result = await recordFailClient.recordCorrection({ /* ... */ });
+expect(result.success).toBe(false);
+```
 
 ## Test Utilities
 
-### Test Helpers (`tests/utils/test-helpers.ts`)
+### Helper Functions
 
-Factory functions to reduce boilerplate in tests:
+The `test-helpers.ts` module provides factory functions to create test data with sensible defaults:
 
-**Functions:**
-- `createTestRule(overrides?)` - Create a BehaviorRule with sensible defaults
-- `createTestScope(overrides?)` - Create a RuleScope
-- `createTestPersona(overrides?)` - Create a Persona
-- `createTestContext(overrides?)` - Create a DeriveContext
-- `createTestConstraint(overrides?)` - Create a Constraint
-- `createTestConstraintSet(overrides?)` - Create a ConstraintSet
-- `wait(ms)` - Wait for a specified duration
-- `expectToThrow(fn, pattern)` - Assert that a function throws
+#### `createTestRule(overrides?)`
 
-**Usage:**
+Create a BehaviorRule for testing:
+
 ```typescript
-import { createTestRule, createTestPersona } from '../utils/test-helpers.js';
+import { createTestRule } from "../utils/test-helpers.js";
 
-// Create with defaults
-const rule = createTestRule();
+const rule = createTestRule({
+  rule_id: "custom-rule",
+  category: "testing",
+  text: "Test rule description",
+  severity: "must",
+  scope: { module_id: "core" }
+});
+```
 
-// Create with overrides
-const customRule = createTestRule({
-  rule_id: 'my-rule',
-  text: 'My custom rule',
-  severity: 'must',
+#### `createTestPersona(overrides?)`
+
+Create a Persona for testing:
+
+```typescript
+import { createTestPersona } from "../utils/test-helpers.js";
+
+const persona = createTestPersona({
+  id: "test-persona",
+  behavior: {
+    primaryFocus: "quality-first",
+    domain: "testing",
+    description: "Test persona"
+  },
+  ruleCategories: ["testing", "code_quality"]
+});
+```
+
+#### `createTestScope(overrides?)`
+
+Create a RuleScope for testing:
+
+```typescript
+import { createTestScope } from "../utils/test-helpers.js";
+
+const scope = createTestScope({
+  module_id: "core",
+  task_type: "implementation",
+  context_tags: ["urgent", "security"]
+});
+```
+
+#### `createTestContext(overrides?)`
+
+Create a DeriveContext for constraint derivation tests:
+
+```typescript
+import { createTestContext } from "../utils/test-helpers.js";
+
+const context = createTestContext({
+  domain: "engineering",
+  module_id: "core",
+  taskType: "implementation"
+});
+```
+
+#### `createTestConstraint(overrides?)`
+
+Create a Constraint for testing:
+
+```typescript
+import { createTestConstraint } from "../utils/test-helpers.js";
+
+const constraint = createTestConstraint({
+  rule_id: "test-rule",
+  text: "Test constraint",
+  severity: "should",
+  confidence: 0.85
+});
+```
+
+#### `createTestConstraintSet(overrides?)`
+
+Create a ConstraintSet for testing:
+
+```typescript
+import { createTestConstraintSet } from "../utils/test-helpers.js";
+
+const constraintSet = createTestConstraintSet({
+  personaId: "quality-first_engineering",
+  constraints: [
+    createTestConstraint({ text: "Write tests" }),
+    createTestConstraint({ text: "Run linter" })
+  ]
+});
+```
+
+#### Utility Functions
+
+**`wait(ms: number)`** - Async delay for timing tests:
+
+```typescript
+import { wait } from "../utils/test-helpers.js";
+
+await wait(1000); // Wait 1 second
+```
+
+**`expectToThrow(fn, messagePattern)`** - Assert that async function throws:
+
+```typescript
+import { expectToThrow } from "../utils/test-helpers.js";
+
+await expectToThrow(
+  async () => { throw new Error("Invalid input"); },
+  /Invalid input/
+);
+```
+
+## Example Tests
+
+### Using Fixtures and Mocks
+
+```typescript
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "fs";
+import { join } from "path";
+import { parse as parseYaml } from "yaml";
+import { deriveConstraints } from "../../src/constraints/derive.js";
+import { createMockLexClient } from "../mocks/lex-client.js";
+import { PersonaManifestSchema } from "../../src/persona/types.js";
+
+describe("deriveConstraints with fixtures", () => {
+  it("derives constraints using fixture persona and rules", () => {
+    // Load persona fixture
+    const personaPath = join(__dirname, "..", "fixtures", "personas", "senior-dev.yaml");
+    const personaData = parseYaml(readFileSync(personaPath, "utf-8"));
+    const persona = PersonaManifestSchema.parse(personaData);
+
+    // Load rule fixtures
+    const rulesPath = join(__dirname, "..", "fixtures", "rules", "coding-style.yaml");
+    const rulesData = parseYaml(readFileSync(rulesPath, "utf-8"));
+    
+    // Mock Lex client with fixture rules
+    const mockClient = createMockLexClient({ rules: rulesData.rules });
+
+    // Derive constraints
+    const result = deriveConstraints(
+      persona,
+      rulesData.rules,
+      [],
+      { domain: "engineering" }
+    );
+
+    expect(result.personaId).toBe("quality-first_engineering");
+    expect(result.constraints.length).toBeGreaterThan(0);
+  });
+});
+```
+
+### Using Test Helpers
+
+```typescript
+import { describe, it, expect } from "vitest";
+import { deriveConstraints } from "../../src/constraints/derive.js";
+import { createTestPersona, createTestRule, createTestContext } from "../utils/test-helpers.js";
+
+describe("deriveConstraints with helpers", () => {
+  it("filters rules by category", () => {
+    const persona = createTestPersona({ 
+      ruleCategories: ["testing"] 
+    });
+    
+    const rules = [
+      createTestRule({ category: "testing", text: "Write tests" }),
+      createTestRule({ category: "security", text: "Check auth" })
+    ];
+
+    const context = createTestContext({ domain: "engineering" });
+    const result = deriveConstraints(persona, rules, [], context);
+
+    // Only testing category should be included
+    expect(result.constraints).toHaveLength(1);
+    expect(result.constraints[0].category).toBe("testing");
+  });
 });
 ```
 
@@ -192,115 +319,65 @@ npm test
 # Run tests in watch mode
 npm run test:watch
 
-# Run with coverage
-npm test -- --coverage
-
 # Run specific test file
-npm test tests/unit/core/lexsona.spec.ts
-```
+npm test -- tests/unit/core/deriveConstraints.spec.ts
 
-## Writing Tests
-
-### Unit Tests
-
-Place unit tests in `tests/unit/` organized by module:
-
-```typescript
-import { describe, it, expect, beforeEach } from 'vitest';
-import { createMockLexClient } from '../../mocks/lex-client.js';
-import { createTestRule } from '../../utils/test-helpers.js';
-
-describe('MyModule', () => {
-  let client;
-
-  beforeEach(() => {
-    client = createMockLexClient();
-  });
-
-  it('does something', async () => {
-    const rule = createTestRule({ rule_id: 'test' });
-    client.addRule(rule);
-    
-    const result = await client.getRules();
-    expect(result).toHaveLength(1);
-  });
-});
-```
-
-### Integration Tests
-
-Place integration tests in `tests/integration/` organized by feature:
-
-```typescript
-// Future: tests/integration/cli/persona-activate.spec.ts
-import { describe, it, expect } from 'vitest';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-
-const execAsync = promisify(exec);
-
-describe('CLI: persona activate', () => {
-  it('activates a persona', async () => {
-    const { stdout } = await execAsync('lexsona persona activate quality-first_engineering');
-    expect(stdout).toContain('Activated persona: quality-first_engineering');
-  });
-});
-```
-
-## Configuration
-
-### Vitest (`vitest.config.ts`)
-
-```typescript
-export default defineConfig({
-  test: {
-    globals: true,
-    environment: 'node',
-    include: ['tests/**/*.test.ts', 'tests/**/*.spec.ts'],
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'lcov'],
-      include: ['src/**/*.ts'],
-      exclude: ['src/**/*.d.ts', 'src/**/index.ts'],
-    },
-  },
-});
-```
-
-## Coverage
-
-Coverage is configured to track:
-- All source files in `src/`
-- Excludes type definitions and index files
-- Reports in text and LCOV format
-
-View coverage:
-```bash
+# Run tests with coverage
 npm test -- --coverage
 ```
 
-## Best Practices
+## Writing New Tests
 
-1. **Use fixtures** - Load test data from fixtures instead of inline definitions
-2. **Use mocks** - Isolate tests with mock implementations
-3. **Use helpers** - Reduce boilerplate with test utility functions
-4. **Test one thing** - Each test should verify a single behavior
-5. **Clean state** - Use `beforeEach` to reset state between tests
-6. **Descriptive names** - Test names should describe what they verify
-7. **Arrange-Act-Assert** - Structure tests clearly
+### Best Practices
 
-## Current Status
+1. **Use fixtures for integration tests** - When testing how components work together, use the YAML fixtures
+2. **Use test helpers for unit tests** - For focused unit tests, use helper functions for quick setup
+3. **Use mocks to isolate** - Use MockLexClient to avoid database dependencies
+4. **Keep tests deterministic** - Avoid randomness; use fixed dates/values
+5. **Test edge cases** - Empty arrays, null values, boundary conditions
+6. **Follow existing patterns** - Look at `tests/unit/constraints/derive.spec.ts` for examples
 
-✅ **Complete:**
-- Vitest configured with coverage
-- Mock Lex client implemented and tested
-- Test helpers implemented and tested
-- Persona fixtures (2 sample personas)
-- Rule fixtures (2 rule sets)
-- Corrections fixture (6 sample corrections)
-- 101 passing unit tests
+### Test Organization
 
-🔮 **Future:**
-- Integration tests for CLI commands
-- E2E tests for full workflows
-- Performance benchmarks
+- **Unit tests** (`tests/unit/`) - Test individual functions/classes in isolation
+- **Shared tests** (`tests/shared/`) - Test cross-cutting concerns like fixtures loading
+- **Integration tests** - Could go in `tests/integration/` (not yet created)
+
+### Adding New Fixtures
+
+To add a new fixture:
+
+1. Create the YAML file in the appropriate subdirectory
+2. Add a test in `tests/shared/lexsona/fixtures.test.ts` to verify it loads
+3. Document it in this README
+
+## CI/CD
+
+Tests run automatically on:
+- Pull request creation/updates
+- Pushes to main branch
+
+The test suite must pass before merging.
+
+## Troubleshooting
+
+**Problem:** Tests can't find fixtures  
+**Solution:** Check that paths use `join(__dirname, "..", "fixtures", ...)`
+
+**Problem:** TypeScript errors in test files  
+**Solution:** Ensure you're importing from compiled `.js` files: `from "../../src/foo.js"`
+
+**Problem:** Mock not behaving as expected  
+**Solution:** Check if you need to set `hasLexConnection: true` in options
+
+**Problem:** Vitest not found  
+**Solution:** Run `npm ci` to install dependencies
+
+## Contributing
+
+When adding new test infrastructure:
+
+1. Keep it minimal and focused
+2. Add examples to this README
+3. Write tests for your test utilities (meta!)
+4. Update the directory structure diagram if needed
