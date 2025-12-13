@@ -76,6 +76,26 @@ describe("LexSona", () => {
       expect(result.derivedAt >= before).toBe(true);
       expect(result.derivedAt <= after).toBe(true);
     });
+
+    it("includes inputHash in result", async () => {
+      await sona.activate("quality-first_engineering");
+      const result = await sona.deriveConstraints({});
+
+      expect(result.inputHash).toBeDefined();
+      expect(typeof result.inputHash).toBe("string");
+      expect(result.inputHash.length).toBeGreaterThan(0);
+    });
+
+    it("produces stable inputHash for same inputs", async () => {
+      await sona.activate("quality-first_engineering");
+      const context = { domain: "test", taskType: "implementation" };
+
+      const result1 = await sona.deriveConstraints(context);
+      const result2 = await sona.deriveConstraints(context);
+
+      // InputHash should be the same (ignoring derivedAt)
+      expect(result1.inputHash).toBe(result2.inputHash);
+    });
   });
 
   describe("learn", () => {

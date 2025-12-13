@@ -13,6 +13,7 @@
  * @module
  */
 
+import { createHash } from "crypto";
 import type { BehaviorRuleWithConfidence, RuleScope } from "../rules/types.js";
 import type { Persona } from "../persona/types.js";
 
@@ -81,6 +82,8 @@ export interface ConstraintSet {
   personaId: string;
   /** Timestamp of derivation */
   derivedAt: string;
+  /** Stable hash of inputs (persona + rules + baseline + context) */
+  inputHash: string;
   /** Context used for derivation */
   context: DeriveContext;
   /** Active principles (from baseline.yaml) */
@@ -169,6 +172,41 @@ export function scopeMatches(scope: RuleScope, context: DeriveContext): boolean 
 }
 
 /**
+ * Calculate a stable hash of the inputs for derivation
+ * This ensures determinism - same inputs produce same hash
+ */
+function calculateInputHash(
+  persona: Persona,
+  rules: BehaviorRuleWithConfidence[],
+  principles: Principle[],
+  context: DeriveContext
+): string {
+  // Sort rule IDs for determinism
+  const ruleIds = rules.map((r) => r.rule_id).sort();
+  const principleIds = principles.map((p) => p.id).sort();
+
+  // Create a stable representation of the input
+  const input = {
+    personaId: persona.id,
+    personaVersion: persona.version,
+    ruleIds,
+    principleIds,
+    context: {
+      domain: context.domain || "",
+      module_id: context.module_id || "",
+      taskType: context.taskType || "",
+      environment: context.environment || "",
+      agent_family: context.agent_family || "",
+      context_tags: (context.context_tags || []).slice().sort(),
+    },
+  };
+
+  const hash = createHash("sha256");
+  hash.update(JSON.stringify(input));
+  return hash.digest("hex");
+}
+
+/**
  * Derive constraints from rules and persona
  *
  * This is a PURE function - no side effects, no network requests.
@@ -226,12 +264,14 @@ export function deriveConstraints(
     return true;
   });
 
-  // Sort by severity (must > should > style), then by confidence
+  // Sort by severity (must > should > style), then by confidence, then by rule_id (for determinism)
   const severityOrder = { must: 0, should: 1, style: 2 };
   const sortedRules = matchingRules.sort((a, b) => {
     const severityDiff = severityOrder[a.severity] - severityOrder[b.severity];
     if (severityDiff !== 0) return severityDiff;
-    return b.effective_confidence - a.effective_confidence;
+    const confidenceDiff = b.effective_confidence - a.effective_confidence;
+    if (Math.abs(confidenceDiff) > 0.0001) return confidenceDiff;
+    return a.rule_id.localeCompare(b.rule_id);
   });
 
   // Limit to maxConstraints
@@ -249,9 +289,13 @@ export function deriveConstraints(
     category: rule.category,
   }));
 
+  // Calculate stable input hash
+  const inputHash = calculateInputHash(persona, rules, principles, context);
+
   return {
     personaId: persona.id,
     derivedAt: new Date().toISOString(),
+    inputHash,
     context,
     principles,
     constraints,

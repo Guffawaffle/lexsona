@@ -366,6 +366,78 @@ describe("deriveConstraints", () => {
       expect(result1.constraints).toEqual(result2.constraints);
       expect(result1.metadata).toEqual(result2.metadata);
     });
+
+    it("produces same inputHash for same inputs", () => {
+      const persona = createTestPersona();
+      const rules = [createTestRule({ rule_id: "r1" }), createTestRule({ rule_id: "r2" })];
+      const context: DeriveContext = { domain: "test" };
+
+      const result1 = deriveConstraints(persona, rules, testPrinciples, context);
+      const result2 = deriveConstraints(persona, rules, testPrinciples, context);
+
+      expect(result1.inputHash).toBe(result2.inputHash);
+      expect(result1.inputHash).toBeTruthy();
+    });
+
+    it("produces different inputHash for different persona", () => {
+      const persona1 = createTestPersona({ id: "quality-first_engineering", version: "1.0.0" });
+      const persona2 = createTestPersona({ id: "momentum-first_product", version: "1.0.0" });
+      const rules = [createTestRule({ rule_id: "r1" })];
+      const context: DeriveContext = { domain: "test" };
+
+      const result1 = deriveConstraints(persona1, rules, testPrinciples, context);
+      const result2 = deriveConstraints(persona2, rules, testPrinciples, context);
+
+      expect(result1.inputHash).not.toBe(result2.inputHash);
+    });
+
+    it("produces different inputHash for different rules", () => {
+      const persona = createTestPersona();
+      const rules1 = [createTestRule({ rule_id: "r1" })];
+      const rules2 = [createTestRule({ rule_id: "r2" })];
+      const context: DeriveContext = { domain: "test" };
+
+      const result1 = deriveConstraints(persona, rules1, testPrinciples, context);
+      const result2 = deriveConstraints(persona, rules2, testPrinciples, context);
+
+      expect(result1.inputHash).not.toBe(result2.inputHash);
+    });
+
+    it("produces same inputHash regardless of rule order", () => {
+      const persona = createTestPersona();
+      const rules1 = [
+        createTestRule({ rule_id: "r1" }),
+        createTestRule({ rule_id: "r2" }),
+        createTestRule({ rule_id: "r3" }),
+      ];
+      const rules2 = [
+        createTestRule({ rule_id: "r3" }),
+        createTestRule({ rule_id: "r1" }),
+        createTestRule({ rule_id: "r2" }),
+      ];
+      const context: DeriveContext = { domain: "test" };
+
+      const result1 = deriveConstraints(persona, rules1, testPrinciples, context);
+      const result2 = deriveConstraints(persona, rules2, testPrinciples, context);
+
+      expect(result1.inputHash).toBe(result2.inputHash);
+    });
+
+    it("sorts constraints deterministically by severity, confidence, then rule_id", () => {
+      const persona = createTestPersona();
+      const rules = [
+        createTestRule({ rule_id: "r-b", severity: "should", effective_confidence: 0.8 }),
+        createTestRule({ rule_id: "r-a", severity: "should", effective_confidence: 0.8 }),
+        createTestRule({ rule_id: "r-c", severity: "must", effective_confidence: 0.5 }),
+      ];
+
+      const result = deriveConstraints(persona, rules, [], {});
+
+      // Should be sorted: must first, then should by rule_id
+      expect(result.constraints[0].rule_id).toBe("r-c"); // must
+      expect(result.constraints[1].rule_id).toBe("r-a"); // should, alphabetically first
+      expect(result.constraints[2].rule_id).toBe("r-b"); // should, alphabetically second
+    });
   });
 
   describe("edge cases", () => {
