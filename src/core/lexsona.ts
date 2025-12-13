@@ -123,11 +123,12 @@ export class LexSona {
     }
 
     // If no persona loaded, return empty constraint set
+    // InputHash is empty since there are no inputs to hash
     if (!persona) {
       return {
         personaId: this.activePersona ?? "none",
         derivedAt: new Date().toISOString(),
-        inputHash: "",
+        inputHash: "", // No persona/rules to hash
         context,
         constraints: [],
         principles: [],

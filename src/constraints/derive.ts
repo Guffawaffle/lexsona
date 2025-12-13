@@ -122,6 +122,12 @@ export interface DeriveConfig {
   hasLexConnection?: boolean;
 }
 
+/**
+ * Floating-point tolerance for confidence comparison
+ * Used to ensure deterministic sorting when confidences are effectively equal
+ */
+const CONFIDENCE_EPSILON = 0.0001;
+
 const DEFAULT_CONFIG: Required<Omit<DeriveConfig, "hasLexConnection">> & {
   hasLexConnection: boolean;
 } = {
@@ -270,7 +276,7 @@ export function deriveConstraints(
     const severityDiff = severityOrder[a.severity] - severityOrder[b.severity];
     if (severityDiff !== 0) return severityDiff;
     const confidenceDiff = b.effective_confidence - a.effective_confidence;
-    if (Math.abs(confidenceDiff) > 0.0001) return confidenceDiff;
+    if (Math.abs(confidenceDiff) > CONFIDENCE_EPSILON) return confidenceDiff;
     return a.rule_id.localeCompare(b.rule_id);
   });
 
