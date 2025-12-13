@@ -26,9 +26,13 @@ describe("rules learn integration", () => {
     // Initialize Lex database with schema
     try {
       const db = createDatabase(testDbPath);
-      db.close(); // Close the database so LexSona can open it
+      // Close immediately so LexSona can open it
+      if (db.open) {
+        db.close();
+      }
     } catch (error) {
       console.warn("Failed to create test database:", error);
+      throw error;
     }
 
     // Connect to test database

@@ -5,7 +5,7 @@
  * Tests CLI parsing, validation, and payload mapping.
  */
 
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import type { RuleScope } from "../../../src/rules/types.js";
 
 describe("rules learn command", () => {

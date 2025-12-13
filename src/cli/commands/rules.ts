@@ -94,6 +94,8 @@ export function registerRulesCommands(program: Command): void {
           const error = "Not connected to Lex database. Set LEX_DB_PATH or run 'lex init' first.";
           if (outputJson) {
             console.log(JSON.stringify({ success: false, error }, null, 2));
+          } else {
+            console.error(`Error: ${error}`);
           }
           process.exit(1);
         }
