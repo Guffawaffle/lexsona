@@ -17,7 +17,11 @@ Thumbs.db
 
 # Logs
 *.log
+*.log.ndjson
 npm-debug.log*
+
+# Lex database and data (for local testing)
+.smartergpt/
 
 # Test coverage
 coverage/
