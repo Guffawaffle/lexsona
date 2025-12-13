@@ -13,6 +13,7 @@
  * @module
  */
 
+import micromatch from "micromatch";
 import type { BehaviorRuleWithConfidence, RuleScope } from "../rules/types.js";
 import type { Persona } from "../persona/types.js";
 
@@ -131,11 +132,26 @@ const DEFAULT_CONFIG: Required<Omit<DeriveConfig, "hasLexConnection">> & {
 /**
  * Check if a rule scope matches the derivation context
  * Returns true if all specified scope fields match
+ * 
+ * Supports glob patterns for module_id (e.g., 'cli/*', 'src/**\/types.ts')
+ * Domain/project matching: context.domain is matched against scope.project
+ * (domain is deprecated alias for project, consulted when project is absent)
  */
 export function scopeMatches(scope: RuleScope, context: DeriveContext): boolean {
-  // Module ID - exact match if specified
-  if (scope.module_id && context.module_id && scope.module_id !== context.module_id) {
-    return false;
+  // Module ID - glob pattern match if specified
+  if (scope.module_id && context.module_id) {
+    // Use micromatch for glob support
+    if (!micromatch.isMatch(context.module_id, scope.module_id)) {
+      return false;
+    }
+  }
+
+  // Domain/Project - match context.domain against scope.project
+  // domain is a deprecated alias for project
+  if (scope.project && context.domain) {
+    if (scope.project !== context.domain) {
+      return false;
+    }
   }
 
   // Task type - partial match if specified
@@ -166,6 +182,63 @@ export function scopeMatches(scope: RuleScope, context: DeriveContext): boolean 
   }
 
   return true;
+}
+
+/**
+ * Calculate scope specificity score for priority ordering
+ * Higher score = more specific scope
+ * 
+ * Priority ordering: module > domain/project > taskType > global
+ */
+export function calculateScopeSpecificity(scope: RuleScope, context: DeriveContext): number {
+  let score = 0;
+  
+  // Module ID has highest weight (10 points)
+  // Glob patterns are less specific than exact matches
+  if (scope.module_id && context.module_id) {
+    if (micromatch.isMatch(context.module_id, scope.module_id)) {
+      // Check if it's an exact match vs glob
+      if (scope.module_id === context.module_id) {
+        score += 10; // Exact match
+      } else {
+        score += 8; // Glob match (less specific)
+      }
+    }
+  }
+  
+  // Domain/Project has second highest weight (8 points)
+  if (scope.project && context.domain && scope.project === context.domain) {
+    score += 8;
+  }
+  
+  // Task type has medium weight (4 points)
+  if (scope.task_type && context.taskType) {
+    if (context.taskType.toLowerCase().includes(scope.task_type.toLowerCase())) {
+      score += 4;
+    }
+  }
+  
+  // Environment has lower weight (3 points)
+  if (scope.environment && context.environment && scope.environment === context.environment) {
+    score += 3;
+  }
+  
+  // Agent family has lower weight (2 points)
+  if (scope.agent_family && context.agent_family && scope.agent_family === context.agent_family) {
+    score += 2;
+  }
+  
+  // Context tags have lowest weight (1 point per matching tag)
+  if (scope.context_tags && scope.context_tags.length > 0 && context.context_tags) {
+    const contextTagSet = new Set(context.context_tags);
+    for (const tag of scope.context_tags) {
+      if (contextTagSet.has(tag)) {
+        score += 1;
+      }
+    }
+  }
+  
+  return score;
 }
 
 /**
@@ -226,11 +299,23 @@ export function deriveConstraints(
     return true;
   });
 
-  // Sort by severity (must > should > style), then by confidence
+  // Sort by:
+  // 1. Scope specificity (most specific first)
+  // 2. Severity (must > should > style)
+  // 3. Effective confidence (higher first)
   const severityOrder = { must: 0, should: 1, style: 2 };
   const sortedRules = matchingRules.sort((a, b) => {
+    // First, compare scope specificity
+    const specificityA = calculateScopeSpecificity(a.scope, context);
+    const specificityB = calculateScopeSpecificity(b.scope, context);
+    const specificityDiff = specificityB - specificityA;
+    if (specificityDiff !== 0) return specificityDiff;
+    
+    // Then severity
     const severityDiff = severityOrder[a.severity] - severityOrder[b.severity];
     if (severityDiff !== 0) return severityDiff;
+    
+    // Finally confidence
     return b.effective_confidence - a.effective_confidence;
   });
 

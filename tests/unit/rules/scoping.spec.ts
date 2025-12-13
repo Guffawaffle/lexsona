@@ -97,6 +97,61 @@ describe("Rule Scoping", () => {
 
       expect(specificMatch.specificity).toBeGreaterThan(generalMatch.specificity);
     });
+
+    describe("glob pattern matching", () => {
+      it("matches module_id with wildcard pattern", () => {
+        const ruleScope: RuleScope = { module_id: "cli/*" };
+        const context: RuleScope = { module_id: "cli/commands" };
+
+        const result = matchScope(ruleScope, context);
+
+        expect(result.matches).toBe(true);
+        expect(result.globFields).toContain("module_id");
+      });
+
+      it("does not match when glob pattern doesn't match", () => {
+        const ruleScope: RuleScope = { module_id: "cli/*" };
+        const context: RuleScope = { module_id: "core/utils" };
+
+        const result = matchScope(ruleScope, context);
+
+        expect(result.matches).toBe(false);
+      });
+
+      it("matches with double-star pattern", () => {
+        const ruleScope: RuleScope = { module_id: "**/types.ts" };
+        const context: RuleScope = { module_id: "src/rules/types.ts" };
+
+        const result = matchScope(ruleScope, context);
+
+        expect(result.matches).toBe(true);
+        expect(result.globFields).toContain("module_id");
+      });
+
+      it("gives exact match higher specificity than glob match", () => {
+        const exactScope: RuleScope = { module_id: "cli/commands" };
+        const globScope: RuleScope = { module_id: "cli/*" };
+        const context: RuleScope = { module_id: "cli/commands" };
+
+        const exactMatch = matchScope(exactScope, context);
+        const globMatch = matchScope(globScope, context);
+
+        expect(exactMatch.specificity).toBeGreaterThan(globMatch.specificity);
+        expect(exactMatch.matchedFields).toContain("module_id");
+        expect(globMatch.globFields).toContain("module_id");
+      });
+
+      it("combines glob match with other field matches", () => {
+        const ruleScope: RuleScope = { module_id: "cli/*", project: "lex" };
+        const context: RuleScope = { module_id: "cli/commands", project: "lex" };
+
+        const result = matchScope(ruleScope, context);
+
+        expect(result.matches).toBe(true);
+        expect(result.globFields).toContain("module_id");
+        expect(result.matchedFields).toContain("project");
+      });
+    });
   });
 
   describe("filterRulesByScope", () => {

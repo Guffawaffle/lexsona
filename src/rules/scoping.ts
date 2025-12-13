@@ -8,10 +8,12 @@
  * - More specific scopes (module_id + task_type) override general ones
  * - Null/undefined scope fields match any context (wildcard)
  * - Exact matches score higher than wildcards
+ * - Glob patterns supported for module_id (e.g., 'cli/*', 'src/**\/types.ts')
  *
  * @module
  */
 
+import micromatch from "micromatch";
 import type { RuleScope } from "./types.js";
 
 /**
@@ -24,6 +26,8 @@ export interface ScopeMatch {
   specificity: number;
   /** Fields that matched explicitly */
   matchedFields: string[];
+  /** Fields that matched via glob pattern */
+  globFields: string[];
   /** Fields that matched via wildcard (null in scope) */
   wildcardFields: string[];
 }
@@ -43,11 +47,16 @@ const FIELD_WEIGHTS: Record<keyof RuleScope, number> = {
 
 /**
  * Check if a single field matches
+ * 
+ * @param fieldName - The name of the field being matched (for special handling)
+ * @param ruleValue - The value from the rule scope
+ * @param contextValue - The value from the context
  */
 function fieldMatches(
+  fieldName: keyof RuleScope,
   ruleValue: string | string[] | undefined,
   contextValue: string | string[] | undefined
-): "exact" | "wildcard" | "mismatch" {
+): "exact" | "glob" | "wildcard" | "mismatch" {
   // Rule field is undefined = wildcard (matches anything)
   if (ruleValue === undefined) {
     return "wildcard";
@@ -65,9 +74,17 @@ function fieldMatches(
     return hasOverlap ? "exact" : "mismatch";
   }
 
-  // String comparison
-  if (ruleValue === contextValue) {
-    return "exact";
+  // String comparison with glob support for module_id
+  if (typeof ruleValue === "string" && typeof contextValue === "string") {
+    // Exact match
+    if (ruleValue === contextValue) {
+      return "exact";
+    }
+    
+    // Glob match for module_id
+    if (fieldName === "module_id" && micromatch.isMatch(contextValue, ruleValue)) {
+      return "glob";
+    }
   }
 
   return "mismatch";
@@ -78,6 +95,7 @@ function fieldMatches(
  */
 export function matchScope(ruleScope: RuleScope, context: RuleScope): ScopeMatch {
   const matchedFields: string[] = [];
+  const globFields: string[] = [];
   const wildcardFields: string[] = [];
   let specificity = 0;
 
@@ -92,7 +110,7 @@ export function matchScope(ruleScope: RuleScope, context: RuleScope): ScopeMatch
   ];
 
   for (const field of fields) {
-    const result = fieldMatches(ruleScope[field], context[field]);
+    const result = fieldMatches(field, ruleScope[field], context[field]);
 
     if (result === "mismatch") {
       // Any mismatch = rule doesn't apply
@@ -100,6 +118,7 @@ export function matchScope(ruleScope: RuleScope, context: RuleScope): ScopeMatch
         matches: false,
         specificity: 0,
         matchedFields: [],
+        globFields: [],
         wildcardFields: [],
       };
     }
@@ -107,6 +126,10 @@ export function matchScope(ruleScope: RuleScope, context: RuleScope): ScopeMatch
     if (result === "exact") {
       matchedFields.push(field);
       specificity += FIELD_WEIGHTS[field];
+    } else if (result === "glob") {
+      // Glob matches are less specific than exact matches
+      globFields.push(field);
+      specificity += Math.floor(FIELD_WEIGHTS[field] * 0.8);
     } else {
       // Wildcard match
       wildcardFields.push(field);
@@ -117,6 +140,7 @@ export function matchScope(ruleScope: RuleScope, context: RuleScope): ScopeMatch
     matches: true,
     specificity,
     matchedFields,
+    globFields,
     wildcardFields,
   };
 }
