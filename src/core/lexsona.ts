@@ -204,15 +204,16 @@ export class LexSona {
 
     const db = this.storageClient.getDatabase();
     const context: RuleContext = {
-      module_id: filter?.domain,
+      project: filter?.domain, // domain maps to project field for namespace filtering
     };
 
-    const rules = getRules(db, context);
+    // Pass options to Lex's getRules to control filtering
+    const options: import("@smartergpt/lex/lexsona").GetRulesOptions = {
+      minN: 1, // Include rules with any observations (allow new rules)
+      minConfidence: filter?.minConfidence ?? 0.3, // Use provided or default threshold
+    };
 
-    // Apply confidence filter
-    if (filter?.minConfidence !== undefined) {
-      return rules.filter((r) => r.effective_confidence >= filter.minConfidence!);
-    }
+    const rules = getRules(db, context, options);
 
     return rules;
   }
