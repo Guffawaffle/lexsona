@@ -19,7 +19,7 @@ import { z } from "zod";
 export const PersonaConfigSchema = z.object({
   version: z.number(),
   activePersona: z.string().optional(),
-  activatedAt: z.string().optional(),
+  activatedAt: z.string().datetime().optional(),
 });
 
 export type PersonaConfig = z.infer<typeof PersonaConfigSchema>;
@@ -155,8 +155,6 @@ export function clearActivePersona(global: boolean = false): void {
 
   const config: PersonaConfig = {
     version: 1,
-    activePersona: undefined,
-    activatedAt: undefined,
   };
 
   writeConfig(configPath, config);
