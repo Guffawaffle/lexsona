@@ -69,10 +69,15 @@ Activate a persona by ID.
 Derive behavioral constraints for a context.
 
 **Input:**
-- `domain` (optional): Domain filter
-- `module` (optional): Module ID filter
-- `task` (optional): Task type (e.g., `"implementation"`)
+- `project` (optional): Project/repo scope (preferred; Scope Contract A+)
+- `module_id` (optional): Module scope (preferred; Scope Contract A+)
+- `task_type` (optional): Task type (preferred; Scope Contract A+)
 - `persona` (optional): Override active persona
+
+**Legacy input aliases (accepted for compatibility):**
+- `domain` → deprecated alias only when `project` is absent (copied into `project`, warning emitted, original preserved under `extensions.<namespace>.domain`)
+- `module` → `module_id`
+- `task` / `taskType` → `task_type`
 
 **Output:**
 ```json
@@ -80,9 +85,9 @@ Derive behavioral constraints for a context.
   "personaId": "quality-first_engineering",
   "derivedAt": "2024-01-01T12:00:00.000Z",
   "context": {
-    "domain": "lex",
+    "project": "lex",
     "module_id": "mcp/server",
-    "taskType": "implementation"
+    "task_type": "implementation"
   },
   "constraints": [
     {
@@ -111,9 +116,15 @@ Record a behavioral correction.
 - `correction` (required): The correction text
 - `severity` (optional): `"must"`, `"should"`, or `"style"` (default: `"should"`)
 - `category` (optional): Rule category (default: `"general"`)
-- `domain` (optional): Domain scope
-- `module` (optional): Module scope
+- `project` (optional): Project/repo scope (preferred; Scope Contract A+)
+- `module_id` (optional): Module scope (preferred; Scope Contract A+)
+- `task_type` (optional): Task type scope (preferred; Scope Contract A+)
 - `polarity` (optional): `"reinforce"` or `"counter"` (default: `"reinforce"`)
+
+**Legacy input aliases (accepted for compatibility):**
+- `domain` → deprecated alias only when `project` is absent (copied into `project`, warning emitted, original preserved under `extensions.<namespace>.domain`)
+- `module` → `module_id`
+- `task` / `taskType` → `task_type`
 
 **Output:**
 ```json
@@ -130,8 +141,11 @@ Record a behavioral correction.
 List learned behavioral rules.
 
 **Input:**
-- `domain` (optional): Filter by domain
+- `project` (optional): Filter by project/repo scope (preferred)
 - `minConfidence` (optional): Minimum confidence threshold
+
+**Legacy input aliases (accepted for compatibility):**
+- `domain` → deprecated alias only when `project` is absent (copied into `project`, warning emitted, original preserved under `extensions.<namespace>.domain`)
 
 **Output:**
 ```json

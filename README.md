@@ -77,9 +77,15 @@ await sona.activate('quality-first_engineering');
 
 // Derive constraints for current context
 const constraints = await sona.deriveConstraints({
-  domain: 'lex-pr-runner',
-  taskType: 'implementation',
+  project: 'lex-pr-runner',
+  task_type: 'implementation',
 });
+
+// Legacy input aliases (documentation contract):
+// - taskType -> task_type
+// - domain is a deprecated alias only when `project` is absent:
+//   If `project` is missing and `domain` is present, the system copies `domain` into `project`,
+//   emits a warning, and preserves the original under `extensions.<namespace>.domain`.
 
 // Learn from correction
 await sona.learn({
