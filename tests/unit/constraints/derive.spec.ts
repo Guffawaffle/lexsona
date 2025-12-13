@@ -137,6 +137,60 @@ describe("scopeMatches", () => {
     expect(scopeMatches(scope, { context_tags: ["urgent", "security", "audit"] })).toBe(true);
     expect(scopeMatches(scope, { context_tags: ["urgent"] })).toBe(false);
   });
+
+  describe("glob pattern matching", () => {
+    it("matches module_id with wildcard pattern", () => {
+      const scope = { module_id: "cli/*" };
+      expect(scopeMatches(scope, { module_id: "cli/commands" })).toBe(true);
+      expect(scopeMatches(scope, { module_id: "cli/utils" })).toBe(true);
+      expect(scopeMatches(scope, { module_id: "core/utils" })).toBe(false);
+    });
+
+    it("matches module_id with double-star pattern", () => {
+      const scope = { module_id: "**/types.ts" };
+      expect(scopeMatches(scope, { module_id: "src/types.ts" })).toBe(true);
+      expect(scopeMatches(scope, { module_id: "src/rules/types.ts" })).toBe(true);
+      expect(scopeMatches(scope, { module_id: "src/utils.ts" })).toBe(false);
+    });
+
+    it("matches module_id with complex glob", () => {
+      const scope = { module_id: "src/**/*.ts" };
+      expect(scopeMatches(scope, { module_id: "src/index.ts" })).toBe(true);
+      expect(scopeMatches(scope, { module_id: "src/cli/commands.ts" })).toBe(true);
+      expect(scopeMatches(scope, { module_id: "tests/unit.ts" })).toBe(false);
+    });
+
+    it("still supports exact module_id match", () => {
+      const scope = { module_id: "core" };
+      expect(scopeMatches(scope, { module_id: "core" })).toBe(true);
+      expect(scopeMatches(scope, { module_id: "cli" })).toBe(false);
+    });
+  });
+
+  describe("domain/project scoping", () => {
+    it("matches context.domain against scope.project", () => {
+      const scope = { project: "lex" };
+      expect(scopeMatches(scope, { domain: "lex" })).toBe(true);
+      expect(scopeMatches(scope, { domain: "lexsona" })).toBe(false);
+    });
+
+    it("fails when project is specified but context has no domain", () => {
+      const scope = { project: "lex" };
+      expect(scopeMatches(scope, {})).toBe(true); // No domain in context = wildcard match
+    });
+
+    it("passes when project is not specified", () => {
+      const scope = { module_id: "cli" };
+      expect(scopeMatches(scope, { domain: "lex", module_id: "cli" })).toBe(true);
+    });
+
+    it("combines project and module_id filtering", () => {
+      const scope = { project: "lex", module_id: "cli/*" };
+      expect(scopeMatches(scope, { domain: "lex", module_id: "cli/commands" })).toBe(true);
+      expect(scopeMatches(scope, { domain: "lexsona", module_id: "cli/commands" })).toBe(false);
+      expect(scopeMatches(scope, { domain: "lex", module_id: "core/utils" })).toBe(false);
+    });
+  });
 });
 
 describe("deriveConstraints", () => {
@@ -302,6 +356,123 @@ describe("deriveConstraints", () => {
       const result = deriveConstraints(persona, rules, [], {});
 
       expect(result.constraints.map((c: Constraint) => c.rule_id)).toEqual(["r2", "r3", "r1"]);
+    });
+
+    describe("scope specificity priority", () => {
+      it("prioritizes module-scoped rules over global rules", () => {
+        const persona = createTestPersona();
+        const rules = [
+          createTestRule({
+            rule_id: "global",
+            scope: {},
+            severity: "should",
+            effective_confidence: 0.9,
+          }),
+          createTestRule({
+            rule_id: "module-specific",
+            scope: { module_id: "cli" },
+            severity: "should",
+            effective_confidence: 0.8,
+          }),
+        ];
+        const context: DeriveContext = { module_id: "cli" };
+
+        const result = deriveConstraints(persona, rules, [], context);
+
+        // Module-specific should come first despite lower confidence
+        expect(result.constraints[0].rule_id).toBe("module-specific");
+        expect(result.constraints[1].rule_id).toBe("global");
+      });
+
+      it("prioritizes domain/project-scoped rules over task-scoped rules", () => {
+        const persona = createTestPersona();
+        const rules = [
+          createTestRule({
+            rule_id: "task-scoped",
+            scope: { task_type: "review" },
+            severity: "should",
+            effective_confidence: 0.9,
+          }),
+          createTestRule({
+            rule_id: "domain-scoped",
+            scope: { project: "lex" },
+            severity: "should",
+            effective_confidence: 0.8,
+          }),
+        ];
+        const context: DeriveContext = { domain: "lex", taskType: "code-review" };
+
+        const result = deriveConstraints(persona, rules, [], context);
+
+        // Domain-scoped should come first (higher priority than task)
+        expect(result.constraints[0].rule_id).toBe("domain-scoped");
+        expect(result.constraints[1].rule_id).toBe("task-scoped");
+      });
+
+      it("prioritizes exact module match over glob match", () => {
+        const persona = createTestPersona();
+        const rules = [
+          createTestRule({
+            rule_id: "glob-match",
+            scope: { module_id: "cli/*" },
+            severity: "should",
+            effective_confidence: 0.9,
+          }),
+          createTestRule({
+            rule_id: "exact-match",
+            scope: { module_id: "cli/commands" },
+            severity: "should",
+            effective_confidence: 0.8,
+          }),
+        ];
+        const context: DeriveContext = { module_id: "cli/commands" };
+
+        const result = deriveConstraints(persona, rules, [], context);
+
+        // Exact match should come first despite lower confidence
+        expect(result.constraints[0].rule_id).toBe("exact-match");
+        expect(result.constraints[1].rule_id).toBe("glob-match");
+      });
+
+      it("follows full priority: module > domain > taskType > global", () => {
+        const persona = createTestPersona();
+        const rules = [
+          createTestRule({
+            rule_id: "global",
+            scope: {},
+            severity: "should",
+          }),
+          createTestRule({
+            rule_id: "task-only",
+            scope: { task_type: "review" },
+            severity: "should",
+          }),
+          createTestRule({
+            rule_id: "domain-only",
+            scope: { project: "lex" },
+            severity: "should",
+          }),
+          createTestRule({
+            rule_id: "module-only",
+            scope: { module_id: "cli" },
+            severity: "should",
+          }),
+        ];
+        const context: DeriveContext = {
+          domain: "lex",
+          module_id: "cli",
+          taskType: "code-review",
+        };
+
+        const result = deriveConstraints(persona, rules, [], context);
+
+        expect(result.constraints.map((c) => c.rule_id)).toEqual([
+          "module-only",
+          "domain-only",
+          "task-only",
+          "global",
+        ]);
+      });
     });
   });
 
