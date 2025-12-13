@@ -13,3 +13,12 @@ export {
   getPersonaSearchPaths,
   matchTrigger,
 } from "./loader.js";
+export {
+  getActivePersona,
+  setActivePersona,
+  clearActivePersona,
+  getProjectConfigPath,
+  getUserConfigPath,
+  readConfig,
+  writeConfig,
+} from "./config.js";

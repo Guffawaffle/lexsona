@@ -7,6 +7,11 @@
 import { Command } from "commander";
 import { loadPersona, listPersonas, matchTrigger } from "../../persona/loader.js";
 import type { Persona } from "../../persona/types.js";
+import {
+  getActivePersona,
+  setActivePersona,
+  clearActivePersona,
+} from "../../persona/config.js";
 
 /**
  * Register persona noun commands
@@ -45,7 +50,8 @@ export function registerPersonaCommands(program: Command): void {
   persona
     .command("activate <name>")
     .description("Activate a persona by ID or trigger phrase")
-    .action(async (name: string) => {
+    .option("--global", "Store activation in user-global config instead of project-local")
+    .action(async (name: string, options: { global?: boolean }) => {
       // Try to match as trigger phrase first
       const matchedId = await matchTrigger(name);
 
@@ -54,7 +60,18 @@ export function registerPersonaCommands(program: Command): void {
 
       try {
         const p = await loadPersona(personaId);
-        console.log(`✓ Activated persona: ${p.id}`);
+
+        // Persist activation
+        try {
+          setActivePersona(p.id, options.global ?? false);
+        } catch (error) {
+          console.error(
+            `Warning: Could not persist activation: ${error instanceof Error ? error.message : error}`
+          );
+        }
+
+        const scope = options.global ? "globally" : "for this project";
+        console.log(`✓ Activated persona ${scope}: ${p.id}`);
         console.log(`  Focus: ${p.behavior.primaryFocus}`);
         console.log(`  Domain: ${p.behavior.domain}`);
         console.log(`  Description: ${p.behavior.description}`);
@@ -72,13 +89,37 @@ export function registerPersonaCommands(program: Command): void {
       }
     });
 
-  // lexsona persona show <name>
+  // lexsona persona show [name]
   persona
-    .command("show <name>")
-    .description("Show persona details")
-    .action(async (name: string) => {
+    .command("show [name]")
+    .description("Show persona details (current active if no name provided)")
+    .action(async (name?: string) => {
+      let personaId = name;
+
+      // If no name provided, show the currently active persona
+      if (!personaId) {
+        try {
+          const { personaId: activeId, scope } = getActivePersona();
+          if (!activeId) {
+            console.log("No persona currently active.");
+            console.log("  Use 'lexsona persona activate <name>' to activate one.");
+            return;
+          }
+
+          personaId = activeId;
+          const scopeText = scope === "global" ? "globally" : "for this project";
+          console.log(`Currently active persona (${scopeText}):\n`);
+        } catch (error) {
+          console.error(
+            `Error reading active persona: ${error instanceof Error ? error.message : error}`
+          );
+          process.exitCode = 1;
+          return;
+        }
+      }
+
       try {
-        const p: Persona = await loadPersona(name);
+        const p: Persona = await loadPersona(personaId);
 
         console.log(`Persona: ${p.id}\n`);
         console.log(`Version: ${p.version}`);
@@ -115,7 +156,7 @@ export function registerPersonaCommands(program: Command): void {
           }
         }
       } catch {
-        console.error(`Error: Persona "${name}" not found.`);
+        console.error(`Error: Persona "${personaId}" not found.`);
         process.exitCode = 1;
       }
     });
@@ -124,7 +165,17 @@ export function registerPersonaCommands(program: Command): void {
   persona
     .command("deactivate")
     .description("Deactivate the current persona")
-    .action(async () => {
-      console.log("✓ Persona deactivated");
+    .option("--global", "Clear activation from user-global config instead of project-local")
+    .action(async (options: { global?: boolean }) => {
+      try {
+        clearActivePersona(options.global ?? false);
+        const scope = options.global ? "globally" : "for this project";
+        console.log(`✓ Persona deactivated ${scope}`);
+      } catch (error) {
+        console.error(
+          `Error deactivating persona: ${error instanceof Error ? error.message : error}`
+        );
+        process.exitCode = 1;
+      }
     });
 }
