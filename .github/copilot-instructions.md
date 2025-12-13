@@ -32,7 +32,9 @@ lexsona <noun> <verb> [options]
 Examples:
 - `lexsona persona activate quality-first_engineering`
 - `lexsona rules learn "Always run tests"`
-- `lexsona constraints derive --domain lex`
+- `lexsona constraints derive --project lex`
+
+> Note: `domain` is a deprecated alias for `project` and is only consulted when `project` is absent.
 
 ## Core Principles
 
