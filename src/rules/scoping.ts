@@ -8,7 +8,7 @@
  * - More specific scopes (module_id + task_type) override general ones
  * - Null/undefined scope fields match any context (wildcard)
  * - Exact matches score higher than wildcards
- * - Glob patterns supported for module_id (e.g., 'cli/*', 'src/**\/types.ts')
+ * - Glob patterns supported for module_id (e.g., 'cli/*', 'src/ ** /types.ts')
  *
  * @module
  */

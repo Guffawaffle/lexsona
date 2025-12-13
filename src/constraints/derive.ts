@@ -133,7 +133,7 @@ const DEFAULT_CONFIG: Required<Omit<DeriveConfig, "hasLexConnection">> & {
  * Check if a rule scope matches the derivation context
  * Returns true if all specified scope fields match
  * 
- * Supports glob patterns for module_id (e.g., 'cli/*', 'src/**\/types.ts')
+ * Supports glob patterns for module_id (e.g., 'cli/*', 'src/ ** /types.ts')
  * Domain/project matching: context.domain is matched against scope.project
  * (domain is deprecated alias for project, consulted when project is absent)
  */
@@ -148,6 +148,7 @@ export function scopeMatches(scope: RuleScope, context: DeriveContext): boolean 
 
   // Domain/Project - match context.domain against scope.project
   // domain is a deprecated alias for project
+  // When context.domain is undefined, treat as wildcard (matches any scope.project)
   if (scope.project && context.domain) {
     if (scope.project !== context.domain) {
       return false;
