@@ -83,7 +83,7 @@ export function loadPersonaFromFile(filePath: string): Persona {
   }
 
   const content = readFileSync(filePath, "utf-8");
-  
+
   let manifest: PersonaManifest;
   let body: string | undefined;
 
@@ -93,7 +93,9 @@ export function loadPersonaFromFile(filePath: string): Persona {
       const parsed = parseYaml(content) as Record<string, unknown>;
       const result = PersonaManifestSchema.safeParse(parsed);
       if (!result.success) {
-        const errors = result.error.errors.map((e) => `${e.path.join(".")}: ${e.message}`).join(", ");
+        const errors = result.error.issues
+          .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+          .join(", ");
         throw new Error(`Invalid persona manifest in ${filePath}: ${errors}`);
       }
       manifest = result.data as PersonaManifest;
@@ -111,7 +113,9 @@ export function loadPersonaFromFile(filePath: string): Persona {
     // Validate manifest against schema
     const result = PersonaManifestSchema.safeParse(frontmatter);
     if (!result.success) {
-      const errors = result.error.errors.map((e) => `${e.path.join(".")}: ${e.message}`).join(", ");
+      const errors = result.error.issues
+        .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+        .join(", ");
       throw new Error(`Invalid persona manifest in ${filePath}: ${errors}`);
     }
 
@@ -147,8 +151,8 @@ export function findPersonaPath(nameOrId: string): string | null {
   for (const searchPath of searchPaths) {
     if (!existsSync(searchPath)) continue;
 
-    const files = readdirSync(searchPath).filter((f) => 
-      f.endsWith(".yaml") || f.endsWith(".yml") || f.endsWith(".md")
+    const files = readdirSync(searchPath).filter(
+      (f) => f.endsWith(".yaml") || f.endsWith(".yml") || f.endsWith(".md")
     );
     for (const file of files) {
       const filePath = join(searchPath, file);
@@ -190,8 +194,8 @@ export async function listPersonas(): Promise<{ id: string; path: string }[]> {
   for (const searchPath of searchPaths) {
     if (!existsSync(searchPath)) continue;
 
-    const files = readdirSync(searchPath).filter((f) => 
-      f.endsWith(".yaml") || f.endsWith(".yml") || f.endsWith(".md")
+    const files = readdirSync(searchPath).filter(
+      (f) => f.endsWith(".yaml") || f.endsWith(".yml") || f.endsWith(".md")
     );
     for (const file of files) {
       const filePath = join(searchPath, file);
