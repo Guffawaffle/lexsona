@@ -132,7 +132,7 @@ async function main(): Promise<void> {
       if (error instanceof z.ZodError) {
         throw new McpError(
           ErrorCode.InvalidParams,
-          `Invalid parameters: ${error.errors.map((e) => e.message).join(", ")}`
+          `Invalid parameters: ${error.issues.map((issue) => issue.message).join(", ")}`
         );
       }
       if (error instanceof McpError) {
