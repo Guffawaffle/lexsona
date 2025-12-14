@@ -9,9 +9,12 @@
  * @module
  */
 
-import type { DeriveContext, ConstraintSet } from "../constraints/derive.js";
-import type { CorrectionInput } from "../rules/types.js";
+import type { DeriveContext, ConstraintSet, Principle } from "../constraints/derive.js";
+import { deriveConstraints as deriveConstraintsPure } from "../constraints/derive.js";
+import type { CorrectionInput, BehaviorRuleWithConfidence } from "../rules/types.js";
 import { LexStorageClient, type LexConnectionConfig } from "./lexConnection.js";
+import { loadPersona } from "../persona/loader.js";
+import type { Persona } from "../persona/types.js";
 
 // Import Lex APIs through the lexsona subpath
 import { getRules, recordCorrection } from "@smartergpt/lex/lexsona";
@@ -104,12 +107,43 @@ export class LexSona {
    * @returns Deterministic constraint set
    */
   async deriveConstraints(context: DeriveContext): Promise<ConstraintSet> {
-    let rulesConsidered = 0;
-
-    // Load learned rules from Lex store if connected
     // Determine connection state
     const hasLexConnection = this.storageClient?.isConnected() ?? false;
 
+    // Load persona (if active)
+    let persona: Persona | null = null;
+    if (this.activePersona) {
+      try {
+        persona = await loadPersona(this.activePersona);
+      } catch (error) {
+        console.warn(
+          `LexSona: Could not load persona "${this.activePersona}": ${error instanceof Error ? error.message : error}`
+        );
+      }
+    }
+
+    // If no persona loaded, return empty constraint set
+    // InputHash is empty since there are no inputs to hash
+    if (!persona) {
+      return {
+        personaId: this.activePersona ?? "none",
+        derivedAt: new Date().toISOString(),
+        inputHash: "", // No persona/rules to hash
+        context,
+        constraints: [],
+        principles: [],
+        metadata: {
+          rulesConsidered: 0,
+          rulesFiltered: 0,
+          confidenceThreshold: 0.3,
+          offlineMode: !hasLexConnection,
+          confidenceCeiling: undefined,
+        },
+      };
+    }
+
+    // Load learned rules from Lex store if connected
+    let rules: BehaviorRuleWithConfidence[] = [];
     if (hasLexConnection) {
       const db = this.storageClient!.getDatabase();
       const ruleContext: RuleContext = {
@@ -120,29 +154,16 @@ export class LexSona {
         context_tags: context.context_tags,
       };
 
-      const rules = getRules(db, ruleContext);
-      rulesConsidered = rules.length;
-
-      // TODO: Convert rules to constraints
-      // TODO: Load baseline from Lex
-      // TODO: Load persona-specific rules
-      // TODO: Merge and prioritize
+      rules = getRules(db, ruleContext);
     }
 
-    return {
-      personaId: this.activePersona ?? "none",
-      derivedAt: new Date().toISOString(),
-      context,
-      constraints: [],
-      principles: [],
-      metadata: {
-        rulesConsidered,
-        rulesFiltered: 0,
-        confidenceThreshold: 0.3,
-        offlineMode: !hasLexConnection,
-        confidenceCeiling: undefined,
-      },
-    };
+    // Load baseline principles (TODO: wire to Lex baseline.yaml when available)
+    const principles: Principle[] = [];
+
+    // Call pure derivation function
+    return deriveConstraintsPure(persona, rules, principles, context, {
+      hasLexConnection,
+    });
   }
 
   /**

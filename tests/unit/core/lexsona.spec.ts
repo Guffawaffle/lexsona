@@ -76,6 +76,43 @@ describe("LexSona", () => {
       expect(result.derivedAt >= before).toBe(true);
       expect(result.derivedAt <= after).toBe(true);
     });
+
+    it("includes inputHash in result", async () => {
+      await sona.activate("quality-first_engineering");
+      const result = await sona.deriveConstraints({});
+
+      expect(result.inputHash).toBeDefined();
+      expect(typeof result.inputHash).toBe("string");
+      expect(result.inputHash.length).toBeGreaterThan(0);
+    });
+
+    it("produces stable inputHash for same inputs", async () => {
+      await sona.activate("quality-first_engineering");
+      const context = { domain: "test", taskType: "implementation" };
+
+      const result1 = await sona.deriveConstraints(context);
+      const result2 = await sona.deriveConstraints(context);
+
+      // InputHash should be the same (ignoring derivedAt)
+      expect(result1.inputHash).toBe(result2.inputHash);
+    });
+
+    it("actually loads persona and derives constraints when persona is active", async () => {
+      await sona.activate("quality-first_engineering");
+      const context = { domain: "engineering" };
+
+      const result = await sona.deriveConstraints(context);
+
+      // Should have loaded the persona
+      expect(result.personaId).toBe("quality-first_engineering");
+      // Should have inputHash computed
+      expect(result.inputHash).toBeTruthy();
+      // Metadata should indicate offline mode (no DB)
+      expect(result.metadata.offlineMode).toBe(true);
+      expect(result.metadata.rulesConsidered).toBe(0);
+      // Should have empty constraints (no rules from DB)
+      expect(result.constraints).toEqual([]);
+    });
   });
 
   describe("learn", () => {

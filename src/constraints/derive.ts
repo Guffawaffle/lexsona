@@ -13,6 +13,7 @@
  * @module
  */
 
+import { createHash } from "crypto";
 import micromatch from "micromatch";
 import type { BehaviorRuleWithConfidence, RuleScope } from "../rules/types.js";
 import type { Persona } from "../persona/types.js";
@@ -82,6 +83,8 @@ export interface ConstraintSet {
   personaId: string;
   /** Timestamp of derivation */
   derivedAt: string;
+  /** Stable hash of inputs (persona + rules + baseline + context) */
+  inputHash: string;
   /** Context used for derivation */
   context: DeriveContext;
   /** Active principles (from baseline.yaml) */
@@ -120,6 +123,12 @@ export interface DeriveConfig {
   hasLexConnection?: boolean;
 }
 
+/**
+ * Floating-point tolerance for confidence comparison
+ * Used to ensure deterministic sorting when confidences are effectively equal
+ */
+const CONFIDENCE_EPSILON = 0.0001;
+
 const DEFAULT_CONFIG: Required<Omit<DeriveConfig, "hasLexConnection">> & {
   hasLexConnection: boolean;
 } = {
@@ -132,7 +141,7 @@ const DEFAULT_CONFIG: Required<Omit<DeriveConfig, "hasLexConnection">> & {
 /**
  * Check if a rule scope matches the derivation context
  * Returns true if all specified scope fields match
- * 
+ *
  * Supports glob patterns for module_id (e.g., 'cli/*', 'src/ ** /types.ts')
  * Domain/project matching: context.domain is matched against scope.project
  * (domain is deprecated alias for project, consulted when project is absent)
@@ -188,12 +197,12 @@ export function scopeMatches(scope: RuleScope, context: DeriveContext): boolean 
 /**
  * Calculate scope specificity score for priority ordering
  * Higher score = more specific scope
- * 
+ *
  * Priority ordering: module > domain/project > taskType > global
  */
 export function calculateScopeSpecificity(scope: RuleScope, context: DeriveContext): number {
   let score = 0;
-  
+
   // Module ID has highest weight (10 points)
   // Glob patterns are less specific than exact matches
   if (scope.module_id && context.module_id) {
@@ -206,29 +215,29 @@ export function calculateScopeSpecificity(scope: RuleScope, context: DeriveConte
       }
     }
   }
-  
+
   // Domain/Project has second highest weight (8 points)
   if (scope.project && context.domain && scope.project === context.domain) {
     score += 8;
   }
-  
+
   // Task type has medium weight (4 points)
   if (scope.task_type && context.taskType) {
     if (context.taskType.toLowerCase().includes(scope.task_type.toLowerCase())) {
       score += 4;
     }
   }
-  
+
   // Environment has lower weight (3 points)
   if (scope.environment && context.environment && scope.environment === context.environment) {
     score += 3;
   }
-  
+
   // Agent family has lower weight (2 points)
   if (scope.agent_family && context.agent_family && scope.agent_family === context.agent_family) {
     score += 2;
   }
-  
+
   // Context tags have lowest weight (1 point per matching tag)
   if (scope.context_tags && scope.context_tags.length > 0 && context.context_tags) {
     const contextTagSet = new Set(context.context_tags);
@@ -238,8 +247,43 @@ export function calculateScopeSpecificity(scope: RuleScope, context: DeriveConte
       }
     }
   }
-  
+
   return score;
+}
+
+/**
+ * Calculate a stable hash of the inputs for derivation
+ * This ensures determinism - same inputs produce same hash
+ */
+function calculateInputHash(
+  persona: Persona,
+  rules: BehaviorRuleWithConfidence[],
+  principles: Principle[],
+  context: DeriveContext
+): string {
+  // Sort rule IDs for determinism
+  const ruleIds = rules.map((r) => r.rule_id).sort();
+  const principleIds = principles.map((p) => p.id).sort();
+
+  // Create a stable representation of the input
+  const input = {
+    personaId: persona.id,
+    personaVersion: persona.version,
+    ruleIds,
+    principleIds,
+    context: {
+      domain: context.domain || "",
+      module_id: context.module_id || "",
+      taskType: context.taskType || "",
+      environment: context.environment || "",
+      agent_family: context.agent_family || "",
+      context_tags: (context.context_tags || []).slice().sort(),
+    },
+  };
+
+  const hash = createHash("sha256");
+  hash.update(JSON.stringify(input));
+  return hash.digest("hex");
 }
 
 /**
@@ -304,6 +348,7 @@ export function deriveConstraints(
   // 1. Scope specificity (most specific first)
   // 2. Severity (must > should > style)
   // 3. Effective confidence (higher first)
+  // 4. Rule ID (for determinism when other factors are equal)
   const severityOrder = { must: 0, should: 1, style: 2 };
   const sortedRules = matchingRules.sort((a, b) => {
     // First, compare scope specificity
@@ -311,13 +356,17 @@ export function deriveConstraints(
     const specificityB = calculateScopeSpecificity(b.scope, context);
     const specificityDiff = specificityB - specificityA;
     if (specificityDiff !== 0) return specificityDiff;
-    
+
     // Then severity
     const severityDiff = severityOrder[a.severity] - severityOrder[b.severity];
     if (severityDiff !== 0) return severityDiff;
-    
-    // Finally confidence
-    return b.effective_confidence - a.effective_confidence;
+
+    // Then confidence (with epsilon for floating-point tolerance)
+    const confidenceDiff = b.effective_confidence - a.effective_confidence;
+    if (Math.abs(confidenceDiff) > CONFIDENCE_EPSILON) return confidenceDiff;
+
+    // Finally rule_id for determinism
+    return a.rule_id.localeCompare(b.rule_id);
   });
 
   // Limit to maxConstraints
@@ -335,9 +384,13 @@ export function deriveConstraints(
     category: rule.category,
   }));
 
+  // Calculate stable input hash
+  const inputHash = calculateInputHash(persona, rules, principles, context);
+
   return {
     personaId: persona.id,
     derivedAt: new Date().toISOString(),
+    inputHash,
     context,
     principles,
     constraints,
