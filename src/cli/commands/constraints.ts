@@ -5,33 +5,129 @@
  */
 
 import { Command } from "commander";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { homedir } from "os";
+import { dirname, join } from "path";
 import { LexSona, type LexSonaConfig } from "../../core/lexsona.js";
 import { loadPersona } from "../../persona/loader.js";
-import {
-  deriveConstraints,
-  type DeriveContext,
-  type ConstraintSet,
-} from "../../constraints/derive.js";
-import type { BehaviorRuleWithConfidence } from "../../rules/types.js";
+import { getActivePersona } from "../../persona/config.js";
+import { type DeriveContext, type ConstraintSet } from "../../constraints/derive.js";
 
-// Module-level state to cache last derivation
-let lastDerivation: ConstraintSet | null = null;
+function getProjectConstraintsCachePath(): string {
+  return join(process.cwd(), ".smartergpt", "lexsona-constraints.json");
+}
+
+function getUserConstraintsCachePath(): string {
+  return join(homedir(), ".smartergpt", "lexsona-constraints.json");
+}
+
+function getConstraintsCachePath(): string {
+  const envPath = process.env.LEXSONA_CONSTRAINTS_CACHE_PATH;
+  if (envPath) {
+    return envPath;
+  }
+
+  // Prefer project-local cache when a .smartergpt directory exists
+  const projectPath = getProjectConstraintsCachePath();
+  const projectDir = dirname(projectPath);
+  if (existsSync(projectDir)) {
+    return projectPath;
+  }
+
+  return getUserConstraintsCachePath();
+}
+
+function readCachedConstraintSet(): ConstraintSet | null {
+  const cachePath = getConstraintsCachePath();
+  if (!existsSync(cachePath)) {
+    return null;
+  }
+
+  try {
+    const raw = readFileSync(cachePath, "utf-8");
+    const parsed = JSON.parse(raw) as unknown;
+    // Minimal shape check (avoid over-fitting to internal evolution)
+    if (!parsed || typeof parsed !== "object") return null;
+
+    const maybe = parsed as Partial<ConstraintSet>;
+    if (typeof maybe.personaId !== "string") return null;
+    if (typeof maybe.derivedAt !== "string") return null;
+
+    const constraints = Array.isArray(maybe.constraints) ? maybe.constraints : [];
+    const principles = Array.isArray(maybe.principles) ? maybe.principles : [];
+    const context = (
+      maybe.context && typeof maybe.context === "object" ? maybe.context : {}
+    ) as ConstraintSet["context"];
+    const metadataObj = (
+      maybe.metadata && typeof maybe.metadata === "object" ? maybe.metadata : {}
+    ) as Partial<ConstraintSet["metadata"]>;
+
+    const normalized: ConstraintSet = {
+      personaId: maybe.personaId,
+      derivedAt: maybe.derivedAt,
+      inputHash: typeof maybe.inputHash === "string" ? maybe.inputHash : "",
+      context,
+      constraints: constraints as ConstraintSet["constraints"],
+      principles: principles as ConstraintSet["principles"],
+      metadata: {
+        rulesConsidered:
+          typeof metadataObj.rulesConsidered === "number" ? metadataObj.rulesConsidered : 0,
+        rulesFiltered:
+          typeof metadataObj.rulesFiltered === "number" ? metadataObj.rulesFiltered : 0,
+        confidenceThreshold:
+          typeof metadataObj.confidenceThreshold === "number"
+            ? metadataObj.confidenceThreshold
+            : 0.3,
+        offlineMode: typeof metadataObj.offlineMode === "boolean" ? metadataObj.offlineMode : true,
+        confidenceCeiling:
+          typeof metadataObj.confidenceCeiling === "number"
+            ? metadataObj.confidenceCeiling
+            : undefined,
+      },
+    };
+
+    return normalized;
+  } catch (error) {
+    console.error(
+      `Warning: Failed to read cached constraints (${cachePath}): ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
+    return null;
+  }
+}
+
+function writeCachedConstraintSet(result: ConstraintSet): void {
+  const cachePath = getConstraintsCachePath();
+  try {
+    const dir = dirname(cachePath);
+    if (!existsSync(dir)) {
+      mkdirSync(dir, { recursive: true });
+    }
+    writeFileSync(cachePath, JSON.stringify(result, null, 2), "utf-8");
+  } catch (error) {
+    console.error(
+      `Warning: Failed to write cached constraints (${cachePath}): ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
+  }
+}
 
 /**
  * Format constraint set as JSON output matching the specification
  */
-function formatConstraintsAsJson(result: ConstraintSet, domain?: string) {
+function formatConstraintsAsJson(result: ConstraintSet) {
   return {
     version: 1,
     persona: result.personaId,
-    domain,
+    domain: result.context.domain,
     derivedAt: result.derivedAt,
     inputHash: result.inputHash,
     constraints: result.constraints.map((c) => ({
       id: c.rule_id,
       description: c.text,
-      severity:
-        c.severity === "must" ? "critical" : c.severity === "should" ? "high" : "medium",
+      severity: c.severity === "must" ? "critical" : c.severity === "should" ? "high" : "medium",
       source: "learned",
       confidence: c.confidence,
     })),
@@ -40,6 +136,63 @@ function formatConstraintsAsJson(result: ConstraintSet, domain?: string) {
       description: p.description,
     })),
   };
+}
+
+function writeConstraintsHumanReadable(result: ConstraintSet): void {
+  // Human-readable output matching specification
+  console.log("Constraint Set (v1)");
+  console.log("═══════════════════\n");
+
+  console.log(`Persona: ${result.personaId}`);
+  if (result.context.domain) console.log(`Domain: ${result.context.domain}`);
+  console.log(`Derived: ${result.derivedAt}\n`);
+
+  // Group constraints by severity
+  const criticalConstraints = result.constraints.filter((c) => c.severity === "must");
+  const highConstraints = result.constraints.filter((c) => c.severity === "should");
+  const mediumConstraints = result.constraints.filter((c) => c.severity === "style");
+
+  console.log(`Constraints (${result.constraints.length}):`);
+  console.log("────────────────");
+
+  if (
+    criticalConstraints.length === 0 &&
+    highConstraints.length === 0 &&
+    mediumConstraints.length === 0
+  ) {
+    console.log("  (none - Use 'lexsona rules learn' to add rules)\n");
+  } else {
+    // Display critical constraints
+    for (const c of criticalConstraints) {
+      console.log(`  [critical] ${c.rule_id}`);
+      console.log(`    ${c.text}`);
+      console.log(`    Source: learned (confidence: ${c.confidence.toFixed(2)})\n`);
+    }
+
+    // Display high constraints
+    for (const c of highConstraints) {
+      console.log(`  [high] ${c.rule_id}`);
+      console.log(`    ${c.text}`);
+      console.log(`    Source: learned (confidence: ${c.confidence.toFixed(2)})\n`);
+    }
+
+    // Display medium constraints
+    for (const c of mediumConstraints) {
+      console.log(`  [medium] ${c.rule_id}`);
+      console.log(`    ${c.text}`);
+      console.log(`    Source: learned (confidence: ${c.confidence.toFixed(2)})\n`);
+    }
+  }
+
+  // Display principles
+  if (result.principles.length > 0) {
+    console.log(`Principles (${result.principles.length}):`);
+    console.log("───────────────");
+    for (const p of result.principles) {
+      console.log(`  ${p.id}: ${p.description}`);
+    }
+    console.log("");
+  }
 }
 
 /**
@@ -59,14 +212,15 @@ export function registerConstraintsCommands(program: Command): void {
     .option("--persona <name>", "Persona ID to use")
     .option("--json", "Output as JSON")
     .action(async (options) => {
-      const personaId = options.persona ?? "quality-first_engineering";
+      const active = getActivePersona().personaId;
+      const personaId = options.persona ?? active ?? "quality-first_engineering";
 
-      // Load persona
-      let persona;
+      // Validate persona exists (so we can fail loud with a friendly message)
       try {
-        persona = await loadPersona(personaId);
+        await loadPersona(personaId);
       } catch {
         console.error(`Error: Persona "${personaId}" not found.`);
+        console.error("  Use 'lexsona persona list' to see available personas.");
         process.exitCode = 1;
         return;
       }
@@ -86,98 +240,26 @@ export function registerConstraintsCommands(program: Command): void {
         domain: projectOrDomain,
       };
 
-      const instance = await LexSona.connect(config);
-      const lexRules = await instance.getRules({
-        domain: projectOrDomain,
-      });
-      instance.close();
+      let instance: LexSona | null = null;
+      try {
+        instance = await LexSona.connect(config);
+        const result = await instance.deriveConstraints(context);
 
-      // Convert Lex rules to LexSona format (include all required fields)
-      const sonaRules: BehaviorRuleWithConfidence[] = lexRules.map((r) => ({
-        rule_id: r.rule_id,
-        text: r.text,
-        severity: r.severity,
-        category: r.category,
-        source: "learned" as const,
-        scope: r.scope ?? {},
-        effective_confidence: r.effective_confidence,
-        created_at: r.created_at,
-        updated_at: r.updated_at,
-        // Additional fields from Lex BehaviorRuleWithConfidence
-        confidence: r.confidence,
-        decay_factor: r.decay_factor,
-        alpha: r.alpha,
-        beta: r.beta,
-        observation_count: r.observation_count,
-        decay_tau: r.decay_tau,
-        last_observed: r.last_observed,
-      }));
+        // Cache result for show/explain across invocations
+        writeCachedConstraintSet(result);
 
-      // Derive constraints using the persona directly
-      const result = deriveConstraints(
-        persona,
-        sonaRules,
-        [], // No baseline principles loaded yet
-        context
-      );
-
-      // Cache result
-      lastDerivation = result;
-
-      if (options.json) {
-        console.log(JSON.stringify(formatConstraintsAsJson(result, context.domain), null, 2));
-        return;
-      }
-
-      // Human-readable output matching specification
-      console.log("Constraint Set (v1)");
-      console.log("═══════════════════\n");
-
-      console.log(`Persona: ${result.personaId}`);
-      if (context.domain) console.log(`Domain: ${context.domain}`);
-      console.log(`Derived: ${result.derivedAt}\n`);
-
-      // Group constraints by severity
-      const criticalConstraints = result.constraints.filter((c) => c.severity === "must");
-      const highConstraints = result.constraints.filter((c) => c.severity === "should");
-      const mediumConstraints = result.constraints.filter((c) => c.severity === "style");
-
-      console.log(`Constraints (${result.constraints.length}):`);
-      console.log("────────────────");
-
-      if (criticalConstraints.length === 0 && highConstraints.length === 0 && mediumConstraints.length === 0) {
-        console.log("  (none - Use 'lexsona rules learn' to add rules)\n");
-      } else {
-        // Display critical constraints
-        for (const c of criticalConstraints) {
-          console.log(`  [critical] ${c.rule_id}`);
-          console.log(`    ${c.text}`);
-          console.log(`    Source: learned (confidence: ${c.confidence.toFixed(2)})\n`);
+        if (options.json) {
+          console.log(JSON.stringify(formatConstraintsAsJson(result), null, 2));
+          return;
         }
 
-        // Display high constraints
-        for (const c of highConstraints) {
-          console.log(`  [high] ${c.rule_id}`);
-          console.log(`    ${c.text}`);
-          console.log(`    Source: learned (confidence: ${c.confidence.toFixed(2)})\n`);
-        }
-
-        // Display medium constraints
-        for (const c of mediumConstraints) {
-          console.log(`  [medium] ${c.rule_id}`);
-          console.log(`    ${c.text}`);
-          console.log(`    Source: learned (confidence: ${c.confidence.toFixed(2)})\n`);
-        }
-      }
-
-      // Display principles
-      if (result.principles.length > 0) {
-        console.log(`Principles (${result.principles.length}):`);
-        console.log("───────────────");
-        for (const p of result.principles) {
-          console.log(`  ${p.id}: ${p.description}`);
-        }
-        console.log("");
+        writeConstraintsHumanReadable(result);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(`Error: ${message}`);
+        process.exitCode = 1;
+      } finally {
+        instance?.close();
       }
     });
 
@@ -187,69 +269,19 @@ export function registerConstraintsCommands(program: Command): void {
     .description("Show last derived constraint set")
     .option("--json", "Output as JSON")
     .action(async (options) => {
-      if (!lastDerivation) {
+      const cached = readCachedConstraintSet();
+      if (!cached) {
         console.log("No constraint set cached.");
         console.log("  (Use 'lexsona constraints derive' first)");
         return;
       }
 
       if (options.json) {
-        console.log(
-          JSON.stringify(formatConstraintsAsJson(lastDerivation, lastDerivation.context.domain), null, 2)
-        );
+        console.log(JSON.stringify(formatConstraintsAsJson(cached), null, 2));
         return;
       }
 
-      // Human-readable output matching specification
-      console.log("Constraint Set (v1)");
-      console.log("═══════════════════\n");
-
-      console.log(`Persona: ${lastDerivation.personaId}`);
-      if (lastDerivation.context.domain) console.log(`Domain: ${lastDerivation.context.domain}`);
-      console.log(`Derived: ${lastDerivation.derivedAt}\n`);
-
-      // Group constraints by severity
-      const criticalConstraints = lastDerivation.constraints.filter((c) => c.severity === "must");
-      const highConstraints = lastDerivation.constraints.filter((c) => c.severity === "should");
-      const mediumConstraints = lastDerivation.constraints.filter((c) => c.severity === "style");
-
-      console.log(`Constraints (${lastDerivation.constraints.length}):`);
-      console.log("────────────────");
-
-      if (criticalConstraints.length === 0 && highConstraints.length === 0 && mediumConstraints.length === 0) {
-        console.log("  (none)\n");
-      } else {
-        // Display critical constraints
-        for (const c of criticalConstraints) {
-          console.log(`  [critical] ${c.rule_id}`);
-          console.log(`    ${c.text}`);
-          console.log(`    Source: learned (confidence: ${c.confidence.toFixed(2)})\n`);
-        }
-
-        // Display high constraints
-        for (const c of highConstraints) {
-          console.log(`  [high] ${c.rule_id}`);
-          console.log(`    ${c.text}`);
-          console.log(`    Source: learned (confidence: ${c.confidence.toFixed(2)})\n`);
-        }
-
-        // Display medium constraints
-        for (const c of mediumConstraints) {
-          console.log(`  [medium] ${c.rule_id}`);
-          console.log(`    ${c.text}`);
-          console.log(`    Source: learned (confidence: ${c.confidence.toFixed(2)})\n`);
-        }
-      }
-
-      // Display principles
-      if (lastDerivation.principles.length > 0) {
-        console.log(`Principles (${lastDerivation.principles.length}):`);
-        console.log("───────────────");
-        for (const p of lastDerivation.principles) {
-          console.log(`  ${p.id}: ${p.description}`);
-        }
-        console.log("");
-      }
+      writeConstraintsHumanReadable(cached);
     });
 
   // lexsona constraints explain <id>
@@ -257,18 +289,17 @@ export function registerConstraintsCommands(program: Command): void {
     .command("explain <id>")
     .description("Explain why a constraint is active")
     .action(async (id: string) => {
-      if (!lastDerivation) {
+      const cached = readCachedConstraintSet();
+      if (!cached) {
         console.log("No constraint set cached.");
         console.log("  (Use 'lexsona constraints derive' first)");
         return;
       }
 
-      const constraint = lastDerivation.constraints.find((c) => c.rule_id === id);
+      const constraint = cached.constraints.find((c) => c.rule_id === id);
       if (!constraint) {
         console.error(`Constraint "${id}" not found in last derivation.`);
-        console.error(
-          `  Available: ${lastDerivation.constraints.map((c) => c.rule_id).join(", ")}`
-        );
+        console.error(`  Available: ${cached.constraints.map((c) => c.rule_id).join(", ")}`);
         process.exitCode = 1;
         return;
       }
@@ -283,27 +314,31 @@ export function registerConstraintsCommands(program: Command): void {
       console.log(`Confidence: ${constraint.confidence.toFixed(2)}\n`);
 
       console.log(`Why is this constraint active?\n`);
-      console.log(`  ✓ Persona "${lastDerivation.personaId}" includes category "${constraint.category}"`);
+      console.log(`  ✓ Persona "${cached.personaId}" includes category "${constraint.category}"`);
       console.log(
-        `  ✓ Confidence ${constraint.confidence.toFixed(2)} >= threshold ${lastDerivation.metadata.confidenceThreshold}`
+        `  ✓ Confidence ${constraint.confidence.toFixed(2)} >= threshold ${cached.metadata.confidenceThreshold}`
       );
+
+      if (cached.metadata.confidenceCeiling !== undefined) {
+        console.log(
+          `  ✓ Offline confidence ceiling applied: <= ${cached.metadata.confidenceCeiling.toFixed(2)}`
+        );
+      }
 
       // Show derivation context if present
       const hasContext =
-        lastDerivation.context.domain ||
-        lastDerivation.context.module_id ||
-        lastDerivation.context.taskType;
+        cached.context.domain || cached.context.module_id || cached.context.taskType;
 
       if (hasContext) {
         console.log(`\nDerived in context:`);
-        if (lastDerivation.context.domain) {
-          console.log(`  Domain: ${lastDerivation.context.domain}`);
+        if (cached.context.domain) {
+          console.log(`  Domain: ${cached.context.domain}`);
         }
-        if (lastDerivation.context.module_id) {
-          console.log(`  Module: ${lastDerivation.context.module_id}`);
+        if (cached.context.module_id) {
+          console.log(`  Module: ${cached.context.module_id}`);
         }
-        if (lastDerivation.context.taskType) {
-          console.log(`  Task: ${lastDerivation.context.taskType}`);
+        if (cached.context.taskType) {
+          console.log(`  Task: ${cached.context.taskType}`);
         }
       }
 
