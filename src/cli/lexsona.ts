@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
  * LexSona CLI - Main Entry Point
- * 
+ *
  * Usage: lexsona <noun> [verb] [options]
- * 
+ *
  * Examples:
  *   lexsona persona list
  *   lexsona persona activate quality-first_engineering

@@ -72,6 +72,7 @@ describe("constraints CLI", () => {
           severity: "must",
           confidence: 0.7,
           category: "security_policy",
+          source: "learned",
         },
         {
           rule_id: "run_local_ci",
@@ -79,6 +80,7 @@ describe("constraints CLI", () => {
           severity: "should",
           confidence: 0.65,
           category: "testing",
+          source: "learned",
         },
       ],
       metadata: {
@@ -154,6 +156,7 @@ describe("constraints CLI", () => {
           severity: "must",
           confidence: 0.7,
           category: "safety",
+          source: "learned",
         },
       ],
       metadata: {
@@ -198,6 +201,7 @@ describe("constraints CLI", () => {
           severity: "must",
           confidence: 0.7,
           category: "security_policy",
+          source: "learned",
         },
       ],
       metadata: {
@@ -224,6 +228,6 @@ describe("constraints CLI", () => {
     const output = logSpy.mock.calls.map((c) => String(c[0])).join("\n");
     expect(output).toContain("Constraint Explanation");
     expect(output).toContain("ID: no_credential_logging");
-    expect(output).toContain("Source: learned from behavioral corrections");
+    expect(output).toContain("Source: learned");
   });
 });

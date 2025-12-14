@@ -517,6 +517,7 @@ describe("deriveConstraints", () => {
         severity: "must",
         confidence: 0.95,
         category: "testing",
+        source: "learned",
       });
     });
   });

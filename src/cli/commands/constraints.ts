@@ -128,7 +128,9 @@ function formatConstraintsAsJson(result: ConstraintSet) {
       id: c.rule_id,
       description: c.text,
       severity: c.severity === "must" ? "critical" : c.severity === "should" ? "high" : "medium",
-      source: "learned",
+      // v0.2.x note: constraints are currently derived from Lex behavioral rules (learned);
+      // baseline guidance is emitted as "principles".
+      source: c.source ?? "learned",
       confidence: c.confidence,
     })),
     principles: result.principles.map((p) => ({
@@ -136,6 +138,17 @@ function formatConstraintsAsJson(result: ConstraintSet) {
       description: p.description,
     })),
   };
+}
+
+function formatConstraintSourceHumanReadable(c: ConstraintSet["constraints"][number]): string {
+  const source = c.source ?? "learned";
+
+  // Keep output aligned with the issue spec examples.
+  if (source === "learned") {
+    return `learned (confidence: ${c.confidence.toFixed(2)})`;
+  }
+
+  return String(source);
 }
 
 function writeConstraintsHumanReadable(result: ConstraintSet): void {
@@ -166,21 +179,21 @@ function writeConstraintsHumanReadable(result: ConstraintSet): void {
     for (const c of criticalConstraints) {
       console.log(`  [critical] ${c.rule_id}`);
       console.log(`    ${c.text}`);
-      console.log(`    Source: learned (confidence: ${c.confidence.toFixed(2)})\n`);
+      console.log(`    Source: ${formatConstraintSourceHumanReadable(c)}\n`);
     }
 
     // Display high constraints
     for (const c of highConstraints) {
       console.log(`  [high] ${c.rule_id}`);
       console.log(`    ${c.text}`);
-      console.log(`    Source: learned (confidence: ${c.confidence.toFixed(2)})\n`);
+      console.log(`    Source: ${formatConstraintSourceHumanReadable(c)}\n`);
     }
 
     // Display medium constraints
     for (const c of mediumConstraints) {
       console.log(`  [medium] ${c.rule_id}`);
       console.log(`    ${c.text}`);
-      console.log(`    Source: learned (confidence: ${c.confidence.toFixed(2)})\n`);
+      console.log(`    Source: ${formatConstraintSourceHumanReadable(c)}\n`);
     }
   }
 
@@ -342,7 +355,11 @@ export function registerConstraintsCommands(program: Command): void {
         }
       }
 
-      console.log(`\nSource: learned from behavioral corrections`);
+      const source = constraint.source ?? "learned";
+      console.log(`\nSource: ${source}`);
+      if (source === "learned") {
+        console.log("  (derived from behavioral rules stored in Lex)");
+      }
       console.log("");
     });
 }

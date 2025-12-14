@@ -59,7 +59,7 @@ LexSona **never duplicates** storage or query logic.
 
 ### Behavioral Classification
 
-To maintain clear behavioral classification, LexSona uses **decision-style naming** for persona IDs. This convention describes *how* an agent approaches decisions rather than *what* it is.
+To maintain clear behavioral classification, LexSona uses **decision-style naming** for persona IDs. This convention describes _how_ an agent approaches decisions rather than _what_ it is.
 
 ### Format
 
@@ -69,11 +69,11 @@ To maintain clear behavioral classification, LexSona uses **decision-style namin
 
 ### Examples
 
-| Persona ID | Behavioral Focus |
-|------------|------------------|
+| Persona ID                  | Behavioral Focus                               |
+| --------------------------- | ---------------------------------------------- |
 | `quality-first_engineering` | Prioritizes thoroughness, testing, correctness |
-| `momentum-first_product` | Prioritizes velocity, shipping, iteration |
-| `risk-reducer_operations` | Prioritizes safety, asks when uncertain |
+| `momentum-first_product`    | Prioritizes velocity, shipping, iteration      |
+| `risk-reducer_operations`   | Prioritizes safety, asks when uncertain        |
 
 ### Approved Behavioral Patterns
 
@@ -109,11 +109,11 @@ LexSona uses **noun-verb** command syntax:
 lexsona <noun> <verb> [options]
 ```
 
-| Noun | Verbs | Description |
-|------|-------|-------------|
-| persona | list, activate, show, deactivate | Manage personas |
-| rules | list, learn, forget | Manage behavioral rules |
-| constraints | derive, show, explain | View/derive constraints |
+| Noun        | Verbs                            | Description             |
+| ----------- | -------------------------------- | ----------------------- |
+| persona     | list, activate, show, deactivate | Manage personas         |
+| rules       | list, learn, forget              | Manage behavioral rules |
+| constraints | derive, show, explain            | View/derive constraints |
 
 ---
 
@@ -131,13 +131,13 @@ lexsona <noun> <verb> [options]
 
 LexSona does **NOT** do:
 
-| ❌ Non-Goal | Why |
-|-------------|-----|
-| Execution/orchestration | That's LexRunner |
-| Tool calling | That's LexRunner |
-| Prompt assembly | That's the consuming agent |
-| Gates/CI execution | That's LexRunner |
-| Frame storage | That's Lex |
+| ❌ Non-Goal                        | Why                                   |
+| ---------------------------------- | ------------------------------------- |
+| Execution/orchestration            | That's LexRunner                      |
+| Tool calling                       | That's LexRunner                      |
+| Prompt assembly                    | That's the consuming agent            |
+| Gates/CI execution                 | That's LexRunner                      |
+| Frame storage                      | That's Lex                            |
 | Network requests during derivation | Constraints must be derivable offline |
 
 ---

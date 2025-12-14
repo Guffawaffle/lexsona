@@ -7,11 +7,7 @@
 import { Command } from "commander";
 import { loadPersona, listPersonas, matchTrigger } from "../../persona/loader.js";
 import type { Persona } from "../../persona/types.js";
-import {
-  getActivePersona,
-  setActivePersona,
-  clearActivePersona,
-} from "../../persona/config.js";
+import { getActivePersona, setActivePersona, clearActivePersona } from "../../persona/config.js";
 
 /**
  * Register persona noun commands

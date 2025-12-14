@@ -11,12 +11,7 @@ import type { LexSona } from "../core/lexsona.js";
 import { loadPersona, listPersonas } from "../persona/loader.js";
 import { deriveConstraints, type DeriveContext } from "../constraints/derive.js";
 import type { BehaviorRuleWithConfidence } from "../rules/types.js";
-import type {
-  ActivateInput,
-  ConstraintsInput,
-  LearnInput,
-  RulesInput,
-} from "./tools.js";
+import type { ActivateInput, ConstraintsInput, LearnInput, RulesInput } from "./tools.js";
 
 /**
  * Handler for lexsona_activate tool

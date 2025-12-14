@@ -49,9 +49,11 @@ Add to your MCP client settings (e.g., Claude Desktop):
 Activate a persona by ID.
 
 **Input:**
+
 - `persona` (required): Persona ID (e.g., `"quality-first_engineering"`)
 
 **Output:**
+
 ```json
 {
   "success": true,
@@ -69,17 +71,20 @@ Activate a persona by ID.
 Derive behavioral constraints for a context.
 
 **Input:**
+
 - `project` (optional): Project/repo scope (preferred; Scope Contract A+)
 - `module_id` (optional): Module scope (preferred; Scope Contract A+)
 - `task_type` (optional): Task type (preferred; Scope Contract A+)
 - `persona` (optional): Override active persona
 
 **Legacy input aliases (accepted for compatibility):**
+
 - `domain` → deprecated alias only when `project` is absent (copied into `project`, warning emitted, original preserved under `extensions.<namespace>.domain`)
 - `module` → `module_id`
 - `task` / `taskType` → `task_type`
 
 **Output:**
+
 ```json
 {
   "personaId": "quality-first_engineering",
@@ -113,6 +118,7 @@ Derive behavioral constraints for a context.
 Record a behavioral correction.
 
 **Input:**
+
 - `correction` (required): The correction text
 - `severity` (optional): `"must"`, `"should"`, or `"style"` (default: `"should"`)
 - `category` (optional): Rule category (default: `"general"`)
@@ -122,11 +128,13 @@ Record a behavioral correction.
 - `polarity` (optional): `"reinforce"` or `"counter"` (default: `"reinforce"`)
 
 **Legacy input aliases (accepted for compatibility):**
+
 - `domain` → deprecated alias only when `project` is absent (copied into `project`, warning emitted, original preserved under `extensions.<namespace>.domain`)
 - `module` → `module_id`
 - `task` / `taskType` → `task_type`
 
 **Output:**
+
 ```json
 {
   "success": true,
@@ -141,13 +149,16 @@ Record a behavioral correction.
 List learned behavioral rules.
 
 **Input:**
+
 - `project` (optional): Filter by project/repo scope (preferred)
 - `minConfidence` (optional): Minimum confidence threshold
 
 **Legacy input aliases (accepted for compatibility):**
+
 - `domain` → deprecated alias only when `project` is absent (copied into `project`, warning emitted, original preserved under `extensions.<namespace>.domain`)
 
 **Output:**
+
 ```json
 {
   "count": 5,
@@ -170,6 +181,7 @@ List available personas.
 **Input:** None
 
 **Output:**
+
 ```json
 {
   "count": 2,
@@ -226,6 +238,7 @@ npm test
 ```
 
 Integration tests verify:
+
 - Tool registration
 - Handler functionality
 - JSON output format

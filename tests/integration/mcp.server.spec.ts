@@ -102,10 +102,7 @@ describe("MCP Server Integration", () => {
   describe("lexsona_activate handler", () => {
     it("returns persona info when activated", async () => {
       const state = { activePersonaId: null };
-      const result = await handleActivate(
-        { persona: "quality-first_engineering" },
-        state
-      );
+      const result = await handleActivate({ persona: "quality-first_engineering" }, state);
 
       expect(result).toHaveProperty("success", true);
       expect(result).toHaveProperty("persona");
@@ -231,10 +228,7 @@ describe("MCP Server Integration", () => {
     it("filters rules by domain", async () => {
       const getLexSona = async () => mockLexSona;
 
-      const result = await handleRules(
-        { domain: "test-domain" },
-        getLexSona
-      );
+      const result = await handleRules({ domain: "test-domain" }, getLexSona);
 
       expect(result).toHaveProperty("rules");
       // In disconnected mode, returns empty array
@@ -244,10 +238,7 @@ describe("MCP Server Integration", () => {
     it("filters rules by confidence", async () => {
       const getLexSona = async () => mockLexSona;
 
-      const result = await handleRules(
-        { minConfidence: 0.5 },
-        getLexSona
-      );
+      const result = await handleRules({ minConfidence: 0.5 }, getLexSona);
 
       expect(result).toHaveProperty("rules");
     });
@@ -275,10 +266,7 @@ describe("MCP Server Integration", () => {
   describe("JSON Output Format", () => {
     it("activate returns valid JSON", async () => {
       const state = { activePersonaId: null };
-      const result = await handleActivate(
-        { persona: "quality-first_engineering" },
-        state
-      );
+      const result = await handleActivate({ persona: "quality-first_engineering" }, state);
 
       const json = JSON.stringify(result, null, 2);
       const parsed = JSON.parse(json);

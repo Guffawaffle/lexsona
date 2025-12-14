@@ -30,7 +30,7 @@ describe("Persona Config", () => {
     testDir = join(tmpdir(), `lexsona-test-${Date.now()}`);
     homeDir = join(testDir, "home");
     projectDir = join(testDir, "project");
-    
+
     mkdirSync(homeDir, { recursive: true });
     mkdirSync(projectDir, { recursive: true });
 

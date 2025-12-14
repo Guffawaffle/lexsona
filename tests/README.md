@@ -28,7 +28,6 @@ Persona fixtures are YAML files that represent different behavioral modes for te
 - **`senior-dev.yaml`** - Quality-first engineering persona
   - Focus: Thoroughness, testing, correctness
   - Use for: Testing quality-oriented constraints
-  
 - **`eager-pm.yaml`** - Momentum-first product persona
   - Focus: Velocity, shipping, iteration
   - Use for: Testing completion-oriented constraints
@@ -72,6 +71,7 @@ const rules = rulesData.rules; // Array of BehaviorRule objects
 A lightweight mock implementation of the Lex database client for isolated testing.
 
 **Features:**
+
 - In-memory rule storage
 - Correction recording with tracking
 - Configurable failure modes for error testing
@@ -85,14 +85,14 @@ import { createTestRule } from "../utils/test-helpers.js";
 // Create a mock client with pre-loaded rules
 const mockClient = createMockLexClient({
   rules: [
-    createTestRule({ 
-      rule_id: "test-1", 
+    createTestRule({
+      rule_id: "test-1",
       category: "testing",
-      text: "Always write tests"
-    })
+      text: "Always write tests",
+    }),
   ],
   recordSuccess: true, // recordCorrection will succeed
-  connectionFailed: false // Connection available
+  connectionFailed: false, // Connection available
 });
 
 // Use in tests
@@ -100,7 +100,7 @@ const rules = await mockClient.getRules();
 const result = await mockClient.recordCorrection({
   correction: "Add missing test",
   polarity: -1,
-  context: {}
+  context: {},
 });
 
 // Verify corrections were recorded
@@ -117,7 +117,9 @@ await expect(failingClient.getRules()).rejects.toThrow("connection failed");
 
 // Simulate recording failure
 const recordFailClient = createMockLexClient({ recordSuccess: false });
-const result = await recordFailClient.recordCorrection({ /* ... */ });
+const result = await recordFailClient.recordCorrection({
+  /* ... */
+});
 expect(result.success).toBe(false);
 ```
 
@@ -139,7 +141,7 @@ const rule = createTestRule({
   category: "testing",
   text: "Test rule description",
   severity: "must",
-  scope: { module_id: "core" }
+  scope: { module_id: "core" },
 });
 ```
 
@@ -155,9 +157,9 @@ const persona = createTestPersona({
   behavior: {
     primaryFocus: "quality-first",
     domain: "testing",
-    description: "Test persona"
+    description: "Test persona",
   },
-  ruleCategories: ["testing", "code_quality"]
+  ruleCategories: ["testing", "code_quality"],
 });
 ```
 
@@ -171,7 +173,7 @@ import { createTestScope } from "../utils/test-helpers.js";
 const scope = createTestScope({
   module_id: "core",
   task_type: "implementation",
-  context_tags: ["urgent", "security"]
+  context_tags: ["urgent", "security"],
 });
 ```
 
@@ -185,7 +187,7 @@ import { createTestContext } from "../utils/test-helpers.js";
 const context = createTestContext({
   domain: "engineering",
   module_id: "core",
-  taskType: "implementation"
+  taskType: "implementation",
 });
 ```
 
@@ -200,7 +202,7 @@ const constraint = createTestConstraint({
   rule_id: "test-rule",
   text: "Test constraint",
   severity: "should",
-  confidence: 0.85
+  confidence: 0.85,
 });
 ```
 
@@ -215,8 +217,8 @@ const constraintSet = createTestConstraintSet({
   personaId: "quality-first_engineering",
   constraints: [
     createTestConstraint({ text: "Write tests" }),
-    createTestConstraint({ text: "Run linter" })
-  ]
+    createTestConstraint({ text: "Run linter" }),
+  ],
 });
 ```
 
@@ -235,10 +237,9 @@ await wait(1000); // Wait 1 second
 ```typescript
 import { expectToThrow } from "../utils/test-helpers.js";
 
-await expectToThrow(
-  async () => { throw new Error("Invalid input"); },
-  /Invalid input/
-);
+await expectToThrow(async () => {
+  throw new Error("Invalid input");
+}, /Invalid input/);
 ```
 
 ## Example Tests
@@ -264,17 +265,12 @@ describe("deriveConstraints with fixtures", () => {
     // Load rule fixtures
     const rulesPath = join(__dirname, "..", "fixtures", "rules", "coding-style.yaml");
     const rulesData = parseYaml(readFileSync(rulesPath, "utf-8"));
-    
+
     // Mock Lex client with fixture rules
     const mockClient = createMockLexClient({ rules: rulesData.rules });
 
     // Derive constraints
-    const result = deriveConstraints(
-      persona,
-      rulesData.rules,
-      [],
-      { domain: "engineering" }
-    );
+    const result = deriveConstraints(persona, rulesData.rules, [], { domain: "engineering" });
 
     expect(result.personaId).toBe("quality-first_engineering");
     expect(result.constraints.length).toBeGreaterThan(0);
@@ -291,13 +287,13 @@ import { createTestPersona, createTestRule, createTestContext } from "../utils/t
 
 describe("deriveConstraints with helpers", () => {
   it("filters rules by category", () => {
-    const persona = createTestPersona({ 
-      ruleCategories: ["testing"] 
+    const persona = createTestPersona({
+      ruleCategories: ["testing"],
     });
-    
+
     const rules = [
       createTestRule({ category: "testing", text: "Write tests" }),
-      createTestRule({ category: "security", text: "Check auth" })
+      createTestRule({ category: "security", text: "Check auth" }),
     ];
 
     const context = createTestContext({ domain: "engineering" });
@@ -354,6 +350,7 @@ To add a new fixture:
 ## CI/CD
 
 Tests run automatically on:
+
 - Pull request creation/updates
 - Pushes to main branch
 
