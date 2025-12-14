@@ -18,6 +18,31 @@ import type { BehaviorRuleWithConfidence } from "../../rules/types.js";
 let lastDerivation: ConstraintSet | null = null;
 
 /**
+ * Format constraint set as JSON output matching the specification
+ */
+function formatConstraintsAsJson(result: ConstraintSet, domain?: string) {
+  return {
+    version: 1,
+    persona: result.personaId,
+    domain,
+    derivedAt: result.derivedAt,
+    inputHash: result.inputHash,
+    constraints: result.constraints.map((c) => ({
+      id: c.rule_id,
+      description: c.text,
+      severity:
+        c.severity === "must" ? "critical" : c.severity === "should" ? "high" : "medium",
+      source: "learned",
+      confidence: c.confidence,
+    })),
+    principles: result.principles.map((p) => ({
+      id: p.id,
+      description: p.description,
+    })),
+  };
+}
+
+/**
  * Register constraints noun commands
  */
 export function registerConstraintsCommands(program: Command): void {
@@ -100,26 +125,7 @@ export function registerConstraintsCommands(program: Command): void {
       lastDerivation = result;
 
       if (options.json) {
-        // Output JSON in the schema format specified
-        const jsonOutput = {
-          version: 1,
-          persona: result.personaId,
-          domain: context.domain,
-          derivedAt: result.derivedAt,
-          inputHash: result.inputHash,
-          constraints: result.constraints.map((c) => ({
-            id: c.rule_id,
-            description: c.text,
-            severity: c.severity === "must" ? "critical" : c.severity === "should" ? "high" : "medium",
-            source: "learned",
-            confidence: c.confidence,
-          })),
-          principles: result.principles.map((p) => ({
-            id: p.id,
-            description: p.description,
-          })),
-        };
-        console.log(JSON.stringify(jsonOutput, null, 2));
+        console.log(JSON.stringify(formatConstraintsAsJson(result, context.domain), null, 2));
         return;
       }
 
@@ -188,26 +194,9 @@ export function registerConstraintsCommands(program: Command): void {
       }
 
       if (options.json) {
-        // Output JSON in the schema format specified
-        const jsonOutput = {
-          version: 1,
-          persona: lastDerivation.personaId,
-          domain: lastDerivation.context.domain,
-          derivedAt: lastDerivation.derivedAt,
-          inputHash: lastDerivation.inputHash,
-          constraints: lastDerivation.constraints.map((c) => ({
-            id: c.rule_id,
-            description: c.text,
-            severity: c.severity === "must" ? "critical" : c.severity === "should" ? "high" : "medium",
-            source: "learned",
-            confidence: c.confidence,
-          })),
-          principles: lastDerivation.principles.map((p) => ({
-            id: p.id,
-            description: p.description,
-          })),
-        };
-        console.log(JSON.stringify(jsonOutput, null, 2));
+        console.log(
+          JSON.stringify(formatConstraintsAsJson(lastDerivation, lastDerivation.context.domain), null, 2)
+        );
         return;
       }
 
@@ -298,18 +287,27 @@ export function registerConstraintsCommands(program: Command): void {
       console.log(
         `  ✓ Confidence ${constraint.confidence.toFixed(2)} >= threshold ${lastDerivation.metadata.confidenceThreshold}`
       );
-      
-      if (lastDerivation.context.domain) {
-        console.log(`  ✓ Matches context domain: ${lastDerivation.context.domain}`);
-      }
-      if (lastDerivation.context.module_id) {
-        console.log(`  ✓ Matches context module: ${lastDerivation.context.module_id}`);
-      }
-      if (lastDerivation.context.taskType) {
-        console.log(`  ✓ Matches context task: ${lastDerivation.context.taskType}`);
+
+      // Show derivation context if present
+      const hasContext =
+        lastDerivation.context.domain ||
+        lastDerivation.context.module_id ||
+        lastDerivation.context.taskType;
+
+      if (hasContext) {
+        console.log(`\nDerived in context:`);
+        if (lastDerivation.context.domain) {
+          console.log(`  Domain: ${lastDerivation.context.domain}`);
+        }
+        if (lastDerivation.context.module_id) {
+          console.log(`  Module: ${lastDerivation.context.module_id}`);
+        }
+        if (lastDerivation.context.taskType) {
+          console.log(`  Task: ${lastDerivation.context.taskType}`);
+        }
       }
 
-      console.log(`\n  Source: learned from behavioral corrections`);
+      console.log(`\nSource: learned from behavioral corrections`);
       console.log("");
     });
 }
