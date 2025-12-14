@@ -20,6 +20,12 @@ import type { Persona } from "../persona/types.js";
 import { getRules, recordCorrection } from "@smartergpt/lex/lexsona";
 import type { RuleContext, Correction } from "@smartergpt/lex/lexsona";
 
+const DEFAULT_BASELINE_PRINCIPLES: Principle[] = [
+  { id: "transparency", description: "Be clear about what you're doing and why" },
+  { id: "determinism", description: "Same inputs should produce same outputs" },
+  { id: "auditability", description: "All decisions should be traceable" },
+];
+
 /**
  * Configuration for LexSona connection
  */
@@ -131,7 +137,7 @@ export class LexSona {
         inputHash: "", // No persona/rules to hash
         context,
         constraints: [],
-        principles: [],
+        principles: DEFAULT_BASELINE_PRINCIPLES,
         metadata: {
           rulesConsidered: 0,
           rulesFiltered: 0,
@@ -150,6 +156,7 @@ export class LexSona {
         module_id: context.module_id,
         task_type: context.taskType,
         environment: context.environment,
+        project: context.domain,
         agent_family: context.agent_family,
         context_tags: context.context_tags,
       };
@@ -158,7 +165,7 @@ export class LexSona {
     }
 
     // Load baseline principles (TODO: wire to Lex baseline.yaml when available)
-    const principles: Principle[] = [];
+    const principles: Principle[] = DEFAULT_BASELINE_PRINCIPLES;
 
     // Call pure derivation function
     return deriveConstraintsPure(persona, rules, principles, context, {
@@ -225,7 +232,7 @@ export class LexSona {
 
     const db = this.storageClient.getDatabase();
     const context: RuleContext = {
-      module_id: filter?.domain,
+      project: filter?.domain,
     };
 
     const rules = getRules(db, context);

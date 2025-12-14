@@ -14,10 +14,10 @@ LexRunner (execution) → LexSona (constraints) → Lex (memory + policy)
 
 To maintain clear behavioral classification, LexSona uses **decision-style naming** for persona IDs:
 
-| Persona ID | Behavioral Focus |
-|------------|------------------|
+| Persona ID                  | Behavioral Focus                  |
+| --------------------------- | --------------------------------- |
 | `quality-first_engineering` | Prioritizes thoroughness, testing |
-| `momentum-first_product` | Prioritizes velocity, shipping |
+| `momentum-first_product`    | Prioritizes velocity, shipping    |
 
 **Format:** `{behavioral-focus}_{domain}`
 
@@ -30,6 +30,7 @@ lexsona <noun> <verb> [options]
 ```
 
 Examples:
+
 - `lexsona persona activate quality-first_engineering`
 - `lexsona rules learn "Always run tests"`
 - `lexsona constraints derive --project lex`

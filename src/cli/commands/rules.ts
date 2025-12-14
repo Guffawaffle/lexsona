@@ -35,7 +35,7 @@ export function registerRulesCommands(program: Command): void {
   rules
     .command("list")
     .description("List active behavioral rules")
-    .option("--domain <domain>", "Filter by domain")
+    .option("--domain <domain>", "Filter by project (deprecated name: domain)")
     .option("--min-confidence <n>", "Minimum confidence threshold", parseFloat)
     .action(async (options) => {
       const instance = await initLexSona();
@@ -67,7 +67,7 @@ export function registerRulesCommands(program: Command): void {
   rules
     .command("learn <correction>")
     .description("Record a behavioral correction")
-    .option("--domain <domain>", "Domain context")
+    .option("--domain <domain>", "Project context (deprecated name: domain)")
     .option("--module <id>", "Module scope")
     .option("--task <type>", "Task type context")
     .option("--severity <level>", "Severity: must, should, style", "should")
@@ -80,7 +80,7 @@ export function registerRulesCommands(program: Command): void {
 
       const polarity = options.counter ? -1 : 1;
       const scope: RuleScope = {};
-      if (options.domain) scope.module_id = options.domain; // domain maps to module_id
+      if (options.domain) scope.project = options.domain;
       if (options.module) scope.module_id = options.module;
       if (options.task) scope.task_type = options.task;
 
@@ -100,7 +100,8 @@ export function registerRulesCommands(program: Command): void {
 
       console.log(`✓ Learned: "${correction}"`);
       console.log(`  severity: ${severity}, polarity: ${polarity > 0 ? "reinforce" : "counter"}`);
-      if (scope.module_id) console.log(`  scope: ${scope.module_id}`);
+      if (scope.project) console.log(`  project: ${scope.project}`);
+      if (scope.module_id) console.log(`  module: ${scope.module_id}`);
     });
 
   // lexsona rules apply

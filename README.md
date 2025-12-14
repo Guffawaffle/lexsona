@@ -67,18 +67,18 @@ lexsona constraints show                       # Show current constraint set
 LexSona exposes a minimal public API:
 
 ```typescript
-import { LexSona } from '@smartergpt/lexsona';
+import { LexSona } from "@smartergpt/lexsona";
 
 // Initialize with Lex connection
-const sona = await LexSona.connect({ lexDb: '/path/to/lex.db' });
+const sona = await LexSona.connect({ lexDb: "/path/to/lex.db" });
 
 // Activate a persona (using behavioral ID)
-await sona.activate('quality-first_engineering');
+await sona.activate("quality-first_engineering");
 
 // Derive constraints for current context
 const constraints = await sona.deriveConstraints({
-  project: 'lex-pr-runner',
-  task_type: 'implementation',
+  project: "lex-pr-runner",
+  task_type: "implementation",
 });
 
 // Legacy input aliases (documentation contract):
@@ -91,21 +91,21 @@ const constraints = await sona.deriveConstraints({
 await sona.learn({
   correction: "Always run tests before committing",
   polarity: 1,
-  context: { module_id: 'testing' }
+  context: { module_id: "testing" },
 });
 ```
 
 ## Persona Naming
 
-To maintain clear behavioral classification, LexSona uses **decision-style naming** for persona IDs. This convention describes *how* an agent approaches decisions rather than *what* it is.
+To maintain clear behavioral classification, LexSona uses **decision-style naming** for persona IDs. This convention describes _how_ an agent approaches decisions rather than _what_ it is.
 
 **Format:** `{behavioral-focus}_{domain}`
 
-| Persona ID | Behavioral Focus |
-|------------|------------------|
+| Persona ID                  | Behavioral Focus                               |
+| --------------------------- | ---------------------------------------------- |
 | `quality-first_engineering` | Prioritizes thoroughness, testing, correctness |
-| `momentum-first_product` | Prioritizes velocity, shipping, iteration |
-| `risk-reducer_operations` | Prioritizes safety, asks when uncertain |
+| `momentum-first_product`    | Prioritizes velocity, shipping, iteration      |
+| `risk-reducer_operations`   | Prioritizes safety, asks when uncertain        |
 
 **Approved behavioral patterns:** `quality-first`, `momentum-first`, `risk-reducer`, `scope-warden`, `test-first`, `minimal-diff`, `user-advocate`
 
@@ -126,12 +126,13 @@ LexSona explicitly does **NOT** do:
 
 LexSona distinguishes between connected and offline-safe personas:
 
-| Persona Type | `requires_memory` | Behavior |
-|--------------|-------------------|----------|
-| **Connected** | `true` | Expects Lex memory connection; fails explicitly if unavailable |
-| **Offline-safe** | `false` | Functions without Lex connection; enforces confidence ceiling |
+| Persona Type     | `requires_memory` | Behavior                                                       |
+| ---------------- | ----------------- | -------------------------------------------------------------- |
+| **Connected**    | `true`            | Expects Lex memory connection; fails explicitly if unavailable |
+| **Offline-safe** | `false`           | Functions without Lex connection; enforces confidence ceiling  |
 
 Offline-safe personas must declare:
+
 - `confidence_ceiling` — Maximum confidence for any derived constraint
 - `no_memory_disclaimer` — Human-readable warning about limitations
 

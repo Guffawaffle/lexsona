@@ -22,11 +22,11 @@ This is the **canonical layering** and is non-negotiable.
 
 ### Layer Responsibilities
 
-| Layer | Responsibility | Does NOT Do |
-|-------|---------------|-------------|
-| **Lex** (OSS core) | Frames/memory, policy/contracts, behavioral rules storage + retrieval | Interpret or enforce rules |
+| Layer                           | Responsibility                                                           | Does NOT Do                                   |
+| ------------------------------- | ------------------------------------------------------------------------ | --------------------------------------------- |
+| **Lex** (OSS core)              | Frames/memory, policy/contracts, behavioral rules storage + retrieval    | Interpret or enforce rules                    |
 | **LexSona** (constraint engine) | Interpret stored rules, manage persona/mode mechanics, run learning loop | Execute, tool-call, gate, or assemble prompts |
-| **LexRunner** | Execution layer, gates that apply constraints in real workflows | Store memory, define personas |
+| **LexRunner**                   | Execution layer, gates that apply constraints in real workflows          | Store memory, define personas                 |
 
 ### The Socket Model
 
@@ -53,17 +53,18 @@ LexSona **plugs into** Lex's socket. It never duplicates storage or query logic.
 
 ### Naming Convention
 
-To maintain clear behavioral classification, LexSona uses **decision-style naming** for persona IDs. This convention describes *how* an agent approaches decisions rather than *what* it is.
+To maintain clear behavioral classification, LexSona uses **decision-style naming** for persona IDs. This convention describes _how_ an agent approaches decisions rather than _what_ it is.
 
 **Format:** `{behavioral-focus}_{domain}`
 
-| Persona ID | Behavioral Focus |
-|------------|------------------|
+| Persona ID                  | Behavioral Focus                               |
+| --------------------------- | ---------------------------------------------- |
 | `quality-first_engineering` | Prioritizes thoroughness, testing, correctness |
-| `momentum-first_product` | Prioritizes velocity, shipping, iteration |
-| `risk-reducer_operations` | Prioritizes safety, asks when uncertain |
+| `momentum-first_product`    | Prioritizes velocity, shipping, iteration      |
+| `risk-reducer_operations`   | Prioritizes safety, asks when uncertain        |
 
 **Approved Behavioral Patterns:**
+
 - `quality-first`
 - `momentum-first`
 - `risk-reducer`
@@ -77,17 +78,17 @@ To maintain clear behavioral classification, LexSona uses **decision-style namin
 
 LexSona does **NOT** do:
 
-| ❌ Non-Goal | Why |
-|-------------|-----|
-| **Execution** | That's LexRunner |
-| **Tool calling** | That's LexRunner |
-| **Prompt assembly** | That's the consuming agent |
-| **Gates/CI execution** | That's LexRunner |
-| **Frame storage** | That's Lex |
+| ❌ Non-Goal                            | Why                                   |
+| -------------------------------------- | ------------------------------------- |
+| **Execution**                          | That's LexRunner                      |
+| **Tool calling**                       | That's LexRunner                      |
+| **Prompt assembly**                    | That's the consuming agent            |
+| **Gates/CI execution**                 | That's LexRunner                      |
+| **Frame storage**                      | That's Lex                            |
 | **Network requests during derivation** | Constraints must be derivable offline |
-| **Universal export format** | No "constraint packs for any runtime" |
-| **Runtime auto-detection** | Caller declares connection state |
-| **Silent fallback** | Connected personas fail explicitly |
+| **Universal export format**            | No "constraint packs for any runtime" |
+| **Runtime auto-detection**             | Caller declares connection state      |
+| **Silent fallback**                    | Connected personas fail explicitly    |
 
 ## Developer Notes: Local Testing and Disconnected Mode
 
@@ -127,6 +128,7 @@ Key principles for local testing and disconnected operation:
 ## Review
 
 This ADR should be reviewed if:
+
 - The dependency chain needs to change
 - New non-goals emerge
 - The naming convention proves inadequate

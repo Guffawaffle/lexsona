@@ -47,7 +47,7 @@ const FIELD_WEIGHTS: Record<keyof RuleScope, number> = {
 
 /**
  * Check if a single field matches
- * 
+ *
  * @param fieldName - The name of the field being matched (for special handling)
  * @param ruleValue - The value from the rule scope
  * @param contextValue - The value from the context
@@ -80,7 +80,7 @@ function fieldMatches(
     if (ruleValue === contextValue) {
       return "exact";
     }
-    
+
     // Glob match for module_id
     if (fieldName === "module_id" && micromatch.isMatch(contextValue, ruleValue)) {
       return "glob";

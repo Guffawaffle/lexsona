@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Pre-push hook: CHECKS only (no auto-fix / no auto-format)
+# Install once per clone:
+#   git config core.hooksPath .githooks
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+echo "🔍 pre-push: lint (no-fix, fail on warnings)"
+
+# Lint must fail on warnings. Enforced via package.json: eslint --max-warnings 0
+npm run -s lint
+
+echo "🔍 pre-push: typecheck"
+npm run -s typecheck
+
+echo "✅ pre-push checks passed"

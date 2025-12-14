@@ -4,9 +4,9 @@
 
 **AI Collaborators (analysis + drafting support):**
 
-* OpenAI GPT-5.1 Thinking — system architecture, boundary definition, integration design
-* Claude Sonnet 4.5 — Bayesian confidence modeling, procedural learning formalism
-* Google Gemini 3 Pro — critical review, taxonomy pressure-testing, clarity edits
+- OpenAI GPT-5.1 Thinking — system architecture, boundary definition, integration design
+- Claude Sonnet 4.5 — Bayesian confidence modeling, procedural learning formalism
+- Google Gemini 3 Pro — critical review, taxonomy pressure-testing, clarity edits
 
 **Date:** December 6, 2025
 **Version:** Public Canonical CptPlnt 1.1
@@ -22,9 +22,9 @@ This paper proposes **LexSona**, a lightweight behavioral memory layer that turn
 
 **This version reflects the current layered product boundary:**
 
-* **Lex (OSS core)** provides episodic memory, policy contracts, and a **behavioral rules storage socket**.
-* **LexSona (separate package/repo)** consumes Lex storage, performs persona/rule resolution, and **returns constraints**.
-* **LexRunner** orchestrates tasks and **applies** constraints during execution.
+- **Lex (OSS core)** provides episodic memory, policy contracts, and a **behavioral rules storage socket**.
+- **LexSona (separate package/repo)** consumes Lex storage, performs persona/rule resolution, and **returns constraints**.
+- **LexRunner** orchestrates tasks and **applies** constraints during execution.
 
 LexSona does not orchestrate tools, assemble prompts, or execute actions. It is a constraint engine, not an execution engine.
 
@@ -38,11 +38,11 @@ LexSona does not orchestrate tools, assemble prompts, or execute actions. It is 
 
 Modern AI coding assistants and general-purpose LLM agents demonstrate notable capability, but they suffer from a persistent limitation: **behavioral amnesia**. Users must repeatedly correct the same agent mistakes across sessions:
 
-* "Don't use shell one-liners for file edits in this project; use safe editing tools instead."
-* "Be concise by default; expand only when asked."
-* "Never commit secrets; scan diffs before pushing."
+- "Don't use shell one-liners for file edits in this project; use safe editing tools instead."
+- "Be concise by default; expand only when asked."
+- "Never commit secrets; scan diffs before pushing."
 
-These corrections represent **procedural knowledge**: preferences about *how* an agent should operate in a specific context. Current solutions fail along predictable axes:
+These corrections represent **procedural knowledge**: preferences about _how_ an agent should operate in a specific context. Current solutions fail along predictable axes:
 
 1. **Session-local learning**: preferences vanish after the thread ends.
 2. **Unscoped global memory**: workplace rules leak into personal projects.
@@ -79,9 +79,9 @@ LexRunner requires Lex + LexSona.
 
 Lex is the foundation layer responsible for:
 
-* **Frames** (episodic memory)
-* **Policy** (contracts and guardrails)
-* **Behavioral rules storage socket** (schema + read/write primitives)
+- **Frames** (episodic memory)
+- **Policy** (contracts and guardrails)
+- **Behavioral rules storage socket** (schema + read/write primitives)
 
 **Lex does not interpret behavioral rules.** It stores and retrieves them.
 
@@ -89,10 +89,10 @@ Lex is the foundation layer responsible for:
 
 LexSona is a separate package/repo that:
 
-* Loads **baseline constraints** from Lex.
-* Maps user corrections into behavioral rule updates stored in Lex.
-* Resolves an **active constraint set** for a given context.
-* Manages persona selection and overlay composition.
+- Loads **baseline constraints** from Lex.
+- Maps user corrections into behavioral rule updates stored in Lex.
+- Resolves an **active constraint set** for a given context.
+- Manages persona selection and overlay composition.
 
 **LexSona does not orchestrate.** It returns data.
 
@@ -100,11 +100,11 @@ LexSona is a separate package/repo that:
 
 LexRunner is the execution system that:
 
-* Plans tasks.
-* Calls tools.
-* Runs gates.
-* Builds deterministic workflows.
-* Queries LexSona for constraints and applies them.
+- Plans tasks.
+- Calls tools.
+- Runs gates.
+- Builds deterministic workflows.
+- Queries LexSona for constraints and applies them.
 
 This boundary prevents "Runner-lite drift" inside LexSona and avoids OSS/commercial entanglement inside Lex.
 
@@ -122,9 +122,9 @@ f(context, min_confidence) → ConstraintSet
 
 where `context` minimally includes:
 
-* `domain` (project/repo namespace)
-* `moduleId` (subsystem scope)
-* `taskType` (optional, e.g., planning vs implementation)
+- `domain` (project/repo namespace)
+- `moduleId` (subsystem scope)
+- `taskType` (optional, e.g., planning vs implementation)
 
 The output is a deterministic constraint overlay that an orchestrator can apply.
 
@@ -147,10 +147,10 @@ The output is a deterministic constraint overlay that an orchestrator can apply.
 
 ```typescript
 interface RuleContext {
-  domain?: string;     // e.g., "lex", "lexsona", "lex-pr-runner"
-  moduleId?: string;   // e.g., "cli/*", "memory/store/*"
-  taskType?: string;   // e.g., "planning", "implementation", "review"
-  frameId?: string;    // optional provenance link
+  domain?: string; // e.g., "lex", "lexsona", "lex-pr-runner"
+  moduleId?: string; // e.g., "cli/*", "memory/store/*"
+  taskType?: string; // e.g., "planning", "implementation", "review"
+  frameId?: string; // optional provenance link
 }
 ```
 
@@ -182,13 +182,13 @@ Lex stores these rules. LexSona interprets them.
 
 LexSona models confidence as a **Beta distribution** with a skeptical prior:
 
-* α₀ = 2
-* β₀ = 5
+- α₀ = 2
+- β₀ = 5
 
 Update rules:
 
-* Reinforcement: α ← α + 1
-* Counterexample: β ← β + 1
+- Reinforcement: α ← α + 1
+- Counterexample: β ← β + 1
 
 Posterior mean:
 
@@ -219,8 +219,8 @@ When multiple applicable rules exist, LexSona resolves deterministically:
 
 Public-facing persona names should avoid job-role framing. The current recommended public exemplars are behavior-based:
 
-* **Precision Mode**: cautious, test-first, strict diffs, high emphasis on correctness.
-* **Momentum Mode**: scope-aware planning, completion bias, structured next actions.
+- **Precision Mode**: cautious, test-first, strict diffs, high emphasis on correctness.
+- **Momentum Mode**: scope-aware planning, completion bias, structured next actions.
 
 Internally, these can still map to previously used labels, but the public API and docs should present behavior-based naming as the default.
 
@@ -252,9 +252,9 @@ interface ConstraintSet {
 
 Merge priority (implementation-aligned):
 
-* **baseline < persona < learned**
-* severity grouping is stable and deterministic
-* scoping filters are applied before ranking
+- **baseline < persona < learned**
+- severity grouping is stable and deterministic
+- scoping filters are applied before ranking
 
 ---
 
@@ -264,9 +264,9 @@ Merge priority (implementation-aligned):
 
 Lex exposes:
 
-* `recordCorrection(...)`
-* `getRules(...)`
-* a stable schema for behavioral rules
+- `recordCorrection(...)`
+- `getRules(...)`
+- a stable schema for behavioral rules
 
 Lex remains agnostic to persona semantics.
 
@@ -274,11 +274,11 @@ Lex remains agnostic to persona semantics.
 
 LexSona provides:
 
-* persona manifest loading
-* activation state
-* constraint derivation
-* rule scoping and decay
-* introspection APIs
+- persona manifest loading
+- activation state
+- constraint derivation
+- rule scoping and decay
+- introspection APIs
 
 ### 6.3 Orchestrator Integration
 
@@ -295,9 +295,9 @@ LexRunner (or any external orchestrator) performs:
 
 Early internal pilot results (author-reported, n≈200 correction events) suggest:
 
-* high utility in reducing repeated correction burden for common tooling and safety behaviors
-* stable constraint snapshots that remain within a modest prompt budget under typical usage
-* embedding-based matching is viable with conservative thresholds, with a confirmation band for ambiguous cases
+- high utility in reducing repeated correction burden for common tooling and safety behaviors
+- stable constraint snapshots that remain within a modest prompt budget under typical usage
+- embedding-based matching is viable with conservative thresholds, with a confirmation band for ambiguous cases
 
 These results should be treated as **preliminary** until released with a reproducible evaluation artifact and dataset description.
 
@@ -316,9 +316,9 @@ These results should be treated as **preliminary** until released with a reprodu
 
 LexSona is a frequency-weighted behavioral memory layer that converts repeated user corrections into scoped, introspectable, and deterministic constraint overlays. This paper formalizes LexSona’s confidence model, scoping logic, and integration contract while reflecting the current platform boundary:
 
-* **Lex stores** behavioral rules.
-* **LexSona resolves** personas and returns constraints.
-* **LexRunner applies** constraints during orchestration.
+- **Lex stores** behavioral rules.
+- **LexSona resolves** personas and returns constraints.
+- **LexRunner applies** constraints during orchestration.
 
 This separation preserves OSS clarity, avoids architectural bloat, and enables a commercial-grade behavioral layer that remains independently useful even outside LexRunner.
 

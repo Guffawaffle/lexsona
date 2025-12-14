@@ -45,12 +45,25 @@ describe("LexSona", () => {
   });
 
   describe("deriveConstraints", () => {
-    it("returns empty constraint set when disconnected", async () => {
+    it("returns baseline principles when disconnected", async () => {
       const result = await sona.deriveConstraints({});
 
       expect(result.personaId).toBe("none");
       expect(result.constraints).toEqual([]);
-      expect(result.principles).toEqual([]);
+      expect(result.principles).toEqual([
+        {
+          id: "transparency",
+          description: "Be clear about what you're doing and why",
+        },
+        {
+          id: "determinism",
+          description: "Same inputs should produce same outputs",
+        },
+        {
+          id: "auditability",
+          description: "All decisions should be traceable",
+        },
+      ]);
       expect(result.metadata.rulesConsidered).toBe(0);
     });
 

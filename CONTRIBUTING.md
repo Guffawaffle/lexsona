@@ -42,12 +42,14 @@ For small, independent changes:
 When multiple PRs are in flight and need coordinated integration:
 
 1. **Create umbrella branch:**
+
    ```bash
    git fetch origin
    git checkout -b integration/umbrella-YYYYMMDD origin/main
    ```
 
 2. **Merge feature PRs into umbrella:**
+
    ```bash
    git merge --no-ff origin/feature-branch-1 -m "Merge PR #X: Description"
    git merge --no-ff origin/feature-branch-2 -m "Merge PR #Y: Description"
@@ -55,11 +57,13 @@ When multiple PRs are in flight and need coordinated integration:
    ```
 
 3. **Run all gates on umbrella:**
+
    ```bash
    npm run lint && npm run typecheck && npm test
    ```
 
 4. **Push umbrella and create PR to main:**
+
    ```bash
    git push origin integration/umbrella-YYYYMMDD
    gh pr create --base main --title "Umbrella: Merge PRs #X, #Y, #Z"
@@ -71,12 +75,12 @@ When multiple PRs are in flight and need coordinated integration:
 
 When merging concurrent PRs creates conflicts:
 
-| File Type | Strategy | Example |
-|-----------|----------|---------|
-| **Documentation (*.md)** | Take latest version, manually merge content if needed | tests/README.md |
-| **Test Fixtures (*.yaml, *.json)** | Merge both versions | fixtures/personas/*.yaml |
-| **Source Code (*.ts)** | Manual resolution required | src/**/*.ts |
-| **Config Files** | Take feature branch (`--theirs`) | package.json, tsconfig.json |
+| File Type                          | Strategy                                              | Example                     |
+| ---------------------------------- | ----------------------------------------------------- | --------------------------- |
+| **Documentation (\*.md)**          | Take latest version, manually merge content if needed | tests/README.md             |
+| **Test Fixtures (_.yaml, _.json)** | Merge both versions                                   | fixtures/personas/\*.yaml   |
+| **Source Code (\*.ts)**            | Manual resolution required                            | src/\*_/_.ts                |
+| **Config Files**                   | Take feature branch (`--theirs`)                      | package.json, tsconfig.json |
 
 **When uncertain:** Stop and ask. Document the conflict in the PR description.
 

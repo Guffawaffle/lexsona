@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
  * LexSona CLI - Main Entry Point
- * 
+ *
  * Usage: lexsona <noun> [verb] [options]
- * 
+ *
  * Examples:
  *   lexsona persona list
  *   lexsona persona activate quality-first_engineering
@@ -23,7 +23,6 @@ program
   .name("lexsona")
   .description("Behavioral memory and persona engine for AI agents")
   .version(VERSION)
-  .option("--json", "Output results in JSON format")
   .option("--verbose", "Enable verbose output");
 
 // Register noun commands

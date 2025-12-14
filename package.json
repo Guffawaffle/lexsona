@@ -27,7 +27,7 @@
     "postbuild": "chmod +x dist/cli/lexsona.js",
     "clean": "rm -rf dist",
     "dev": "tsc -b tsconfig.build.json --watch",
-    "lint": "eslint src --ext .ts",
+    "lint": "eslint src --ext .ts --max-warnings 0",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

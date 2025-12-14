@@ -49,6 +49,8 @@ export interface DeriveContext {
   context_tags?: string[];
 }
 
+export type ConstraintSource = "baseline" | "persona" | "learned";
+
 /**
  * A single constraint (derived from a rule)
  */
@@ -63,6 +65,8 @@ export interface Constraint {
   confidence: number;
   /** Category for grouping */
   category: string;
+  /** Where this constraint came from (currently: derived from learned behavioral rules) */
+  source?: ConstraintSource;
 }
 
 /**
@@ -382,6 +386,7 @@ export function deriveConstraints(
         ? Math.min(rule.effective_confidence, confidenceCeiling)
         : rule.effective_confidence,
     category: rule.category,
+    source: "learned",
   }));
 
   // Calculate stable input hash
