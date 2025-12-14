@@ -49,6 +49,8 @@ export function createTestScope(overrides?: Partial<RuleScope>): RuleScope {
  * Create a test Persona with sensible defaults
  */
 export function createTestPersona(overrides?: Partial<Persona>): Persona {
+  const requiresMemory = overrides?.requires_memory ?? false;
+
   return {
     id: overrides?.id ?? "quality-first_testing",
     version: overrides?.version ?? "1.0.0",
@@ -65,6 +67,13 @@ export function createTestPersona(overrides?: Partial<Persona>): Persona {
       phrases: ["ok test persona", "test mode"],
     },
     ruleCategories: overrides?.ruleCategories ?? ["test_category"],
+    requires_memory: requiresMemory,
+    offline_safe: requiresMemory
+      ? overrides?.offline_safe
+      : (overrides?.offline_safe ?? {
+          confidence_ceiling: 0.7,
+          no_memory_disclaimer: "Operating without Lex memory connection.",
+        }),
   };
 }
 
@@ -102,6 +111,7 @@ export function createTestConstraintSet(overrides?: Partial<ConstraintSet>): Con
   return {
     personaId: overrides?.personaId ?? "quality-first_testing",
     derivedAt: overrides?.derivedAt ?? new Date().toISOString(),
+    inputHash: overrides?.inputHash ?? "",
     context: overrides?.context ?? {},
     principles: overrides?.principles ?? [],
     constraints: overrides?.constraints ?? [],
@@ -109,6 +119,8 @@ export function createTestConstraintSet(overrides?: Partial<ConstraintSet>): Con
       rulesConsidered: 0,
       rulesFiltered: 0,
       confidenceThreshold: 0.3,
+      offlineMode: true,
+      confidenceCeiling: undefined,
     },
   };
 }
@@ -147,8 +159,6 @@ export async function expectToThrow(
       : messagePattern.test(errorMessage);
 
   if (!matches) {
-    throw new Error(
-      `Expected error message to match ${messagePattern}, but got: ${errorMessage}`
-    );
+    throw new Error(`Expected error message to match ${messagePattern}, but got: ${errorMessage}`);
   }
 }

@@ -1,362 +1,229 @@
 /**
- * Integration tests for CLI constraints commands
+ * CLI integration tests for constraints commands.
+ *
+ * These tests exercise the Commander command handlers (option parsing + output formatting)
+ * while stubbing LexSona's connection/derivation to keep things deterministic and offline.
  */
-import { describe, it, expect } from "vitest";
-import { deriveConstraints } from "../../src/constraints/derive.js";
-import { loadPersona } from "../../src/persona/loader.js";
-import type { BehaviorRuleWithConfidence } from "../../src/rules/types.js";
-import type { Principle } from "../../src/constraints/derive.js";
 
-describe("CLI Constraints Commands", () => {
-  describe("derive command", () => {
-    it("produces constraint set with proper structure", async () => {
-      const persona = await loadPersona("quality-first_engineering");
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { Command } from "commander";
+import { mkdtempSync, readFileSync, rmSync, existsSync, writeFileSync } from "fs";
+import { join } from "path";
+import { tmpdir } from "os";
 
-      const testRules: BehaviorRuleWithConfidence[] = [
-        {
-          rule_id: "test_rule_1",
-          text: "Always write tests",
-          severity: "must",
-          category: "testing",
-          scope: {},
-          effective_confidence: 0.9,
-          confidence: 0.9,
-          decay_factor: 1.0,
-          alpha: 10,
-          beta: 1,
-          observation_count: 11,
-          decay_tau: 180,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          last_observed: new Date().toISOString(),
-        },
-      ];
+import { registerConstraintsCommands } from "../../src/cli/commands/constraints.js";
+import { LexSona } from "../../src/core/lexsona.js";
+import type { ConstraintSet } from "../../src/constraints/derive.js";
 
-      const principles: Principle[] = [
-        { id: "transparency", description: "Be clear about what you're doing and why" },
-      ];
+function createProgram(): Command {
+  const program = new Command();
+  program.exitOverride();
+  registerConstraintsCommands(program);
+  return program;
+}
 
-      const context = {
-        domain: "test-domain",
+describe("constraints CLI", () => {
+  let tempDir: string;
+  let cachePath: string;
+  let logSpy: ReturnType<typeof vi.spyOn>;
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), "lexsona-constraints-tests-"));
+    cachePath = join(tempDir, "constraints-cache.json");
+    process.env.LEXSONA_CONSTRAINTS_CACHE_PATH = cachePath;
+
+    logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    delete process.env.LEXSONA_CONSTRAINTS_CACHE_PATH;
+
+    logSpy.mockRestore();
+    errorSpy.mockRestore();
+
+    if (existsSync(tempDir)) {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+
+    vi.restoreAllMocks();
+  });
+
+  it("derive --json outputs schema-like JSON and writes cache", async () => {
+    const constraintSet: ConstraintSet = {
+      personaId: "quality-first_engineering",
+      derivedAt: "2025-12-05T23:30:00Z",
+      inputHash: "abc123",
+      context: {
+        domain: "lex-pr-runner",
+        module_id: "cli/commands",
         taskType: "implementation",
-      };
-
-      const result = deriveConstraints(persona, testRules, principles, context);
-
-      // Verify structure matches specification
-      expect(result).toHaveProperty("personaId");
-      expect(result).toHaveProperty("derivedAt");
-      expect(result).toHaveProperty("inputHash");
-      expect(result).toHaveProperty("context");
-      expect(result).toHaveProperty("constraints");
-      expect(result).toHaveProperty("principles");
-      expect(result).toHaveProperty("metadata");
-
-      expect(result.personaId).toBe("quality-first_engineering");
-      expect(result.constraints.length).toBeGreaterThan(0);
-      expect(result.principles.length).toBeGreaterThan(0);
-    });
-
-    it("groups constraints by severity", async () => {
-      const persona = await loadPersona("quality-first_engineering");
-
-      const testRules: BehaviorRuleWithConfidence[] = [
-        {
-          rule_id: "critical_rule",
-          text: "Critical rule",
-          severity: "must",
-          category: "testing",
-          scope: {},
-          effective_confidence: 0.9,
-          confidence: 0.9,
-          decay_factor: 1.0,
-          alpha: 10,
-          beta: 1,
-          observation_count: 11,
-          decay_tau: 180,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          last_observed: new Date().toISOString(),
-        },
-        {
-          rule_id: "high_rule",
-          text: "High priority rule",
-          severity: "should",
-          category: "testing",
-          scope: {},
-          effective_confidence: 0.8,
-          confidence: 0.8,
-          decay_factor: 1.0,
-          alpha: 8,
-          beta: 2,
-          observation_count: 10,
-          decay_tau: 180,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          last_observed: new Date().toISOString(),
-        },
-        {
-          rule_id: "style_rule",
-          text: "Style rule",
-          severity: "style",
-          category: "code_quality",
-          scope: {},
-          effective_confidence: 0.6,
-          confidence: 0.6,
-          decay_factor: 1.0,
-          alpha: 5,
-          beta: 3,
-          observation_count: 8,
-          decay_tau: 180,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          last_observed: new Date().toISOString(),
-        },
-      ];
-
-      const result = deriveConstraints(persona, testRules, [], {});
-
-      const criticalConstraints = result.constraints.filter((c) => c.severity === "must");
-      const highConstraints = result.constraints.filter((c) => c.severity === "should");
-      const mediumConstraints = result.constraints.filter((c) => c.severity === "style");
-
-      expect(criticalConstraints.length).toBeGreaterThan(0);
-      expect(highConstraints.length).toBeGreaterThan(0);
-      expect(mediumConstraints.length).toBeGreaterThan(0);
-    });
-
-    it("includes principles in output", async () => {
-      const persona = await loadPersona("quality-first_engineering");
-
-      const principles: Principle[] = [
+      },
+      principles: [
         { id: "transparency", description: "Be clear about what you're doing and why" },
         { id: "determinism", description: "Same inputs should produce same outputs" },
         { id: "auditability", description: "All decisions should be traceable" },
-      ];
-
-      const result = deriveConstraints(persona, [], principles, {});
-
-      expect(result.principles).toEqual(principles);
-      expect(result.principles.length).toBe(3);
-    });
-
-    it("respects confidence ceiling for offline-safe persona", async () => {
-      const persona = await loadPersona("quality-first_engineering");
-
-      const testRules: BehaviorRuleWithConfidence[] = [
+      ],
+      constraints: [
         {
-          rule_id: "high_confidence_rule",
-          text: "High confidence rule",
+          rule_id: "no_credential_logging",
+          text: "Never log or store credentials, tokens, or secrets",
           severity: "must",
-          category: "testing",
-          scope: {},
-          effective_confidence: 0.95,
-          confidence: 0.95,
-          decay_factor: 1.0,
-          alpha: 15,
-          beta: 1,
-          observation_count: 16,
-          decay_tau: 180,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          last_observed: new Date().toISOString(),
-        },
-      ];
-
-      const result = deriveConstraints(persona, testRules, [], {});
-
-      // Offline-safe persona has confidence ceiling of 0.7
-      expect(result.constraints[0].confidence).toBeLessThanOrEqual(0.7);
-      expect(result.metadata.confidenceCeiling).toBe(0.7);
-      expect(result.metadata.offlineMode).toBe(true);
-    });
-
-    it("applies context filtering", async () => {
-      const persona = await loadPersona("quality-first_engineering");
-
-      const testRules: BehaviorRuleWithConfidence[] = [
-        {
-          rule_id: "scoped_rule",
-          text: "Scoped to domain",
-          severity: "must",
-          category: "testing",
-          scope: { project: "lex-runner" },
-          effective_confidence: 0.9,
-          confidence: 0.9,
-          decay_factor: 1.0,
-          alpha: 10,
-          beta: 1,
-          observation_count: 11,
-          decay_tau: 180,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          last_observed: new Date().toISOString(),
+          confidence: 0.7,
+          category: "security_policy",
         },
         {
-          rule_id: "global_rule",
-          text: "Global rule",
-          severity: "must",
+          rule_id: "run_local_ci",
+          text: "Run local-ci before any commit",
+          severity: "should",
+          confidence: 0.65,
           category: "testing",
-          scope: {},
-          effective_confidence: 0.9,
-          confidence: 0.9,
-          decay_factor: 1.0,
-          alpha: 10,
-          beta: 1,
-          observation_count: 11,
-          decay_tau: 180,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          last_observed: new Date().toISOString(),
         },
-      ];
+      ],
+      metadata: {
+        rulesConsidered: 12,
+        rulesFiltered: 10,
+        confidenceThreshold: 0.3,
+        offlineMode: true,
+        confidenceCeiling: 0.7,
+      },
+    };
 
-      // Should include scoped rule when domain matches
-      const matchingResult = deriveConstraints(persona, testRules, [], {
-        domain: "lex-runner",
-      });
-      expect(matchingResult.constraints.length).toBe(2);
+    const stubInstance = {
+      deriveConstraints: vi.fn(async () => constraintSet),
+      close: vi.fn(),
+    } as unknown as LexSona;
 
-      // Should only include global rule when domain doesn't match
-      const nonMatchingResult = deriveConstraints(persona, testRules, [], {
-        domain: "other-domain",
-      });
-      expect(nonMatchingResult.constraints.length).toBe(1);
-      expect(nonMatchingResult.constraints[0].rule_id).toBe("global_rule");
-    });
+    const connectSpy = vi.spyOn(LexSona, "connect").mockResolvedValue(stubInstance);
+
+    const program = createProgram();
+    await program.parseAsync([
+      "node",
+      "lexsona",
+      "constraints",
+      "derive",
+      "--persona",
+      "quality-first_engineering",
+      "--project",
+      "lex-pr-runner",
+      "--module",
+      "cli/commands",
+      "--task",
+      "implementation",
+      "--json",
+    ]);
+
+    expect(connectSpy).toHaveBeenCalledTimes(1);
+    expect(stubInstance.deriveConstraints).toHaveBeenCalledTimes(1);
+    expect(stubInstance.close).toHaveBeenCalledTimes(1);
+    expect(errorSpy).not.toHaveBeenCalled();
+
+    // First (and only) log should be JSON
+    const logged = logSpy.mock.calls.map((c) => String(c[0])).join("\n");
+    const parsed = JSON.parse(logged) as any;
+
+    expect(parsed.version).toBe(1);
+    expect(parsed.persona).toBe("quality-first_engineering");
+    expect(parsed.domain).toBe("lex-pr-runner");
+    expect(parsed.derivedAt).toBe("2025-12-05T23:30:00Z");
+    expect(parsed.inputHash).toBe("abc123");
+    expect(parsed.constraints).toHaveLength(2);
+    expect(parsed.constraints[0].severity).toBe("critical");
+    expect(parsed.constraints[0].source).toBe("learned");
+
+    // Cache should be written (raw ConstraintSet)
+    expect(existsSync(cachePath)).toBe(true);
+    const cached = JSON.parse(readFileSync(cachePath, "utf-8")) as ConstraintSet;
+    expect(cached.personaId).toBe("quality-first_engineering");
+    expect(cached.context.domain).toBe("lex-pr-runner");
   });
 
-  describe("JSON output format", () => {
-    it("produces valid JSON with correct schema", async () => {
-      const persona = await loadPersona("quality-first_engineering");
-
-      const testRules: BehaviorRuleWithConfidence[] = [
+  it("show --json reads cached derivation and does not reconnect", async () => {
+    // Seed cache with a minimal-but-valid ConstraintSet
+    const seeded: ConstraintSet = {
+      personaId: "quality-first_engineering",
+      derivedAt: "2025-12-05T23:30:00Z",
+      inputHash: "abc123",
+      context: { domain: "lex-pr-runner" },
+      principles: [{ id: "transparency", description: "Be clear" }],
+      constraints: [
         {
-          rule_id: "test_rule",
-          text: "Test rule",
+          rule_id: "no_false_memories",
+          text: "Never fabricate or hallucinate stored memories",
           severity: "must",
-          category: "testing",
-          scope: {},
-          effective_confidence: 0.9,
-          confidence: 0.9,
-          decay_factor: 1.0,
-          alpha: 10,
-          beta: 1,
-          observation_count: 11,
-          decay_tau: 180,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          last_observed: new Date().toISOString(),
+          confidence: 0.7,
+          category: "safety",
         },
-      ];
+      ],
+      metadata: {
+        rulesConsidered: 1,
+        rulesFiltered: 0,
+        confidenceThreshold: 0.3,
+        offlineMode: true,
+      },
+    };
+    // Write file directly (the CLI reads raw ConstraintSet cache)
+    writeFileSync(cachePath, JSON.stringify(seeded, null, 2), "utf-8");
 
-      const principles: Principle[] = [
-        { id: "transparency", description: "Be clear" },
-      ];
+    const connectSpy = vi.spyOn(LexSona, "connect");
 
-      const context = { domain: "test" };
-      const result = deriveConstraints(persona, testRules, principles, context);
+    const program = createProgram();
+    await program.parseAsync(["node", "lexsona", "constraints", "show", "--json"]);
 
-      // Simulate JSON output format
-      const jsonOutput = {
-        version: 1,
-        persona: result.personaId,
-        domain: context.domain,
-        derivedAt: result.derivedAt,
-        inputHash: result.inputHash,
-        constraints: result.constraints.map((c) => ({
-          id: c.rule_id,
-          description: c.text,
-          severity: c.severity === "must" ? "critical" : c.severity === "should" ? "high" : "medium",
-          source: "learned",
-          confidence: c.confidence,
-        })),
-        principles: result.principles.map((p) => ({
-          id: p.id,
-          description: p.description,
-        })),
-      };
+    expect(connectSpy).not.toHaveBeenCalled();
+    expect(errorSpy).not.toHaveBeenCalled();
 
-      expect(jsonOutput.version).toBe(1);
-      expect(jsonOutput.persona).toBe("quality-first_engineering");
-      expect(jsonOutput.constraints).toHaveLength(1);
-      expect(jsonOutput.constraints[0]).toHaveProperty("id");
-      expect(jsonOutput.constraints[0]).toHaveProperty("description");
-      expect(jsonOutput.constraints[0]).toHaveProperty("severity");
-      expect(jsonOutput.constraints[0]).toHaveProperty("source");
-      expect(jsonOutput.constraints[0]).toHaveProperty("confidence");
-      expect(jsonOutput.principles).toHaveLength(1);
-    });
+    const logged = logSpy.mock.calls.map((c) => String(c[0])).join("\n");
+    const parsed = JSON.parse(logged) as any;
 
-    it("maps severity levels correctly", async () => {
-      const persona = await loadPersona("quality-first_engineering");
+    expect(parsed.version).toBe(1);
+    expect(parsed.persona).toBe("quality-first_engineering");
+    expect(parsed.domain).toBe("lex-pr-runner");
+    expect(parsed.constraints).toHaveLength(1);
+    expect(parsed.constraints[0].severity).toBe("critical");
+  });
 
-      const testRules: BehaviorRuleWithConfidence[] = [
+  it("explain <id> prints explanation from cached derivation", async () => {
+    const seeded: ConstraintSet = {
+      personaId: "quality-first_engineering",
+      derivedAt: "2025-12-05T23:30:00Z",
+      inputHash: "abc123",
+      context: { domain: "lex-pr-runner", taskType: "review" },
+      principles: [],
+      constraints: [
         {
-          rule_id: "must_rule",
-          text: "Must rule",
+          rule_id: "no_credential_logging",
+          text: "Never log credentials",
           severity: "must",
-          category: "testing",
-          scope: {},
-          effective_confidence: 0.9,
-          confidence: 0.9,
-          decay_factor: 1.0,
-          alpha: 10,
-          beta: 1,
-          observation_count: 11,
-          decay_tau: 180,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          last_observed: new Date().toISOString(),
+          confidence: 0.7,
+          category: "security_policy",
         },
-        {
-          rule_id: "should_rule",
-          text: "Should rule",
-          severity: "should",
-          category: "testing",
-          scope: {},
-          effective_confidence: 0.8,
-          confidence: 0.8,
-          decay_factor: 1.0,
-          alpha: 8,
-          beta: 2,
-          observation_count: 10,
-          decay_tau: 180,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          last_observed: new Date().toISOString(),
-        },
-        {
-          rule_id: "style_rule",
-          text: "Style rule",
-          severity: "style",
-          category: "code_quality",
-          scope: {},
-          effective_confidence: 0.6,
-          confidence: 0.6,
-          decay_factor: 1.0,
-          alpha: 5,
-          beta: 3,
-          observation_count: 8,
-          decay_tau: 180,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          last_observed: new Date().toISOString(),
-        },
-      ];
+      ],
+      metadata: {
+        rulesConsidered: 1,
+        rulesFiltered: 0,
+        confidenceThreshold: 0.3,
+        offlineMode: true,
+        confidenceCeiling: 0.7,
+      },
+    };
+    writeFileSync(cachePath, JSON.stringify(seeded, null, 2), "utf-8");
 
-      const result = deriveConstraints(persona, testRules, [], {});
+    const program = createProgram();
+    await program.parseAsync([
+      "node",
+      "lexsona",
+      "constraints",
+      "explain",
+      "no_credential_logging",
+    ]);
 
-      const severityMap = {
-        must: "critical",
-        should: "high",
-        style: "medium",
-      };
+    expect(errorSpy).not.toHaveBeenCalled();
 
-      for (const constraint of result.constraints) {
-        const expectedSeverity = severityMap[constraint.severity as keyof typeof severityMap];
-        expect(expectedSeverity).toBeDefined();
-      }
-    });
+    const output = logSpy.mock.calls.map((c) => String(c[0])).join("\n");
+    expect(output).toContain("Constraint Explanation");
+    expect(output).toContain("ID: no_credential_logging");
+    expect(output).toContain("Source: learned from behavioral corrections");
   });
 });
