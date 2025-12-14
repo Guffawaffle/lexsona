@@ -27,7 +27,8 @@ export function registerConstraintsCommands(program: Command): void {
   constraints
     .command("derive")
     .description("Derive constraints from active persona + rules")
-    .option("--domain <domain>", "Domain context")
+    .option("--domain <domain>", "Domain context (deprecated, use --project)")
+    .option("--project <name>", "Project context")
     .option("--module <id>", "Module ID context")
     .option("--task <type>", "Task type context")
     .option("--persona <name>", "Persona ID to use")
@@ -45,9 +46,10 @@ export function registerConstraintsCommands(program: Command): void {
         return;
       }
 
-      // Build context
+      // Build context - prefer --project over --domain
+      const projectOrDomain = options.project ?? options.domain;
       const context: DeriveContext = {
-        domain: options.domain,
+        domain: projectOrDomain,
         module_id: options.module,
         taskType: options.task,
       };
@@ -56,12 +58,12 @@ export function registerConstraintsCommands(program: Command): void {
       const config: LexSonaConfig = {
         lexDb: process.env.LEX_DB_PATH,
         persona: personaId,
-        domain: options.domain,
+        domain: projectOrDomain,
       };
 
       const instance = await LexSona.connect(config);
       const lexRules = await instance.getRules({
-        domain: options.domain,
+        domain: projectOrDomain,
       });
       instance.close();
 
@@ -98,34 +100,77 @@ export function registerConstraintsCommands(program: Command): void {
       lastDerivation = result;
 
       if (options.json) {
-        console.log(JSON.stringify(result, null, 2));
+        // Output JSON in the schema format specified
+        const jsonOutput = {
+          version: 1,
+          persona: result.personaId,
+          domain: context.domain,
+          derivedAt: result.derivedAt,
+          inputHash: result.inputHash,
+          constraints: result.constraints.map((c) => ({
+            id: c.rule_id,
+            description: c.text,
+            severity: c.severity === "must" ? "critical" : c.severity === "should" ? "high" : "medium",
+            source: "learned",
+            confidence: c.confidence,
+          })),
+          principles: result.principles.map((p) => ({
+            id: p.id,
+            description: p.description,
+          })),
+        };
+        console.log(JSON.stringify(jsonOutput, null, 2));
         return;
       }
 
-      console.log(`Constraints derived for persona: ${result.personaId}\n`);
-      console.log(`Context:`);
-      if (context.domain) console.log(`  domain: ${context.domain}`);
-      if (context.module_id) console.log(`  module: ${context.module_id}`);
-      if (context.taskType) console.log(`  task: ${context.taskType}`);
-      console.log("");
+      // Human-readable output matching specification
+      console.log("Constraint Set (v1)");
+      console.log("═══════════════════\n");
 
-      console.log(`Metadata:`);
-      console.log(`  rules considered: ${result.metadata.rulesConsidered}`);
-      console.log(`  rules filtered: ${result.metadata.rulesFiltered}`);
-      console.log(`  confidence threshold: ${result.metadata.confidenceThreshold}`);
-      console.log("");
+      console.log(`Persona: ${result.personaId}`);
+      if (context.domain) console.log(`Domain: ${context.domain}`);
+      console.log(`Derived: ${result.derivedAt}\n`);
 
-      if (result.constraints.length === 0) {
-        console.log("No constraints derived.");
-        console.log("  (Use 'lexsona rules learn' to add rules)");
-        return;
+      // Group constraints by severity
+      const criticalConstraints = result.constraints.filter((c) => c.severity === "must");
+      const highConstraints = result.constraints.filter((c) => c.severity === "should");
+      const mediumConstraints = result.constraints.filter((c) => c.severity === "style");
+
+      console.log(`Constraints (${result.constraints.length}):`);
+      console.log("────────────────");
+
+      if (criticalConstraints.length === 0 && highConstraints.length === 0 && mediumConstraints.length === 0) {
+        console.log("  (none - Use 'lexsona rules learn' to add rules)\n");
+      } else {
+        // Display critical constraints
+        for (const c of criticalConstraints) {
+          console.log(`  [critical] ${c.rule_id}`);
+          console.log(`    ${c.text}`);
+          console.log(`    Source: learned (confidence: ${c.confidence.toFixed(2)})\n`);
+        }
+
+        // Display high constraints
+        for (const c of highConstraints) {
+          console.log(`  [high] ${c.rule_id}`);
+          console.log(`    ${c.text}`);
+          console.log(`    Source: learned (confidence: ${c.confidence.toFixed(2)})\n`);
+        }
+
+        // Display medium constraints
+        for (const c of mediumConstraints) {
+          console.log(`  [medium] ${c.rule_id}`);
+          console.log(`    ${c.text}`);
+          console.log(`    Source: learned (confidence: ${c.confidence.toFixed(2)})\n`);
+        }
       }
 
-      console.log(`Constraints (${result.constraints.length}):\n`);
-      for (const c of result.constraints) {
-        const severityIcon = c.severity === "must" ? "🔴" : c.severity === "should" ? "🟡" : "⚪";
-        console.log(`  ${severityIcon} [${c.rule_id}] ${c.text}`);
-        console.log(`     confidence: ${c.confidence.toFixed(2)}, category: ${c.category}`);
+      // Display principles
+      if (result.principles.length > 0) {
+        console.log(`Principles (${result.principles.length}):`);
+        console.log("───────────────");
+        for (const p of result.principles) {
+          console.log(`  ${p.id}: ${p.description}`);
+        }
         console.log("");
       }
     });
@@ -143,14 +188,79 @@ export function registerConstraintsCommands(program: Command): void {
       }
 
       if (options.json) {
-        console.log(JSON.stringify(lastDerivation, null, 2));
+        // Output JSON in the schema format specified
+        const jsonOutput = {
+          version: 1,
+          persona: lastDerivation.personaId,
+          domain: lastDerivation.context.domain,
+          derivedAt: lastDerivation.derivedAt,
+          inputHash: lastDerivation.inputHash,
+          constraints: lastDerivation.constraints.map((c) => ({
+            id: c.rule_id,
+            description: c.text,
+            severity: c.severity === "must" ? "critical" : c.severity === "should" ? "high" : "medium",
+            source: "learned",
+            confidence: c.confidence,
+          })),
+          principles: lastDerivation.principles.map((p) => ({
+            id: p.id,
+            description: p.description,
+          })),
+        };
+        console.log(JSON.stringify(jsonOutput, null, 2));
         return;
       }
 
-      console.log(`Last derivation for persona: ${lastDerivation.personaId}`);
-      console.log(`  derived at: ${lastDerivation.derivedAt}`);
-      console.log(`  constraints: ${lastDerivation.constraints.length}`);
-      console.log(`  principles: ${lastDerivation.principles.length}`);
+      // Human-readable output matching specification
+      console.log("Constraint Set (v1)");
+      console.log("═══════════════════\n");
+
+      console.log(`Persona: ${lastDerivation.personaId}`);
+      if (lastDerivation.context.domain) console.log(`Domain: ${lastDerivation.context.domain}`);
+      console.log(`Derived: ${lastDerivation.derivedAt}\n`);
+
+      // Group constraints by severity
+      const criticalConstraints = lastDerivation.constraints.filter((c) => c.severity === "must");
+      const highConstraints = lastDerivation.constraints.filter((c) => c.severity === "should");
+      const mediumConstraints = lastDerivation.constraints.filter((c) => c.severity === "style");
+
+      console.log(`Constraints (${lastDerivation.constraints.length}):`);
+      console.log("────────────────");
+
+      if (criticalConstraints.length === 0 && highConstraints.length === 0 && mediumConstraints.length === 0) {
+        console.log("  (none)\n");
+      } else {
+        // Display critical constraints
+        for (const c of criticalConstraints) {
+          console.log(`  [critical] ${c.rule_id}`);
+          console.log(`    ${c.text}`);
+          console.log(`    Source: learned (confidence: ${c.confidence.toFixed(2)})\n`);
+        }
+
+        // Display high constraints
+        for (const c of highConstraints) {
+          console.log(`  [high] ${c.rule_id}`);
+          console.log(`    ${c.text}`);
+          console.log(`    Source: learned (confidence: ${c.confidence.toFixed(2)})\n`);
+        }
+
+        // Display medium constraints
+        for (const c of mediumConstraints) {
+          console.log(`  [medium] ${c.rule_id}`);
+          console.log(`    ${c.text}`);
+          console.log(`    Source: learned (confidence: ${c.confidence.toFixed(2)})\n`);
+        }
+      }
+
+      // Display principles
+      if (lastDerivation.principles.length > 0) {
+        console.log(`Principles (${lastDerivation.principles.length}):`);
+        console.log("───────────────");
+        for (const p of lastDerivation.principles) {
+          console.log(`  ${p.id}: ${p.description}`);
+        }
+        console.log("");
+      }
     });
 
   // lexsona constraints explain <id>
@@ -174,18 +284,32 @@ export function registerConstraintsCommands(program: Command): void {
         return;
       }
 
-      console.log(`Constraint: ${constraint.rule_id}\n`);
+      console.log(`\nConstraint Explanation`);
+      console.log("═════════════════════\n");
+
+      console.log(`ID: ${constraint.rule_id}`);
       console.log(`Text: ${constraint.text}`);
       console.log(`Severity: ${constraint.severity}`);
-      console.log(`Confidence: ${constraint.confidence.toFixed(2)}`);
       console.log(`Category: ${constraint.category}`);
+      console.log(`Confidence: ${constraint.confidence.toFixed(2)}\n`);
+
+      console.log(`Why is this constraint active?\n`);
+      console.log(`  ✓ Persona "${lastDerivation.personaId}" includes category "${constraint.category}"`);
+      console.log(
+        `  ✓ Confidence ${constraint.confidence.toFixed(2)} >= threshold ${lastDerivation.metadata.confidenceThreshold}`
+      );
+      
+      if (lastDerivation.context.domain) {
+        console.log(`  ✓ Matches context domain: ${lastDerivation.context.domain}`);
+      }
+      if (lastDerivation.context.module_id) {
+        console.log(`  ✓ Matches context module: ${lastDerivation.context.module_id}`);
+      }
+      if (lastDerivation.context.taskType) {
+        console.log(`  ✓ Matches context task: ${lastDerivation.context.taskType}`);
+      }
+
+      console.log(`\n  Source: learned from behavioral corrections`);
       console.log("");
-      console.log(`Active because:`);
-      console.log(
-        `  - Persona "${lastDerivation.personaId}" includes category "${constraint.category}"`
-      );
-      console.log(
-        `  - Confidence ${constraint.confidence.toFixed(2)} >= threshold ${lastDerivation.metadata.confidenceThreshold}`
-      );
     });
 }

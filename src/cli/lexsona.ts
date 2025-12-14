@@ -23,7 +23,6 @@ program
   .name("lexsona")
   .description("Behavioral memory and persona engine for AI agents")
   .version(VERSION)
-  .option("--json", "Output results in JSON format")
   .option("--verbose", "Enable verbose output");
 
 // Register noun commands
