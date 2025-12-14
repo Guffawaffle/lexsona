@@ -93,8 +93,8 @@ export function loadPersonaFromFile(filePath: string): Persona {
       const parsed = parseYaml(content) as Record<string, unknown>;
       const result = PersonaManifestSchema.safeParse(parsed);
       if (!result.success) {
-        const errors = result.error.errors
-          .map((e) => `${e.path.join(".")}: ${e.message}`)
+        const errors = result.error.issues
+          .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
           .join(", ");
         throw new Error(`Invalid persona manifest in ${filePath}: ${errors}`);
       }
@@ -113,7 +113,9 @@ export function loadPersonaFromFile(filePath: string): Persona {
     // Validate manifest against schema
     const result = PersonaManifestSchema.safeParse(frontmatter);
     if (!result.success) {
-      const errors = result.error.errors.map((e) => `${e.path.join(".")}: ${e.message}`).join(", ");
+      const errors = result.error.issues
+        .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+        .join(", ");
       throw new Error(`Invalid persona manifest in ${filePath}: ${errors}`);
     }
 

@@ -55,7 +55,7 @@ export function readConfig(configPath: string): PersonaConfig | null {
 
     if (!result.success) {
       throw new Error(
-        `Invalid configuration at ${configPath}: ${result.error.errors.map((e) => e.message).join(", ")}`
+        `Invalid configuration at ${configPath}: ${result.error.issues.map((issue) => issue.message).join(", ")}`
       );
     }
 
