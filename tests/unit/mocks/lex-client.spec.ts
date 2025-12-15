@@ -64,7 +64,7 @@ describe("MockLexClient", () => {
       });
       const rule2 = createTestRule({
         rule_id: "runner-rule",
-        scope: { project: "lex-pr-runner" },
+        scope: { project: "lexrunner" },
       });
       client = createMockLexClient({ rules: [rule1, rule2] });
 
@@ -95,14 +95,14 @@ describe("MockLexClient", () => {
       await client.recordCorrection({
         correction: "Never use sed",
         polarity: -1,
-        context: { project: "lex-pr-runner" },
+        context: { project: "lexrunner" },
       });
 
       const corrections = client.getRecordedCorrections();
       expect(corrections[0]).toMatchObject({
         correction: "Never use sed",
         polarity: -1,
-        context: { project: "lex-pr-runner" },
+        context: { project: "lexrunner" },
       });
     });
 
