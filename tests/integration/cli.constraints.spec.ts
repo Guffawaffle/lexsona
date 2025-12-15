@@ -56,7 +56,7 @@ describe("constraints CLI", () => {
       derivedAt: "2025-12-05T23:30:00Z",
       inputHash: "abc123",
       context: {
-        domain: "lex-pr-runner",
+        domain: "lexrunner",
         module_id: "cli/commands",
         taskType: "implementation",
       },
@@ -108,7 +108,7 @@ describe("constraints CLI", () => {
       "--persona",
       "quality-first_engineering",
       "--project",
-      "lex-pr-runner",
+      "lexrunner",
       "--module",
       "cli/commands",
       "--task",
@@ -127,7 +127,7 @@ describe("constraints CLI", () => {
 
     expect(parsed.version).toBe(1);
     expect(parsed.persona).toBe("quality-first_engineering");
-    expect(parsed.domain).toBe("lex-pr-runner");
+    expect(parsed.domain).toBe("lexrunner");
     expect(parsed.derivedAt).toBe("2025-12-05T23:30:00Z");
     expect(parsed.inputHash).toBe("abc123");
     expect(parsed.constraints).toHaveLength(2);
@@ -138,7 +138,7 @@ describe("constraints CLI", () => {
     expect(existsSync(cachePath)).toBe(true);
     const cached = JSON.parse(readFileSync(cachePath, "utf-8")) as ConstraintSet;
     expect(cached.personaId).toBe("quality-first_engineering");
-    expect(cached.context.domain).toBe("lex-pr-runner");
+    expect(cached.context.domain).toBe("lexrunner");
   });
 
   it("show --json reads cached derivation and does not reconnect", async () => {
@@ -147,7 +147,7 @@ describe("constraints CLI", () => {
       personaId: "quality-first_engineering",
       derivedAt: "2025-12-05T23:30:00Z",
       inputHash: "abc123",
-      context: { domain: "lex-pr-runner" },
+      context: { domain: "lexrunner" },
       principles: [{ id: "transparency", description: "Be clear" }],
       constraints: [
         {
@@ -182,7 +182,7 @@ describe("constraints CLI", () => {
 
     expect(parsed.version).toBe(1);
     expect(parsed.persona).toBe("quality-first_engineering");
-    expect(parsed.domain).toBe("lex-pr-runner");
+    expect(parsed.domain).toBe("lexrunner");
     expect(parsed.constraints).toHaveLength(1);
     expect(parsed.constraints[0].severity).toBe("critical");
   });
@@ -192,7 +192,7 @@ describe("constraints CLI", () => {
       personaId: "quality-first_engineering",
       derivedAt: "2025-12-05T23:30:00Z",
       inputHash: "abc123",
-      context: { domain: "lex-pr-runner", taskType: "review" },
+      context: { domain: "lexrunner", taskType: "review" },
       principles: [],
       constraints: [
         {

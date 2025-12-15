@@ -35,7 +35,7 @@ export class PersonaRequiresMemoryError extends Error {
  * Context for constraint derivation
  */
 export interface DeriveContext {
-  /** Domain filter (e.g., 'lex-pr-runner') */
+  /** Domain filter (e.g., 'lexrunner') */
   domain?: string;
   /** Module filter (e.g., 'mcp/server') */
   module_id?: string;

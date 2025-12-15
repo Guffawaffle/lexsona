@@ -77,7 +77,7 @@ await sona.activate("quality-first_engineering");
 
 // Derive constraints for current context
 const constraints = await sona.deriveConstraints({
-  project: "lex-pr-runner",
+  project: "lexrunner",
   task_type: "implementation",
 });
 

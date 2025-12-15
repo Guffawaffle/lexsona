@@ -101,11 +101,11 @@ describe("Test Helpers", () => {
 
     it("applies context overrides", () => {
       const context = createTestContext({
-        domain: "lex-pr-runner",
+        domain: "lexrunner",
         taskType: "implementation",
       });
 
-      expect(context.domain).toBe("lex-pr-runner");
+      expect(context.domain).toBe("lexrunner");
       expect(context.taskType).toBe("implementation");
     });
   });
