@@ -147,7 +147,7 @@ The output is a deterministic constraint overlay that an orchestrator can apply.
 
 ```typescript
 interface RuleContext {
-  domain?: string; // e.g., "lex", "lexsona", "lex-pr-runner"
+  domain?: string; // e.g., "lex", "lexsona", "lexrunner"
   moduleId?: string; // e.g., "cli/*", "memory/store/*"
   taskType?: string; // e.g., "planning", "implementation", "review"
   frameId?: string; // optional provenance link

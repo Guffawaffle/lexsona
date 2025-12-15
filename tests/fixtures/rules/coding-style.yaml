@@ -8,7 +8,7 @@ rules:
     text: Use editing tools (replace_string_in_file), never sed
     severity: must
     scope:
-      project: lex-pr-runner
+      project: lexrunner
 
   - id: run-tests-before-commit
     category: testing
