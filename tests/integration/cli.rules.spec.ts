@@ -37,6 +37,8 @@ describe("rules CLI", () => {
         isConnected: () => true,
         learn: vi.fn(async (correction) => {
           // Simulate recording the correction by adding to our test array
+          // Note: These alpha/beta values are simplified for testing.
+          // Real Bayesian updates in Lex use more sophisticated prior calculations.
           const rule: BehaviorRuleWithConfidence = {
             rule_id: `rule-${learnedRules.length + 1}`,
             text: correction.correction,
@@ -379,9 +381,13 @@ describe("rules CLI", () => {
 
   describe("error handling", () => {
     it("handles database connection failure gracefully in JSON mode", async () => {
-      // Mock disconnected instance
+      // Mock disconnected instance with minimal required methods
       connectSpy.mockResolvedValue({
         isConnected: () => false,
+        // Add stubs for other methods to prevent runtime errors
+        learn: vi.fn().mockRejectedValue(new Error("Not connected")),
+        getRules: vi.fn().mockResolvedValue([]),
+        close: vi.fn(),
       } as unknown as LexSona);
 
       const program = createProgram();

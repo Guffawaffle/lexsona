@@ -107,6 +107,21 @@ export function registerRulesCommands(program: Command): void {
       }
 
       const polarity = options.counter ? -1 : 1;
+
+      // Warn if both reinforce and counter are specified
+      if (options.counter && options.reinforce !== true) {
+        const warning = {
+          warning: "Both --reinforce and --counter specified",
+          message: "--counter takes precedence over --reinforce",
+        };
+        if (options.json) {
+          // Include warning in JSON but continue
+          console.error(JSON.stringify(warning, null, 2));
+        } else {
+          console.error(`Warning: ${warning.message}`);
+        }
+      }
+
       const scope: RuleScope = {};
       if (options.domain) scope.project = options.domain;
       if (options.module) scope.module_id = options.module;
