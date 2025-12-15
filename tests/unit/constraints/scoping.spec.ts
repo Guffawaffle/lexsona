@@ -216,7 +216,8 @@ describe("Constraint Scoping", () => {
       const scope: RuleScope = { module_id: "" };
       
       // Empty string is treated as a glob pattern by micromatch
-      // An empty pattern matches everything, which is the expected behavior
+      // In micromatch, an empty pattern matches everything (this is documented micromatch behavior)
+      // This is the expected and correct behavior for the scoping system
       expect(scopeMatches(scope, { module_id: "" })).toBe(true);
       expect(scopeMatches(scope, { module_id: "cli" })).toBe(true);
     });
@@ -239,9 +240,11 @@ describe("Constraint Scoping", () => {
       const exactSpec = calculateScopeSpecificity(exactScope, context);
       const globSpec = calculateScopeSpecificity(globScope, context);
       
-      // Exact match should score ~10, glob should score ~8
-      expect(exactSpec).toBe(0); // "cli" doesn't match "cli/commands" exactly
-      expect(globSpec).toBe(8);
+      // "cli" doesn't match "cli/commands" exactly (different paths), so score is 0
+      // "cli/*" matches "cli/commands" via glob, so score is 8
+      // This test validates that glob matches score 8 when they do match
+      expect(exactSpec).toBe(0); // No match, different paths
+      expect(globSpec).toBe(8); // Glob match scores 8
     });
 
     it("project/domain has weight of 8", () => {

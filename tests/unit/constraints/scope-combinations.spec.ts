@@ -193,6 +193,9 @@ describe("Scope Combinations", () => {
 
   describe("taskType only", () => {
     it("matches context with taskType using partial match", () => {
+      // Note: RuleScope uses 'task_type' while DeriveContext uses 'taskType'
+      // This is intentional - RuleScope mirrors Lex API (snake_case), 
+      // DeriveContext is LexSona's API (camelCase)
       const scope: RuleScope = { task_type: "review" };
       const context: DeriveContext = { taskType: "code-review" };
       
