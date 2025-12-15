@@ -74,9 +74,37 @@ export function registerRulesCommands(program: Command): void {
     .option("--category <cat>", "Rule category", "general")
     .option("--reinforce", "Reinforce (positive polarity)", true)
     .option("--counter", "Counterexample (negative polarity)")
+    .option("--json", "Output result as JSON")
     .action(async (correction: string, options) => {
+      // Validate correction is not empty
+      if (!correction || correction.trim().length === 0) {
+        const error = {
+          error: "Empty correction",
+          message: "Correction text cannot be empty",
+          usage: "lexsona rules learn <correction> [options]",
+        };
+        if (options.json) {
+          console.log(JSON.stringify(error, null, 2));
+        } else {
+          console.error(`Error: ${error.message}`);
+          console.error(`Usage: ${error.usage}`);
+        }
+        return;
+      }
+
       const instance = await initLexSona();
-      if (!instance) return;
+      if (!instance) {
+        const error = {
+          error: "Not connected",
+          message: "Not connected to Lex database",
+          hint: "Set LEX_DB_PATH environment variable or run 'lex init' first",
+        };
+        if (options.json) {
+          console.log(JSON.stringify(error, null, 2));
+        }
+        // Error already logged by initLexSona in non-JSON mode
+        return;
+      }
 
       const polarity = options.counter ? -1 : 1;
       const scope: RuleScope = {};
@@ -86,22 +114,63 @@ export function registerRulesCommands(program: Command): void {
 
       const severity = options.severity as "must" | "should" | "style";
       if (!["must", "should", "style"].includes(severity)) {
-        console.error(`Invalid severity: ${severity}. Use: must, should, style`);
+        const error = {
+          error: "Invalid severity",
+          message: `Invalid severity: ${severity}`,
+          validValues: ["must", "should", "style"],
+          hint: "Use --severity with one of: must, should, style",
+        };
+        if (options.json) {
+          console.log(JSON.stringify(error, null, 2));
+        } else {
+          console.error(`Error: ${error.message}`);
+          console.error(`Valid values: ${error.validValues.join(", ")}`);
+        }
         return;
       }
 
-      await instance.learn({
-        correction,
-        severity,
-        category: options.category,
-        polarity: polarity as 1 | -1,
-        context: scope,
-      });
+      try {
+        await instance.learn({
+          correction,
+          severity,
+          category: options.category,
+          polarity: polarity as 1 | -1,
+          context: scope,
+        });
 
-      console.log(`✓ Learned: "${correction}"`);
-      console.log(`  severity: ${severity}, polarity: ${polarity > 0 ? "reinforce" : "counter"}`);
-      if (scope.project) console.log(`  project: ${scope.project}`);
-      if (scope.module_id) console.log(`  module: ${scope.module_id}`);
+        if (options.json) {
+          const result = {
+            success: true,
+            correction,
+            severity,
+            category: options.category,
+            polarity: polarity > 0 ? "reinforce" : "counter",
+            context: scope,
+          };
+          console.log(JSON.stringify(result, null, 2));
+        } else {
+          console.log(`✓ Learned: "${correction}"`);
+          console.log(
+            `  severity: ${severity}, polarity: ${polarity > 0 ? "reinforce" : "counter"}`
+          );
+          if (scope.project) console.log(`  project: ${scope.project}`);
+          if (scope.module_id) console.log(`  module: ${scope.module_id}`);
+          if (scope.task_type) console.log(`  task: ${scope.task_type}`);
+        }
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        const errorObj = {
+          error: "Failed to record correction",
+          message: errorMsg,
+          hint: "Check database connection and permissions",
+        };
+        if (options.json) {
+          console.log(JSON.stringify(errorObj, null, 2));
+        } else {
+          console.error(`Error: ${errorObj.message}`);
+          console.error(`Hint: ${errorObj.hint}`);
+        }
+      }
     });
 
   // lexsona rules apply
