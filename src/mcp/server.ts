@@ -86,32 +86,38 @@ async function main(): Promise<void> {
 
       let result: object;
       switch (name) {
-        case "lexsona_activate": {
+        // Canonical names (mcp_lexsona_{category}_{action})
+        case "mcp_lexsona_persona_activate":
+        case "lexsona_activate": { // Deprecated alias
           const input = ActivateInputSchema.parse(args);
           result = await handleActivate(input, state);
           activePersonaId = state.activePersonaId;
           break;
         }
 
-        case "lexsona_constraints": {
+        case "mcp_lexsona_constraint_derive":
+        case "lexsona_constraints": { // Deprecated alias
           const input = ConstraintsInputSchema.parse(args);
           result = await handleConstraints(input, state, ensureConnected);
           break;
         }
 
-        case "lexsona_learn": {
+        case "mcp_lexsona_rule_learn":
+        case "lexsona_learn": { // Deprecated alias
           const input = LearnInputSchema.parse(args);
           result = await handleLearn(input, ensureConnected);
           break;
         }
 
-        case "lexsona_rules": {
+        case "mcp_lexsona_rule_list":
+        case "lexsona_rules": { // Deprecated alias
           const input = RulesInputSchema.parse(args);
           result = await handleRules(input, ensureConnected);
           break;
         }
 
-        case "lexsona_personas": {
+        case "mcp_lexsona_persona_list":
+        case "lexsona_personas": { // Deprecated alias
           result = await handlePersonas();
           break;
         }
