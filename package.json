@@ -1,6 +1,6 @@
 {
   "name": "@smartergpt/lexsona",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Behavioral memory and persona engine for AI agents. Requires Lex for storage.",
   "type": "module",
   "main": "dist/index.js",

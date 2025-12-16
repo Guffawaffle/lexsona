@@ -46,7 +46,7 @@ export type RulesInput = z.infer<typeof RulesInputSchema>;
  */
 export const LEXSONA_TOOLS: Tool[] = [
   {
-    name: "lexsona_persona_activate",
+    name: "persona_activate",
     description: "Activate a persona by ID. Returns persona info.",
     inputSchema: {
       type: "object",
@@ -60,7 +60,7 @@ export const LEXSONA_TOOLS: Tool[] = [
     },
   },
   {
-    name: "lexsona_constraint_derive",
+    name: "constraints_derive",
     description: "Derive constraints for the active persona given a context.",
     inputSchema: {
       type: "object",
@@ -73,7 +73,7 @@ export const LEXSONA_TOOLS: Tool[] = [
     },
   },
   {
-    name: "lexsona_rule_learn",
+    name: "rules_learn",
     description: "Record a behavioral correction to adjust rule weights.",
     inputSchema: {
       type: "object",
@@ -97,7 +97,7 @@ export const LEXSONA_TOOLS: Tool[] = [
     },
   },
   {
-    name: "lexsona_rule_list",
+    name: "rules_list",
     description: "List loaded behavioral rules.",
     inputSchema: {
       type: "object",
@@ -108,7 +108,7 @@ export const LEXSONA_TOOLS: Tool[] = [
     },
   },
   {
-    name: "lexsona_persona_list",
+    name: "persona_list",
     description: "List available personas.",
     inputSchema: {
       type: "object",
