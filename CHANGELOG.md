@@ -5,6 +5,36 @@ All notable changes to LexSona will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2025-12-16
+
+### ⚠️ BREAKING CHANGE: MCP Tool Names
+
+**VS Code automatically adds `mcp_{servername}_` prefix to all tool names.** Our previous naming included redundant prefixes, causing tools to appear as `mcp_lexsona_lexsona_persona_activate` instead of `mcp_lexsona_persona_activate`.
+
+This release removes the namespace prefix from tool definitions to match the GitHub MCP pattern.
+
+#### Migration Guide
+
+| v0.3.x Tool Name | v0.3.x Tool Name | VS Code Display |
+|------------------|------------------|-----------------|
+| `lexsona_persona_activate` | `persona_activate` | `mcp_lexsona_persona_activate` |
+| `lexsona_constraint_derive` | `constraints_derive` | `mcp_lexsona_constraints_derive` |
+| `lexsona_rule_learn` | `rules_learn` | `mcp_lexsona_rules_learn` |
+| `lexsona_rule_list` | `rules_list` | `mcp_lexsona_rules_list` |
+| `lexsona_persona_list` | `persona_list` | `mcp_lexsona_persona_list` |
+
+**Backwards Compatibility:** Old `lexsona_*` names are preserved as deprecated aliases and will continue to work. They will be removed in v1.0.0.
+
+### Changed
+
+- MCP tool names no longer include namespace prefix (GitHub MCP pattern)
+
+### Fixed
+
+- Tools now display correctly in VS Code as `mcp_lexsona_{action}` instead of `mcp_lexsona_lexsona_{action}`
+
+---
+
 ## [0.1.0] - 2025-12-06
 
 ### Added

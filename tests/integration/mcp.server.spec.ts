@@ -52,23 +52,23 @@ describe("MCP Server Integration", () => {
       expect(LEXSONA_TOOLS).toHaveLength(5);
 
       const toolNames = LEXSONA_TOOLS.map((t) => t.name);
-      expect(toolNames).toContain("lexsona_persona_activate");
-      expect(toolNames).toContain("lexsona_constraint_derive");
-      expect(toolNames).toContain("lexsona_rule_learn");
-      expect(toolNames).toContain("lexsona_rule_list");
-      expect(toolNames).toContain("lexsona_persona_list");
+      expect(toolNames).toContain("persona_activate");
+      expect(toolNames).toContain("constraints_derive");
+      expect(toolNames).toContain("rules_learn");
+      expect(toolNames).toContain("rules_list");
+      expect(toolNames).toContain("persona_list");
     });
 
-    it("has proper schema for lexsona_persona_activate", () => {
-      const tool = LEXSONA_TOOLS.find((t) => t.name === "lexsona_persona_activate");
+    it("has proper schema for persona_activate", () => {
+      const tool = LEXSONA_TOOLS.find((t) => t.name === "persona_activate");
       expect(tool).toBeDefined();
       expect(tool?.description).toContain("Activate a persona");
       expect(tool?.inputSchema.properties).toHaveProperty("persona");
       expect(tool?.inputSchema.required).toContain("persona");
     });
 
-    it("has proper schema for lexsona_constraint_derive", () => {
-      const tool = LEXSONA_TOOLS.find((t) => t.name === "lexsona_constraint_derive");
+    it("has proper schema for constraints_derive", () => {
+      const tool = LEXSONA_TOOLS.find((t) => t.name === "constraints_derive");
       expect(tool).toBeDefined();
       expect(tool?.description).toContain("Derive constraints");
       expect(tool?.inputSchema.properties).toHaveProperty("domain");
@@ -76,24 +76,24 @@ describe("MCP Server Integration", () => {
       expect(tool?.inputSchema.properties).toHaveProperty("task");
     });
 
-    it("has proper schema for lexsona_rule_learn", () => {
-      const tool = LEXSONA_TOOLS.find((t) => t.name === "lexsona_rule_learn");
+    it("has proper schema for rules_learn", () => {
+      const tool = LEXSONA_TOOLS.find((t) => t.name === "rules_learn");
       expect(tool).toBeDefined();
       expect(tool?.description).toContain("behavioral correction");
       expect(tool?.inputSchema.properties).toHaveProperty("correction");
       expect(tool?.inputSchema.required).toContain("correction");
     });
 
-    it("has proper schema for lexsona_rule_list", () => {
-      const tool = LEXSONA_TOOLS.find((t) => t.name === "lexsona_rule_list");
+    it("has proper schema for rules_list", () => {
+      const tool = LEXSONA_TOOLS.find((t) => t.name === "rules_list");
       expect(tool).toBeDefined();
       expect(tool?.description).toContain("behavioral rules");
       expect(tool?.inputSchema.properties).toHaveProperty("domain");
       expect(tool?.inputSchema.properties).toHaveProperty("minConfidence");
     });
 
-    it("has proper schema for lexsona_persona_list", () => {
-      const tool = LEXSONA_TOOLS.find((t) => t.name === "lexsona_persona_list");
+    it("has proper schema for persona_list", () => {
+      const tool = LEXSONA_TOOLS.find((t) => t.name === "persona_list");
       expect(tool).toBeDefined();
       expect(tool?.description).toContain("available personas");
     });

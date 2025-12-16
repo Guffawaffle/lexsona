@@ -86,8 +86,9 @@ async function main(): Promise<void> {
 
       let result: object;
       switch (name) {
-        // Canonical names (mcp_lexsona_{category}_{action})
-        case "lexsona_persona_activate":
+        // Canonical names (VS Code displays as mcp_lexsona_{category}_{action})
+        case "persona_activate":
+        case "lexsona_persona_activate": // deprecated alias
         case "lexsona_activate": {
           // Deprecated alias
           const input = ActivateInputSchema.parse(args);
@@ -96,7 +97,8 @@ async function main(): Promise<void> {
           break;
         }
 
-        case "lexsona_constraint_derive":
+        case "constraints_derive":
+        case "lexsona_constraint_derive": // deprecated alias
         case "lexsona_constraints": {
           // Deprecated alias
           const input = ConstraintsInputSchema.parse(args);
@@ -104,7 +106,8 @@ async function main(): Promise<void> {
           break;
         }
 
-        case "lexsona_rule_learn":
+        case "rules_learn":
+        case "lexsona_rule_learn": // deprecated alias
         case "lexsona_learn": {
           // Deprecated alias
           const input = LearnInputSchema.parse(args);
@@ -112,7 +115,8 @@ async function main(): Promise<void> {
           break;
         }
 
-        case "lexsona_rule_list":
+        case "rules_list":
+        case "lexsona_rule_list": // deprecated alias
         case "lexsona_rules": {
           // Deprecated alias
           const input = RulesInputSchema.parse(args);
@@ -120,7 +124,8 @@ async function main(): Promise<void> {
           break;
         }
 
-        case "lexsona_persona_list":
+        case "persona_list":
+        case "lexsona_persona_list": // deprecated alias
         case "lexsona_personas": {
           // Deprecated alias
           result = await handlePersonas();
