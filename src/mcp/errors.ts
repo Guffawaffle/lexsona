@@ -22,6 +22,9 @@
  * - LEX_* : Lex connection and database errors
  * - VALIDATION_* : Input validation errors
  * - INTERNAL_* : Unexpected internal errors
+ * 
+ * Note: Enum values are explicitly set to match their keys to ensure stable
+ * serialization and prevent potential breaking changes from TypeScript updates.
  */
 export enum LexSonaErrorCode {
   // =============================================================================

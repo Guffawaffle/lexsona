@@ -190,8 +190,13 @@ export class LexStorageClient {
         case "missing_table":
           throw createLexMissingTableError(result.dbPath);
         case "connection_failed":
-        default:
           throw createLexConnectionError(result.dbPath, result.error ?? "Unknown connection error");
+        default:
+          // Fallback for unexpected error types
+          throw createLexConnectionError(
+            result.dbPath,
+            result.error ?? `Unexpected error type: ${result.errorType}`
+          );
       }
     }
     return new LexStorageClient(result.db, result.dbPath);

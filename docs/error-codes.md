@@ -59,7 +59,7 @@ try {
   const message = error.message || "";
   
   // Extract error code from message
-  const match = message.match(/^\[([A-Z_]+)\]/);
+  const match = message.match(/^\[([A-Z]+(?:_[A-Z]+)*)\]/);
   const errorCode = match ? match[1] : null;
   
   // Branch on error code
