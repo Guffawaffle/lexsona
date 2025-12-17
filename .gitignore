@@ -25,3 +25,7 @@ coverage/
 # Environment
 .env
 .env.local
+
+# Local databases (for testing)
+.smartergpt/
+.smartergpt.local/
