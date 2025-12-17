@@ -32,8 +32,8 @@ async function runCLI(args: string[], env?: Record<string, string>): Promise<str
     });
 
     proc.on("close", (code) => {
-      if (code !== 0 && stderr) {
-        reject(new Error(stderr));
+      if (code !== 0) {
+        reject(new Error(stderr || `Process exited with code ${code}`));
       } else {
         resolve(stdout + stderr);
       }

@@ -32,11 +32,6 @@ async function showDatabaseStatus(): Promise<void> {
     const label = discovery.source === "LEX_DB_PATH" ? "LEX_DB_PATH" : discovery.path;
     console.log(`Checking: ${label}`);
 
-    if (discovery.source === "LEX_DB_PATH" && !process.env.LEX_DB_PATH) {
-      console.log("  Not set\n");
-      continue;
-    }
-
     if (discovery.error) {
       console.log(`  ✗ Error: ${discovery.error}\n`);
       continue;
