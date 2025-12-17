@@ -16,6 +16,11 @@ import Database from "better-sqlite3-multiple-ciphers";
 import { existsSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
+import {
+  createLexDbNotFoundError,
+  createLexMissingTableError,
+  createLexConnectionError,
+} from "../mcp/errors.js";
 
 // Re-export types from Lex that LexSona consumers need
 export type {
@@ -172,7 +177,14 @@ export class LexStorageClient {
   static connect(config: LexConnectionConfig = {}): LexStorageClient {
     const result = connectToLex(config);
     if (!result.success || !result.db) {
-      throw new Error(result.error ?? "Unknown connection error");
+      // Determine the specific error type
+      if (result.error?.includes("not found")) {
+        throw createLexDbNotFoundError(result.dbPath);
+      } else if (result.error?.includes("missing lexsona_behavior_rules table")) {
+        throw createLexMissingTableError(result.dbPath);
+      } else {
+        throw createLexConnectionError(result.dbPath, result.error ?? "Unknown connection error");
+      }
     }
     return new LexStorageClient(result.db, result.dbPath);
   }

@@ -16,6 +16,12 @@ import { homedir } from "os";
 import { fileURLToPath } from "url";
 import { parse as parseYaml } from "yaml";
 import { PersonaManifestSchema, type Persona, type PersonaManifest } from "./types.js";
+import {
+  LexSonaErrorCode,
+  createPersonaNotFoundError,
+  createPersonaManifestError,
+  LexSonaError,
+} from "../mcp/errors.js";
 
 /**
  * Get the directory containing bundled personas
@@ -79,7 +85,15 @@ function parseFrontmatter(content: string): { frontmatter: Record<string, unknow
  */
 export function loadPersonaFromFile(filePath: string): Persona {
   if (!existsSync(filePath)) {
-    throw new Error(`Persona file not found: ${filePath}`);
+    throw new LexSonaError(
+      LexSonaErrorCode.PERSONA_NOT_FOUND,
+      `Persona file not found: ${filePath}`,
+      {
+        retryable: false,
+        suggestions: ["Check that the file path is correct", "Verify file permissions"],
+        context: { filePath },
+      }
+    );
   }
 
   const content = readFileSync(filePath, "utf-8");
@@ -96,15 +110,23 @@ export function loadPersonaFromFile(filePath: string): Persona {
         const errors = result.error.issues
           .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
           .join(", ");
-        throw new Error(`Invalid persona manifest in ${filePath}: ${errors}`);
+        throw createPersonaManifestError(filePath, errors);
       }
       manifest = result.data as PersonaManifest;
       body = undefined;
     } catch (error) {
-      if (error instanceof Error && error.message.includes("Invalid persona manifest")) {
+      if (error instanceof LexSonaError) {
         throw error;
       }
-      throw new Error(`Failed to parse YAML in ${filePath}: ${error}`);
+      throw new LexSonaError(
+        LexSonaErrorCode.PERSONA_PARSE_FAILED,
+        `Failed to parse YAML in ${filePath}: ${error}`,
+        {
+          retryable: false,
+          suggestions: ["Check YAML syntax", "Validate file encoding"],
+          context: { filePath },
+        }
+      );
     }
   } else {
     // Markdown file with YAML frontmatter
@@ -116,7 +138,7 @@ export function loadPersonaFromFile(filePath: string): Persona {
       const errors = result.error.issues
         .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
         .join(", ");
-      throw new Error(`Invalid persona manifest in ${filePath}: ${errors}`);
+      throw createPersonaManifestError(filePath, errors);
     }
 
     manifest = result.data as PersonaManifest;
@@ -177,7 +199,8 @@ export function findPersonaPath(nameOrId: string): string | null {
 export async function loadPersona(nameOrId: string): Promise<Persona> {
   const filePath = findPersonaPath(nameOrId);
   if (!filePath) {
-    throw new Error(`Persona not found: ${nameOrId}`);
+    const searchPaths = getPersonaSearchPaths();
+    throw createPersonaNotFoundError(nameOrId, searchPaths);
   }
   return loadPersonaFromFile(filePath);
 }
