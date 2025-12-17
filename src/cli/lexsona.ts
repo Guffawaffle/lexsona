@@ -15,6 +15,7 @@ import { Command } from "commander";
 import { registerPersonaCommands } from "./commands/persona.js";
 import { registerRulesCommands } from "./commands/rules.js";
 import { registerConstraintsCommands } from "./commands/constraints.js";
+import { registerDbCommands } from "./commands/db.js";
 import { VERSION } from "../index.js";
 
 const program = new Command();
@@ -29,6 +30,7 @@ program
 registerPersonaCommands(program);
 registerRulesCommands(program);
 registerConstraintsCommands(program);
+registerDbCommands(program);
 
 // Parse and run
 program.parseAsync(process.argv).catch((error) => {
