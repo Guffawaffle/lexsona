@@ -34,7 +34,7 @@ import {
   handleRules,
   handlePersonas,
 } from "./handlers.js";
-import { LexSonaError } from "./errors.js";
+import { LexSonaError, isClientError, formatErrorForMcp } from "./errors.js";
 
 // Server state
 let lexSonaInstance: LexSona | null = null;
@@ -154,18 +154,11 @@ async function main(): Promise<void> {
       }
       if (error instanceof LexSonaError) {
         // Map LexSonaError to McpError with metadata preserved
-        // Use InvalidParams for validation errors, InternalError for others
-        const mcpCode =
-          error.code.startsWith("VALIDATION_") || error.code.startsWith("PERSONA_") || error.code.startsWith("RULE_")
-            ? ErrorCode.InvalidParams
-            : ErrorCode.InternalError;
+        // Use InvalidParams for client errors, InternalError for server errors
+        const mcpCode = isClientError(error.code) ? ErrorCode.InvalidParams : ErrorCode.InternalError;
         
-        // Include structured error code in message for agent parsing
-        const enhancedMessage = `[${error.code}] ${error.message}${
-          error.getSuggestions().length > 0
-            ? `\nSuggestions: ${error.getSuggestions().join("; ")}`
-            : ""
-        }`;
+        // Format error message with embedded error code and suggestions
+        const enhancedMessage = formatErrorForMcp(error);
         throw new McpError(mcpCode, enhancedMessage);
       }
       if (error instanceof McpError) {

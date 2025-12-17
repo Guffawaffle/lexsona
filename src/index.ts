@@ -23,6 +23,8 @@ export {
   createLexMissingTableError,
   createRuleValidationError,
   createValidationError,
+  isClientError,
+  formatErrorForMcp,
 } from "./mcp/errors.js";
 
 // Re-export version

@@ -16,6 +16,8 @@ import {
   createLexMissingTableError,
   createRuleValidationError,
   createValidationError,
+  isClientError,
+  formatErrorForMcp,
 } from "../../../src/mcp/errors.js";
 
 describe("LexSonaErrorCode", () => {
@@ -323,6 +325,73 @@ describe("LexSonaErrorCode", () => {
         );
 
         expect(error.getSuggestions()).toEqual([]);
+      });
+    });
+  });
+
+  describe("Utility Functions", () => {
+    describe("isClientError", () => {
+      it("returns true for VALIDATION_ errors", () => {
+        expect(isClientError(LexSonaErrorCode.VALIDATION_REQUIRED_FIELD)).toBe(true);
+        expect(isClientError(LexSonaErrorCode.VALIDATION_INVALID_FORMAT)).toBe(true);
+      });
+
+      it("returns true for PERSONA_ errors", () => {
+        expect(isClientError(LexSonaErrorCode.PERSONA_NOT_FOUND)).toBe(true);
+        expect(isClientError(LexSonaErrorCode.PERSONA_INVALID_MANIFEST)).toBe(true);
+      });
+
+      it("returns true for RULE_ errors", () => {
+        expect(isClientError(LexSonaErrorCode.RULE_VALIDATION_FAILED)).toBe(true);
+        expect(isClientError(LexSonaErrorCode.RULE_SCOPE_INVALID)).toBe(true);
+      });
+
+      it("returns true for CONSTRAINT_ errors", () => {
+        expect(isClientError(LexSonaErrorCode.CONSTRAINT_DERIVATION_FAILED)).toBe(true);
+      });
+
+      it("returns false for LEX_ errors", () => {
+        expect(isClientError(LexSonaErrorCode.LEX_CONNECTION_FAILED)).toBe(false);
+        expect(isClientError(LexSonaErrorCode.LEX_DB_NOT_FOUND)).toBe(false);
+      });
+
+      it("returns false for INTERNAL_ errors", () => {
+        expect(isClientError(LexSonaErrorCode.INTERNAL_ERROR)).toBe(false);
+      });
+    });
+
+    describe("formatErrorForMcp", () => {
+      it("formats error with code in brackets", () => {
+        const error = new LexSonaError(
+          LexSonaErrorCode.PERSONA_NOT_FOUND,
+          "Persona not found: test"
+        );
+
+        const formatted = formatErrorForMcp(error);
+        expect(formatted).toBe("[PERSONA_NOT_FOUND] Persona not found: test");
+      });
+
+      it("includes suggestions when present", () => {
+        const error = new LexSonaError(
+          LexSonaErrorCode.PERSONA_NOT_FOUND,
+          "Persona not found: test",
+          {
+            retryable: false,
+            suggestions: ["Check ID", "Run list command"],
+          }
+        );
+
+        const formatted = formatErrorForMcp(error);
+        expect(formatted).toBe(
+          "[PERSONA_NOT_FOUND] Persona not found: test\nSuggestions: Check ID; Run list command"
+        );
+      });
+
+      it("omits suggestions when not present", () => {
+        const error = new LexSonaError(LexSonaErrorCode.INTERNAL_ERROR, "Internal error");
+
+        const formatted = formatErrorForMcp(error);
+        expect(formatted).toBe("[INTERNAL_ERROR] Internal error");
       });
     });
   });

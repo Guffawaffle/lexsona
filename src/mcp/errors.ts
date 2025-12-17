@@ -282,3 +282,27 @@ export function createValidationError(
     suggestions,
   });
 }
+
+/**
+ * Check if an error code represents a client-side validation error
+ * (as opposed to server-side internal errors)
+ */
+export function isClientError(code: LexSonaErrorCode): boolean {
+  return (
+    code.startsWith("VALIDATION_") ||
+    code.startsWith("PERSONA_") ||
+    code.startsWith("RULE_") ||
+    code.startsWith("CONSTRAINT_")
+  );
+}
+
+/**
+ * Format LexSonaError for MCP error message
+ * Returns enhanced message with error code and suggestions
+ */
+export function formatErrorForMcp(error: LexSonaError): string {
+  const suggestions = error.getSuggestions();
+  return `[${error.code}] ${error.message}${
+    suggestions.length > 0 ? `\nSuggestions: ${suggestions.join("; ")}` : ""
+  }`;
+}
