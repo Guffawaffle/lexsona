@@ -40,3 +40,43 @@ requires_memory: false
 offline_safe:
   confidence_ceiling: 0.7
   no_memory_disclaimer: Operating without Lex memory connection.
+
+scope_constraints:
+  # Broader read scope for product work
+  read_globs:
+    - "**/*.md"
+    - "**/*.yaml"
+    - "**/*.yml"
+    - "**/*.json"
+    - "docs/**"
+    - "src/**"
+    - "tests/**"
+  
+  # Broader write scope (velocity-focused)
+  write_globs:
+    - "docs/**/*.md"
+    - "*.md"
+    - "**/*.yaml"
+    - "**/*.yml"
+  
+  # Always deny (safety - cannot be overridden)
+  deny_globs:
+    - "node_modules/**"
+    - "dist/**"
+    - ".git/**"
+    - "*.lock"
+    - ".env*"
+    - "secrets/**"
+  
+  # Cross-repo default
+  cross_repo_allowed: false
+  
+  # Procedure-specific overrides
+  overrides:
+    planning:
+      write_globs:
+        - "docs/**/*.md"
+        - "*.md"
+    issue-triage:
+      write_globs:
+        - "docs/issues/**/*.md"
