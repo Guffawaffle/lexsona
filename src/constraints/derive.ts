@@ -427,7 +427,7 @@ export interface DerivedScopeConstraints {
  * Merge logic:
  * 1. Start with persona defaults
  * 2. Apply procedure override if provided
- * 3. Always merge deny_globs (union, never removed)
+ * 3. deny_globs are never modified by overrides (safety constraint)
  *
  * @param persona - Active persona
  * @param procedure - Optional procedure for overrides (e.g., 'post-merge-fix')
