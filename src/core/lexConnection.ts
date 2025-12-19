@@ -13,7 +13,7 @@
  */
 
 import Database from "better-sqlite3-multiple-ciphers";
-import { existsSync } from "fs";
+import { existsSync, statSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 import {
@@ -53,6 +53,22 @@ export interface LexConnectionConfig {
 }
 
 /**
+ * Result of database path discovery
+ */
+export interface DbDiscoveryResult {
+  /** Path being checked */
+  path: string;
+  /** Whether the file exists */
+  exists: boolean;
+  /** Source of the path (e.g., "LEX_DB_PATH", "project-local") */
+  source: string;
+  /** File size in bytes if exists */
+  size?: number;
+  /** Error if path check failed */
+  error?: string;
+}
+
+/**
  * Result of connection attempt
  */
 export interface ConnectionResult {
@@ -69,21 +85,91 @@ export interface ConnectionResult {
 }
 
 /**
+ * Get all candidate database paths in discovery order
+ */
+function getCandidatePaths(): Array<{ path: string; source: string }> {
+  const cwd = process.cwd();
+  const home = homedir();
+
+  return [
+    // 1. Explicit override via environment variable
+    ...(process.env.LEX_DB_PATH
+      ? [{ path: process.env.LEX_DB_PATH, source: "LEX_DB_PATH" }]
+      : []),
+    // 2. Project-local database
+    { path: join(cwd, ".smartergpt", "lex", "lex.db"), source: "project-local" },
+    // 3. Local override with alternate name
+    { path: join(cwd, ".smartergpt.local", "lex", "memory.db"), source: "local-override" },
+    // 4. User global database
+    { path: join(home, ".smartergpt", "lex", "lex.db"), source: "user-global" },
+    // 5. User global with alternate name
+    { path: join(home, ".smartergpt", "lex", "memory.db"), source: "user-global-alt" },
+  ];
+}
+
+/**
+ * Discover database path by checking candidates in order
+ *
+ * @returns Discovery results for all candidates
+ */
+export function discoverDbPath(): DbDiscoveryResult[] {
+  const candidates = getCandidatePaths();
+  const results: DbDiscoveryResult[] = [];
+
+  for (const candidate of candidates) {
+    try {
+      const exists = existsSync(candidate.path);
+      const result: DbDiscoveryResult = {
+        path: candidate.path,
+        source: candidate.source,
+        exists,
+      };
+
+      if (exists) {
+        try {
+          const stats = statSync(candidate.path);
+          result.size = stats.size;
+        } catch (error) {
+          result.error = `Could not stat file: ${error instanceof Error ? error.message : String(error)}`;
+        }
+      }
+
+      results.push(result);
+    } catch (error) {
+      results.push({
+        path: candidate.path,
+        source: candidate.source,
+        exists: false,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  return results;
+}
+
+/**
  * Default database path for Lex
+ *
+ * Uses auto-discovery to find the first existing database from candidates.
+ * LEX_DB_PATH environment variable always takes precedence if set.
  */
 export function getDefaultDbPath(): string {
+  // LEX_DB_PATH always takes precedence, even if file doesn't exist
   const envPath = process.env.LEX_DB_PATH;
   if (envPath) {
     return envPath;
   }
 
-  // Check project-local first
-  const localPath = join(process.cwd(), ".smartergpt", "lex", "lex.db");
-  if (existsSync(localPath)) {
-    return localPath;
+  const discoveries = discoverDbPath();
+
+  // Return the first existing path (excluding LEX_DB_PATH which is handled above)
+  const found = discoveries.find((d) => d.exists && d.source !== "LEX_DB_PATH");
+  if (found) {
+    return found.path;
   }
 
-  // Fall back to user home directory
+  // Fall back to user home directory if nothing found
   return join(homedir(), ".smartergpt", "lex", "lex.db");
 }
 
@@ -107,9 +193,25 @@ export function connectToLex(config: LexConnectionConfig = {}): ConnectionResult
         errorType: "not_found",
       };
     }
+
+    // Generate helpful error message with searched paths
+    const discoveries = discoverDbPath();
+    const searchedPaths = discoveries.map((d) => `  - ${d.path} (${d.source})`).join("\n");
+
+    const errorMessage = [
+      `No Lex database found. LexSona needs a Lex database to store rules.`,
+      ``,
+      `To fix:`,
+      `  1. Run 'lex init' in your project to create a database`,
+      `  2. Or set LEX_DB_PATH to an existing database`,
+      ``,
+      `Searched:`,
+      searchedPaths,
+    ].join("\n");
+
     return {
       success: false,
-      error: `Database not found at ${dbPath}. Set LEX_DB_PATH or run 'lex init'.`,
+      error: errorMessage,
       dbPath,
       errorType: "not_found",
     };
