@@ -15,6 +15,7 @@ import type { CorrectionInput, BehaviorRuleWithConfidence } from "../rules/types
 import { LexStorageClient, type LexConnectionConfig } from "./lexConnection.js";
 import { loadPersona } from "../persona/loader.js";
 import type { Persona } from "../persona/types.js";
+import { createLexNotConnectedError } from "../mcp/errors.js";
 
 // Import Lex APIs through the lexsona subpath
 import { getRules, recordCorrection } from "@smartergpt/lex/lexsona";
@@ -181,7 +182,7 @@ export class LexSona {
    */
   async learn(correction: CorrectionInput): Promise<void> {
     if (!this.storageClient?.isConnected()) {
-      throw new Error("LexSona: Not connected to Lex database. Cannot record correction.");
+      throw createLexNotConnectedError();
     }
 
     const db = this.storageClient.getDatabase();

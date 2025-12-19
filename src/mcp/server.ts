@@ -34,6 +34,7 @@ import {
   handleRules,
   handlePersonas,
 } from "./handlers.js";
+import { LexSonaError, isClientError, formatErrorForMcp } from "./errors.js";
 
 // Server state
 let lexSonaInstance: LexSona | null = null;
@@ -150,6 +151,15 @@ async function main(): Promise<void> {
           ErrorCode.InvalidParams,
           `Invalid parameters: ${error.issues.map((issue) => issue.message).join(", ")}`
         );
+      }
+      if (error instanceof LexSonaError) {
+        // Map LexSonaError to McpError with metadata preserved
+        // Use InvalidParams for client errors, InternalError for server errors
+        const mcpCode = isClientError(error.code) ? ErrorCode.InvalidParams : ErrorCode.InternalError;
+        
+        // Format error message with embedded error code and suggestions
+        const enhancedMessage = formatErrorForMcp(error);
+        throw new McpError(mcpCode, enhancedMessage);
       }
       if (error instanceof McpError) {
         throw error;

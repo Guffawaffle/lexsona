@@ -16,6 +16,11 @@ import Database from "better-sqlite3-multiple-ciphers";
 import { existsSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
+import {
+  createLexDbNotFoundError,
+  createLexMissingTableError,
+  createLexConnectionError,
+} from "../mcp/errors.js";
 
 // Re-export types from Lex that LexSona consumers need
 export type {
@@ -59,6 +64,8 @@ export interface ConnectionResult {
   error?: string;
   /** Resolved database path */
   dbPath: string;
+  /** Specific error type for better handling */
+  errorType?: "not_found" | "missing_table" | "connection_failed";
 }
 
 /**
@@ -97,12 +104,14 @@ export function connectToLex(config: LexConnectionConfig = {}): ConnectionResult
         success: false,
         error: `Database not found at ${dbPath}. Run 'lex init' to create it.`,
         dbPath,
+        errorType: "not_found",
       };
     }
     return {
       success: false,
       error: `Database not found at ${dbPath}. Set LEX_DB_PATH or run 'lex init'.`,
       dbPath,
+      errorType: "not_found",
     };
   }
 
@@ -125,6 +134,7 @@ export function connectToLex(config: LexConnectionConfig = {}): ConnectionResult
         success: false,
         error: `Database at ${dbPath} is missing lexsona_behavior_rules table. Run 'lex migrate'.`,
         dbPath,
+        errorType: "missing_table",
       };
     }
 
@@ -138,6 +148,7 @@ export function connectToLex(config: LexConnectionConfig = {}): ConnectionResult
       success: false,
       error: error instanceof Error ? error.message : String(error),
       dbPath,
+      errorType: "connection_failed",
     };
   }
 }
@@ -172,7 +183,21 @@ export class LexStorageClient {
   static connect(config: LexConnectionConfig = {}): LexStorageClient {
     const result = connectToLex(config);
     if (!result.success || !result.db) {
-      throw new Error(result.error ?? "Unknown connection error");
+      // Use errorType for precise error handling instead of string matching
+      switch (result.errorType) {
+        case "not_found":
+          throw createLexDbNotFoundError(result.dbPath);
+        case "missing_table":
+          throw createLexMissingTableError(result.dbPath);
+        case "connection_failed":
+          throw createLexConnectionError(result.dbPath, result.error ?? "Unknown connection error");
+        default:
+          // Fallback for unexpected error types
+          throw createLexConnectionError(
+            result.dbPath,
+            result.error ?? `Unexpected error type: ${result.errorType}`
+          );
+      }
     }
     return new LexStorageClient(result.db, result.dbPath);
   }

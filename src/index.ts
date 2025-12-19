@@ -11,5 +11,21 @@ export { deriveConstraints, type DeriveContext, type ConstraintSet } from "./con
 export { type Persona, type PersonaManifest } from "./persona/types.js";
 export { type BehaviorRule, type CorrectionInput } from "./rules/types.js";
 
+// Error codes and types for agent consumption
+export {
+  LexSonaErrorCode,
+  LexSonaError,
+  createPersonaNotFoundError,
+  createPersonaManifestError,
+  createLexDbNotFoundError,
+  createLexConnectionError,
+  createLexNotConnectedError,
+  createLexMissingTableError,
+  createRuleValidationError,
+  createValidationError,
+  isClientError,
+  formatErrorForMcp,
+} from "./mcp/errors.js";
+
 // Re-export version
 export const VERSION = "0.1.0";
