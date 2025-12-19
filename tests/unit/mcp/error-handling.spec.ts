@@ -63,7 +63,9 @@ describe("MCP Error Handling Integration", () => {
 
   describe("handleLearn errors", () => {
     it("throws LexSonaError when not connected to Lex", async () => {
-      const mockLexSona = await LexSona.connect(); // Disconnected instance
+      // Create a disconnected instance by specifying a non-existent path
+      // This ensures consistent behavior across dev and CI environments
+      const mockLexSona = await LexSona.connect({ lexDb: "/nonexistent/path/db.sqlite" });
       const getLexSona = async () => mockLexSona;
 
       // Should throw LEX_NOT_CONNECTED when trying to learn

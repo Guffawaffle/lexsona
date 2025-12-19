@@ -12,18 +12,21 @@ describe("LexSona", () => {
   let sona: LexSona;
 
   beforeEach(async () => {
-    // Create LexSona in disconnected mode (no database)
-    sona = await LexSona.connect();
+    // Create LexSona in disconnected mode by specifying a non-existent path
+    // This ensures consistent behavior across dev and CI environments
+    sona = await LexSona.connect({ lexDb: "/nonexistent/path/db.sqlite" });
   });
 
   describe("connect", () => {
     it("creates instance without database", async () => {
-      const instance = await LexSona.connect();
+      // Use explicit non-existent path to ensure disconnected state
+      const instance = await LexSona.connect({ lexDb: "/nonexistent/path/db.sqlite" });
       expect(instance).toBeInstanceOf(LexSona);
     });
 
     it("accepts config options", async () => {
       const instance = await LexSona.connect({
+        lexDb: "/nonexistent/path/db.sqlite",
         persona: "quality-first_engineering",
         domain: "test-domain",
       });
@@ -33,6 +36,7 @@ describe("LexSona", () => {
     });
 
     it("returns disconnected status when no database", async () => {
+      // sona is already created with nonexistent path in beforeEach
       expect(sona.isConnected()).toBe(false);
     });
   });

@@ -28,12 +28,21 @@ describe("lexConnection", () => {
       expect(getDefaultDbPath()).toBe("/custom/path/lex.db");
     });
 
-    it("returns user home path as fallback when local doesn't exist and LEX_DB_PATH not set", () => {
+    it("returns first existing path or fallback when LEX_DB_PATH not set", () => {
       delete process.env.LEX_DB_PATH;
       const result = getDefaultDbPath();
+      const discoveries = discoverDbPath();
 
-      // Should fall back to home directory path
-      expect(result).toBe(join(homedir(), ".smartergpt", "lex", "lex.db"));
+      // Find the first existing database in discovery order
+      const firstExisting = discoveries.find((d) => d.exists);
+
+      if (firstExisting) {
+        // If a database exists, that should be returned
+        expect(result).toBe(firstExisting.path);
+      } else {
+        // If no database exists, should fall back to home directory path
+        expect(result).toBe(join(homedir(), ".smartergpt", "lex", "lex.db"));
+      }
     });
   });
 
