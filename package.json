@@ -32,7 +32,10 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "local-ci": "npm run lint && npm run typecheck && npm run test && npm run build"
+    "ci:minimal": "npm run lint && npm run typecheck",
+    "ci": "npm run lint && npm run typecheck && npm test && npm run build",
+    "ci:full": "npm run lint && npm run typecheck && npm test && npm run build",
+    "local-ci": "npm run ci"
   },
   "keywords": [
     "ai",
