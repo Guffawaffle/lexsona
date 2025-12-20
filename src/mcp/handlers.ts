@@ -100,7 +100,8 @@ export async function handleLearn(
     category: input.category,
     polarity: input.polarity === "counter" ? -1 : 1,
     context: {
-      module_id: input.domain ?? input.module,
+      module_id: input.module,
+      project: input.domain,
     },
   });
 
