@@ -78,6 +78,10 @@ export enum LexSonaErrorCode {
   VALIDATION_REQUIRED_FIELD = "VALIDATION_REQUIRED_FIELD",
   /** Parameter has invalid format or type */
   VALIDATION_INVALID_FORMAT = "VALIDATION_INVALID_FORMAT",
+  /** Conflicting scoping parameters provided (e.g., domain vs project with different values) */
+  VALIDATION_SCOPING_CONFLICT = "VALIDATION_SCOPING_CONFLICT",
+  /** Ambiguous scoping parameters that cannot be resolved deterministically */
+  VALIDATION_SCOPING_AMBIGUOUS = "VALIDATION_SCOPING_AMBIGUOUS",
 
   // =============================================================================
   // INTERNAL ERRORS
