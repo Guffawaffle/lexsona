@@ -96,6 +96,11 @@ export interface Persona {
    */
   offline_safe?: OfflineSafeConfig;
 
+  /**
+   * Scope constraints for task snapshots (ADR-007)
+   */
+  scope_constraints?: ScopeConstraints;
+
   /** Optional markdown body with detailed guidance */
   body?: string;
 }
@@ -138,6 +143,10 @@ export interface PersonaManifest {
    * Defines safety constraints for offline operation
    */
   offline_safe?: OfflineSafeConfig;
+  /**
+   * Scope constraints for task snapshots (ADR-007)
+   */
+  scope_constraints?: ScopeConstraints;
 }
 
 /**
@@ -172,6 +181,40 @@ export const OfflineSafeConfigSchema = z.object({
 });
 
 /**
+ * Scope constraints for task snapshots
+ * Per ADR-007: Defines what agent can read/write
+ */
+export const ScopeConstraintsSchema = z.object({
+  /** Default read scope patterns */
+  read_globs: z.array(z.string()).default(["**/*"]),
+
+  /** Default write scope patterns (conservative) */
+  write_globs: z.array(z.string()).default([]),
+
+  /** Always deny patterns (safety - merged, never removed) */
+  deny_globs: z
+    .array(z.string())
+    .default(["node_modules/**", "dist/**", ".git/**", "*.lock"]),
+
+  /** Whether cross-repo operations are allowed */
+  cross_repo_allowed: z.boolean().default(false),
+
+  /** Procedure-specific overrides */
+  overrides: z
+    .record(
+      z.string(),
+      z.object({
+        read_globs: z.array(z.string()).optional(),
+        write_globs: z.array(z.string()).optional(),
+        // Note: deny_globs cannot be overridden (safety)
+        cross_repo_allowed: z.boolean().optional(),
+      })
+    )
+    .optional(),
+});
+export type ScopeConstraints = z.infer<typeof ScopeConstraintsSchema>;
+
+/**
  * Zod schema for persona manifest validation
  *
  * ID format enforces behavioral classification naming:
@@ -204,6 +247,8 @@ export const PersonaManifestSchema = z
     ruleCategories: z.array(z.string()),
     requires_memory: z.boolean(),
     offline_safe: OfflineSafeConfigSchema.optional(),
+    /** Scope constraints for task snapshots (ADR-007) */
+    scope_constraints: ScopeConstraintsSchema.optional(),
   })
   .refine(
     (data) => {

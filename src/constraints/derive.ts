@@ -47,6 +47,8 @@ export interface DeriveContext {
   agent_family?: string;
   /** Additional context tags */
   context_tags?: string[];
+  /** Procedure for scope constraint overrides */
+  procedure?: string;
 }
 
 export type ConstraintSource = "baseline" | "persona" | "learned";
@@ -407,4 +409,59 @@ export function deriveConstraints(
       confidenceCeiling,
     },
   };
+}
+
+/**
+ * Scope constraints result for LexRunner integration
+ */
+export interface DerivedScopeConstraints {
+  read_globs: string[];
+  write_globs: string[];
+  deny_globs: string[];
+  cross_repo_allowed: boolean;
+}
+
+/**
+ * Derive scope constraints from active persona
+ *
+ * Merge logic:
+ * 1. Start with persona defaults
+ * 2. Apply procedure override if provided
+ * 3. deny_globs are never modified by overrides (safety constraint)
+ *
+ * @param persona - Active persona
+ * @param procedure - Optional procedure for overrides (e.g., 'post-merge-fix')
+ * @returns Derived scope constraints
+ */
+export function deriveScopeConstraints(
+  persona: Persona,
+  procedure?: string
+): DerivedScopeConstraints {
+  const base = persona.scope_constraints ?? {
+    read_globs: ["**/*"],
+    write_globs: [],
+    deny_globs: ["node_modules/**", "dist/**", ".git/**", "*.lock"],
+    cross_repo_allowed: false,
+  };
+
+  // Start with defaults
+  const result: DerivedScopeConstraints = {
+    read_globs: [...base.read_globs],
+    write_globs: [...base.write_globs],
+    deny_globs: [...base.deny_globs],
+    cross_repo_allowed: base.cross_repo_allowed,
+  };
+
+  // Apply procedure override if exists
+  if (procedure && base.overrides?.[procedure]) {
+    const override = base.overrides[procedure];
+    if (override.read_globs) result.read_globs = override.read_globs;
+    if (override.write_globs) result.write_globs = override.write_globs;
+    if (override.cross_repo_allowed !== undefined) {
+      result.cross_repo_allowed = override.cross_repo_allowed;
+    }
+    // NOTE: deny_globs cannot be overridden - always union
+  }
+
+  return result;
 }
