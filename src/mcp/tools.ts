@@ -16,8 +16,10 @@ export const ActivateInputSchema = z.object({
 });
 
 export const ConstraintsInputSchema = z.object({
-  domain: z.string().optional().describe("Domain context filter"),
-  module: z.string().optional().describe("Module ID filter"),
+  domain: z.string().optional().describe("(Deprecated: use 'project') Domain context filter"),
+  module: z.string().optional().describe("(Deprecated: use 'module_id') Module ID filter"),
+  project: z.string().optional().describe("Project context filter (canonical)"),
+  module_id: z.string().optional().describe("Module ID filter (canonical)"),
   task: z.string().optional().describe("Task type (e.g., 'implementation', 'review')"),
   persona: z.string().optional().describe("Override active persona"),
 });
@@ -26,13 +28,16 @@ export const LearnInputSchema = z.object({
   correction: z.string().describe("The behavioral correction to learn"),
   severity: z.enum(["must", "should", "style"]).optional().default("should"),
   category: z.string().optional().default("general"),
-  domain: z.string().optional().describe("Domain scope"),
-  module: z.string().optional().describe("Module scope"),
+  domain: z.string().optional().describe("(Deprecated: use 'project') Domain scope"),
+  module: z.string().optional().describe("(Deprecated: use 'module_id') Module scope"),
+  project: z.string().optional().describe("Project scope (canonical)"),
+  module_id: z.string().optional().describe("Module scope (canonical)"),
   polarity: z.enum(["reinforce", "counter"]).optional().default("reinforce"),
 });
 
 export const RulesInputSchema = z.object({
-  domain: z.string().optional().describe("Filter by domain"),
+  domain: z.string().optional().describe("(Deprecated: use 'project') Filter by domain"),
+  project: z.string().optional().describe("Filter by project (canonical)"),
   minConfidence: z.number().optional().describe("Minimum confidence threshold"),
 });
 
@@ -97,8 +102,13 @@ export const LEXSONA_TOOLS: Tool[] = [
     inputSchema: {
       type: "object",
       properties: {
-        domain: { type: "string", description: "Domain context filter" },
-        module: { type: "string", description: "Module ID filter" },
+        domain: {
+          type: "string",
+          description: "(Deprecated: use 'project') Domain context filter",
+        },
+        module: { type: "string", description: "(Deprecated: use 'module_id') Module ID filter" },
+        project: { type: "string", description: "Project context filter (canonical)" },
+        module_id: { type: "string", description: "Module ID filter (canonical)" },
         task: { type: "string", description: "Task type" },
         persona: { type: "string", description: "Override persona" },
       },
@@ -117,8 +127,10 @@ export const LEXSONA_TOOLS: Tool[] = [
           description: "Severity level",
         },
         category: { type: "string", description: "Rule category" },
-        domain: { type: "string", description: "Domain scope" },
-        module: { type: "string", description: "Module scope" },
+        domain: { type: "string", description: "(Deprecated: use 'project') Domain scope" },
+        module: { type: "string", description: "(Deprecated: use 'module_id') Module scope" },
+        project: { type: "string", description: "Project scope (canonical)" },
+        module_id: { type: "string", description: "Module scope (canonical)" },
         polarity: {
           type: "string",
           enum: ["reinforce", "counter"],
@@ -134,7 +146,8 @@ export const LEXSONA_TOOLS: Tool[] = [
     inputSchema: {
       type: "object",
       properties: {
-        domain: { type: "string", description: "Filter by domain" },
+        domain: { type: "string", description: "(Deprecated: use 'project') Filter by domain" },
+        project: { type: "string", description: "Filter by project (canonical)" },
         minConfidence: { type: "number", description: "Min confidence" },
       },
     },

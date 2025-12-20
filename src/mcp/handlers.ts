@@ -19,6 +19,7 @@ import type {
   TrustGapInput,
   AgentTrustProfileInput,
 } from "./tools.js";
+import { normalizeScopingInputs } from "./scoping.js";
 
 /**
  * Handler for lexsona_activate tool
@@ -51,13 +52,16 @@ export async function handleConstraints(
   state: { activePersonaId: string | null },
   getLexSona: () => Promise<LexSona>
 ): Promise<object> {
+  // Validate and normalize scoping inputs
+  const scoping = normalizeScopingInputs(input);
+
   const personaId = input.persona ?? state.activePersonaId ?? "quality-first_engineering";
 
   const persona = await loadPersona(personaId);
   const instance = await getLexSona();
 
   const lexRules = await instance.getRules({
-    domain: input.domain,
+    domain: scoping.project,
   });
 
   // Convert to LexSona format
@@ -81,8 +85,8 @@ export async function handleConstraints(
   }));
 
   const context: DeriveContext = {
-    domain: input.domain,
-    module_id: input.module,
+    domain: scoping.project,
+    module_id: scoping.module_id,
     taskType: input.task,
   };
 
@@ -99,6 +103,9 @@ export async function handleLearn(
   input: LearnInput,
   getLexSona: () => Promise<LexSona>
 ): Promise<object> {
+  // Validate and normalize scoping inputs
+  const scoping = normalizeScopingInputs(input);
+
   const instance = await getLexSona();
 
   await instance.learn({
@@ -107,8 +114,8 @@ export async function handleLearn(
     category: input.category,
     polarity: input.polarity === "counter" ? -1 : 1,
     context: {
-      module_id: input.module,
-      project: input.domain,
+      module_id: scoping.module_id,
+      project: scoping.project,
     },
   });
 
@@ -128,10 +135,13 @@ export async function handleRules(
   input: RulesInput,
   getLexSona: () => Promise<LexSona>
 ): Promise<object> {
+  // Validate and normalize scoping inputs
+  const scoping = normalizeScopingInputs(input);
+
   const instance = await getLexSona();
 
   const rules = await instance.getRules({
-    domain: input.domain,
+    domain: scoping.project,
     minConfidence: input.minConfidence,
   });
 
