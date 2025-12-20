@@ -205,9 +205,15 @@ export function deriveTokenBudget(context: TokenBudgetContext): TokenBudgetConst
  * This function provides the interface for future historical optimization.
  * Current implementation returns baseline recommendations.
  *
+ * Future enhancements will analyze historical data to:
+ * - Calculate average successful snapshot size
+ * - Determine confidence based on sample size
+ * - Adjust for agent search token usage patterns
+ * - Learn optimal budgets from actual task outcomes
+ *
  * @param procedure - Procedure name
  * @param agent_family - Agent family
- * @param _history - Historical budget data (not yet used)
+ * @param _history - Historical budget data (reserved for future implementation)
  * @returns Optimal budget recommendation
  */
 export function getOptimalBudget(
@@ -223,12 +229,8 @@ export function getOptimalBudget(
     agentDefaults.max_snapshot_bytes * procedureModifier.multiplier
   );
 
-  // TODO: When historical data is available, analyze it to:
-  // 1. Calculate average successful snapshot size
-  // 2. Determine confidence based on sample size
-  // 3. Adjust for agent search token usage patterns
-  // For now, return baseline with medium confidence
-
+  // Current implementation: Return baseline recommendations
+  // Future implementation will analyze _history to optimize recommendations
   return {
     recommended_bytes,
     confidence: 0.5, // Medium confidence for baseline recommendations
