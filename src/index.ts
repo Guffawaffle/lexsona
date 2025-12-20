@@ -8,6 +8,17 @@
 
 export { LexSona, type LexSonaConfig } from "./core/lexsona.js";
 export { deriveConstraints, type DeriveContext, type ConstraintSet } from "./constraints/derive.js";
+export {
+  deriveTokenBudget,
+  getOptimalBudget,
+  type TokenBudgetConstraints,
+  type TokenBudgetContext,
+  type BudgetHistory,
+  type OptimalBudgetRecommendation,
+  type DeterminismLevel,
+  type AgentFamily,
+  type Procedure,
+} from "./constraints/token-budget.js";
 export { type Persona, type PersonaManifest } from "./persona/types.js";
 export { type BehaviorRule, type CorrectionInput } from "./rules/types.js";
 
