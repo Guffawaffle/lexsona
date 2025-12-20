@@ -26,6 +26,8 @@ import {
   ConstraintsInputSchema,
   LearnInputSchema,
   RulesInputSchema,
+  TrustGapInputSchema,
+  AgentTrustProfileInputSchema,
 } from "./tools.js";
 import {
   handleActivate,
@@ -33,6 +35,8 @@ import {
   handleLearn,
   handleRules,
   handlePersonas,
+  handleTrustGapRecord,
+  handleAgentTrustProfile,
 } from "./handlers.js";
 import { LexSonaError, isClientError, formatErrorForMcp } from "./errors.js";
 
@@ -130,6 +134,18 @@ async function main(): Promise<void> {
         case "lexsona_personas": {
           // Deprecated alias
           result = await handlePersonas();
+          break;
+        }
+
+        case "trust_gap_record": {
+          const input = TrustGapInputSchema.parse(args);
+          result = await handleTrustGapRecord(input, ensureConnected);
+          break;
+        }
+
+        case "agent_trust_profile": {
+          const input = AgentTrustProfileInputSchema.parse(args);
+          result = await handleAgentTrustProfile(input, ensureConnected);
           break;
         }
 

@@ -11,7 +11,17 @@
 
 import type { DeriveContext, ConstraintSet, Principle } from "../constraints/derive.js";
 import { deriveConstraints as deriveConstraintsPure } from "../constraints/derive.js";
-import type { CorrectionInput, BehaviorRuleWithConfidence } from "../rules/types.js";
+import type {
+  CorrectionInput,
+  BehaviorRuleWithConfidence,
+  TrustGapEvent,
+  AgentTrustProfile,
+} from "../rules/types.js";
+import {
+  recordTrustGap as recordTrustGapInternal,
+  getAgentTrustProfile as getAgentTrustProfileInternal,
+  applyTrustCalibration,
+} from "../rules/trust.js";
 import { LexStorageClient, type LexConnectionConfig } from "./lexConnection.js";
 import { loadPersona } from "../persona/loader.js";
 import type { Persona } from "../persona/types.js";
@@ -153,15 +163,7 @@ export class LexSona {
     let rules: BehaviorRuleWithConfidence[] = [];
     if (hasLexConnection) {
       const db = this.storageClient!.getDatabase();
-      const ruleContext: RuleContext = {
-        module_id: context.module_id,
-        task_type: context.taskType,
-        environment: context.environment,
-        project: context.domain,
-        agent_family: context.agent_family,
-        context_tags: context.context_tags,
-      };
-
+      const ruleContext = this.createRuleContext(context);
       rules = getRules(db, ruleContext);
     }
 
@@ -221,6 +223,21 @@ export class LexSona {
   }
 
   /**
+   * Create a RuleContext from a DeriveContext
+   * Helper to reduce code duplication
+   */
+  private createRuleContext(context: DeriveContext): RuleContext {
+    return {
+      module_id: context.module_id,
+      task_type: context.taskType,
+      environment: context.environment,
+      project: context.domain,
+      agent_family: context.agent_family,
+      context_tags: context.context_tags,
+    };
+  }
+
+  /**
    * Get rules from Lex storage with optional filtering
    */
   async getRules(filter?: {
@@ -244,6 +261,97 @@ export class LexSona {
     }
 
     return rules;
+  }
+
+  /**
+   * Record a trust gap event (ADR-007)
+   *
+   * When agent claims don't match engine verification:
+   * - Applies confidence decay to related rules
+   * - Tracks the gap for agent trust profile
+   * - Generates learned rules from patterns
+   *
+   * @param event - Trust gap event from LexRunner
+   */
+  async recordTrustGap(event: TrustGapEvent): Promise<void> {
+    if (!this.storageClient?.isConnected()) {
+      throw createLexNotConnectedError();
+    }
+
+    const db = this.storageClient.getDatabase();
+    recordTrustGapInternal(db, event);
+  }
+
+  /**
+   * Get trust profile for an agent family (ADR-007)
+   *
+   * Returns aggregated statistics about trust gaps
+   * for a specific agent family.
+   *
+   * @param agentFamily - Agent family identifier
+   * @returns Trust profile with gap rate and common failure types
+   */
+  async getAgentTrustProfile(agentFamily: string): Promise<AgentTrustProfile> {
+    if (!this.storageClient?.isConnected()) {
+      throw createLexNotConnectedError();
+    }
+
+    const db = this.storageClient.getDatabase();
+    return getAgentTrustProfileInternal(db, agentFamily);
+  }
+
+  /**
+   * Derive constraints with trust calibration (ADR-007)
+   *
+   * Like deriveConstraints, but adjusts confidence levels
+   * based on the agent's trust profile.
+   *
+   * @param context - Derivation context including agent_family
+   * @returns Constraint set with trust-adjusted confidences
+   */
+  async deriveWithTrustCalibration(
+    context: DeriveContext & { agent_family: string }
+  ): Promise<ConstraintSet> {
+    // Get base constraint set
+    const baseConstraints = await this.deriveConstraints(context);
+
+    // If not connected, can't get trust profile, so return base
+    if (!this.storageClient?.isConnected()) {
+      return baseConstraints;
+    }
+
+    // Get agent trust profile
+    const trustProfile = await this.getAgentTrustProfile(context.agent_family);
+
+    // Get the rules that were used
+    const db = this.storageClient.getDatabase();
+    const ruleContext = this.createRuleContext(context);
+    const rules = getRules(db, ruleContext);
+
+    // Apply trust calibration
+    const calibratedRules = applyTrustCalibration(rules, trustProfile);
+
+    // Re-derive constraints with calibrated rules
+    let persona: Persona | null = null;
+    if (this.activePersona) {
+      try {
+        persona = await loadPersona(this.activePersona);
+      } catch (error) {
+        console.warn(
+          `LexSona: Could not load persona "${this.activePersona}": ${error instanceof Error ? error.message : error}`
+        );
+      }
+    }
+
+    if (!persona) {
+      return baseConstraints; // Return base if no persona
+    }
+
+    const principles: Principle[] = DEFAULT_BASELINE_PRINCIPLES;
+
+    return deriveConstraintsPure(persona, calibratedRules, principles, context, {
+      hasLexConnection: true,
+    });
   }
 
   /**
