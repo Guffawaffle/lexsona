@@ -72,16 +72,10 @@ Derive behavioral constraints for a context.
 
 **Input:**
 
-- `project` (optional): Project/repo scope (preferred; Scope Contract A+)
-- `module_id` (optional): Module scope (preferred; Scope Contract A+)
-- `task_type` (optional): Task type (preferred; Scope Contract A+)
+- `domain` (optional): Domain/project scope - maps to Lex's `project` field
+- `module` (optional): Module scope - maps to Lex's `module_id` field
+- `task` (optional): Task type (e.g., 'implementation', 'review')
 - `persona` (optional): Override active persona
-
-**Legacy input aliases (accepted for compatibility):**
-
-- `domain` → deprecated alias only when `project` is absent (copied into `project`, warning emitted, original preserved under `extensions.<namespace>.domain`)
-- `module` → `module_id`
-- `task` / `taskType` → `task_type`
 
 **Output:**
 
@@ -122,16 +116,17 @@ Record a behavioral correction.
 - `correction` (required): The correction text
 - `severity` (optional): `"must"`, `"should"`, or `"style"` (default: `"should"`)
 - `category` (optional): Rule category (default: `"general"`)
-- `project` (optional): Project/repo scope (preferred; Scope Contract A+)
-- `module_id` (optional): Module scope (preferred; Scope Contract A+)
-- `task_type` (optional): Task type scope (preferred; Scope Contract A+)
+- `domain` (optional): Domain/project scope - maps to Lex's `project` field
+- `module` (optional): Module scope - maps to Lex's `module_id` field
 - `polarity` (optional): `"reinforce"` or `"counter"` (default: `"reinforce"`)
 
-**Legacy input aliases (accepted for compatibility):**
+**Scoping behavior:**
 
-- `domain` → deprecated alias only when `project` is absent (copied into `project`, warning emitted, original preserved under `extensions.<namespace>.domain`)
-- `module` → `module_id`
-- `task` / `taskType` → `task_type`
+- Both `domain` and `module` are optional and independent
+- When only `domain` is provided, the rule is scoped to the project/domain level
+- When only `module` is provided, the rule is scoped to the module level
+- When both are provided, the rule is scoped to both the domain and module (most specific)
+- Neither field uses the other as a fallback
 
 **Output:**
 
@@ -150,12 +145,8 @@ List learned behavioral rules.
 
 **Input:**
 
-- `project` (optional): Filter by project/repo scope (preferred)
+- `domain` (optional): Filter by domain/project scope
 - `minConfidence` (optional): Minimum confidence threshold
-
-**Legacy input aliases (accepted for compatibility):**
-
-- `domain` → deprecated alias only when `project` is absent (copied into `project`, warning emitted, original preserved under `extensions.<namespace>.domain`)
 
 **Output:**
 

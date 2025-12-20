@@ -36,10 +36,42 @@ export const RulesInputSchema = z.object({
   minConfidence: z.number().optional().describe("Minimum confidence threshold"),
 });
 
+export const TrustGapInputSchema = z.object({
+  task_id: z.string().describe("Unique task identifier"),
+  agent_family: z.string().describe("Agent family (e.g., 'claude-haiku', 'gpt-4o-mini')"),
+  procedure: z.string().describe("Procedure that was executed"),
+  agent_claimed: z.boolean().describe("What agent claimed as verification result"),
+  verified: z.boolean().describe("What engine actually verified"),
+  failures: z
+    .array(
+      z.object({
+        type: z.string().describe("Failure type"),
+        message: z.string().describe("Failure message"),
+        file: z.string().optional().describe("File where failure occurred"),
+        line: z.number().optional().describe("Line number"),
+      })
+    )
+    .describe("List of failures detected"),
+  context: z
+    .object({
+      project: z.string().optional(),
+      module_id: z.string().optional(),
+      task_type: z.string().optional(),
+    })
+    .optional()
+    .describe("Optional context"),
+});
+
+export const AgentTrustProfileInputSchema = z.object({
+  agent_family: z.string().describe("Agent family to get trust profile for"),
+});
+
 export type ActivateInput = z.infer<typeof ActivateInputSchema>;
 export type ConstraintsInput = z.infer<typeof ConstraintsInputSchema>;
 export type LearnInput = z.infer<typeof LearnInputSchema>;
 export type RulesInput = z.infer<typeof RulesInputSchema>;
+export type TrustGapInput = z.infer<typeof TrustGapInputSchema>;
+export type AgentTrustProfileInput = z.infer<typeof AgentTrustProfileInputSchema>;
 
 /**
  * Tool definitions for the MCP server
@@ -113,6 +145,63 @@ export const LEXSONA_TOOLS: Tool[] = [
     inputSchema: {
       type: "object",
       properties: {},
+    },
+  },
+  {
+    name: "trust_gap_record",
+    description:
+      "Record a trust gap event when agent claims don't match engine verification. Applies confidence decay and tracks agent reliability (ADR-007).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        task_id: { type: "string", description: "Unique task identifier" },
+        agent_family: {
+          type: "string",
+          description: "Agent family (e.g., 'claude-haiku', 'gpt-4o-mini')",
+        },
+        procedure: { type: "string", description: "Procedure that was executed" },
+        agent_claimed: { type: "boolean", description: "What agent claimed" },
+        verified: { type: "boolean", description: "What engine verified" },
+        failures: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              type: { type: "string", description: "Failure type" },
+              message: { type: "string", description: "Failure message" },
+              file: { type: "string", description: "File where failure occurred" },
+              line: { type: "number", description: "Line number" },
+            },
+            required: ["type", "message"],
+          },
+          description: "List of failures detected",
+        },
+        context: {
+          type: "object",
+          properties: {
+            project: { type: "string" },
+            module_id: { type: "string" },
+            task_type: { type: "string" },
+          },
+          description: "Optional context",
+        },
+      },
+      required: ["task_id", "agent_family", "procedure", "agent_claimed", "verified", "failures"],
+    },
+  },
+  {
+    name: "agent_trust_profile",
+    description:
+      "Get trust profile for an agent family showing gap rate and common failure types (ADR-007).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        agent_family: {
+          type: "string",
+          description: "Agent family to get trust profile for",
+        },
+      },
+      required: ["agent_family"],
     },
   },
 ];

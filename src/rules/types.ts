@@ -123,3 +123,92 @@ export const CorrectionInputSchema = z.object({
 });
 
 export type RuleScopeInput = z.infer<typeof RuleScopeSchema>;
+
+/**
+ * Trust gap event types (ADR-007)
+ */
+
+/**
+ * Failure information from engine verification
+ */
+export interface TrustGapFailure {
+  /** Type of failure (e.g., 'test_count_mismatch', 'assertion_changed') */
+  type: string;
+  /** Human-readable failure message */
+  message: string;
+  /** File where failure occurred (if applicable) */
+  file?: string;
+  /** Line number where failure occurred (if applicable) */
+  line?: number;
+}
+
+/**
+ * Trust gap event from LexRunner's EngineVerification_v1
+ * Records when agent claims don't match engine verification
+ */
+export interface TrustGapEvent {
+  /** Unique task identifier */
+  task_id: string;
+  /** Agent family that performed the task */
+  agent_family: string;
+  /** Procedure that was executed */
+  procedure: string;
+  /** What the agent claimed as the verification result */
+  agent_claimed: boolean;
+  /** What the engine actually verified */
+  verified: boolean;
+  /** List of failures detected by engine */
+  failures: TrustGapFailure[];
+  /** Optional context for the trust gap */
+  context?: {
+    project?: string;
+    module_id?: string;
+    task_type?: string;
+  };
+}
+
+/**
+ * Agent trust profile - tracks trust metrics for an agent family
+ */
+export interface AgentTrustProfile {
+  /** Agent family identifier (e.g., 'claude-haiku', 'gpt-4o-mini') */
+  agent_family: string;
+  /** Total number of tasks completed */
+  total_tasks: number;
+  /** Number of trust gaps detected */
+  trust_gaps: number;
+  /** Gap rate: trust_gaps / total_tasks */
+  gap_rate: number;
+  /** Most common failure types encountered */
+  common_failure_types: string[];
+  /** ISO 8601 timestamp of first task */
+  first_seen: string;
+  /** ISO 8601 timestamp of last task */
+  last_seen: string;
+}
+
+/**
+ * Zod schemas for trust gap validation
+ */
+export const TrustGapFailureSchema = z.object({
+  type: z.string().min(1),
+  message: z.string().min(1),
+  file: z.string().optional(),
+  line: z.number().optional(),
+});
+
+export const TrustGapEventSchema = z.object({
+  task_id: z.string().min(1),
+  agent_family: z.string().min(1),
+  procedure: z.string().min(1),
+  agent_claimed: z.boolean(),
+  verified: z.boolean(),
+  failures: z.array(TrustGapFailureSchema),
+  context: z
+    .object({
+      project: z.string().optional(),
+      module_id: z.string().optional(),
+      task_type: z.string().optional(),
+    })
+    .optional(),
+});

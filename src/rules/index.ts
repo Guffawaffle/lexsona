@@ -15,3 +15,8 @@ export {
   mergeScopes,
   type ScopeMatch,
 } from "./scoping.js";
+export {
+  recordTrustGap,
+  getAgentTrustProfile,
+  applyTrustCalibration,
+} from "./trust.js";
