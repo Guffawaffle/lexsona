@@ -11,7 +11,14 @@ import type { LexSona } from "../core/lexsona.js";
 import { loadPersona, listPersonas } from "../persona/loader.js";
 import { deriveConstraints, type DeriveContext } from "../constraints/derive.js";
 import type { BehaviorRuleWithConfidence } from "../rules/types.js";
-import type { ActivateInput, ConstraintsInput, LearnInput, RulesInput } from "./tools.js";
+import type {
+  ActivateInput,
+  ConstraintsInput,
+  LearnInput,
+  RulesInput,
+  TrustGapInput,
+  AgentTrustProfileInput,
+} from "./tools.js";
 
 /**
  * Handler for lexsona_activate tool
@@ -164,5 +171,59 @@ export async function handlePersonas(): Promise<object> {
   return {
     count: details.length,
     personas: details,
+  };
+}
+
+/**
+ * Handler for trust_gap_record tool (ADR-007)
+ * Records a trust gap event when agent claims don't match verification
+ */
+export async function handleTrustGapRecord(
+  input: TrustGapInput,
+  getLexSona: () => Promise<LexSona>
+): Promise<object> {
+  const instance = await getLexSona();
+
+  await instance.recordTrustGap({
+    task_id: input.task_id,
+    agent_family: input.agent_family,
+    procedure: input.procedure,
+    agent_claimed: input.agent_claimed,
+    verified: input.verified,
+    failures: input.failures,
+    context: input.context,
+  });
+
+  const trustGap = input.agent_claimed !== input.verified;
+
+  return {
+    success: true,
+    trust_gap: trustGap,
+    message: trustGap
+      ? `Trust gap recorded. Confidence decay applied for ${input.agent_family}.`
+      : "No trust gap detected (claim matches verification).",
+  };
+}
+
+/**
+ * Handler for agent_trust_profile tool (ADR-007)
+ * Gets trust profile for an agent family
+ */
+export async function handleAgentTrustProfile(
+  input: AgentTrustProfileInput,
+  getLexSona: () => Promise<LexSona>
+): Promise<object> {
+  const instance = await getLexSona();
+
+  const profile = await instance.getAgentTrustProfile(input.agent_family);
+
+  return {
+    agent_family: profile.agent_family,
+    total_tasks: profile.total_tasks,
+    trust_gaps: profile.trust_gaps,
+    gap_rate: profile.gap_rate,
+    common_failure_types: profile.common_failure_types,
+    first_seen: profile.first_seen,
+    last_seen: profile.last_seen,
   };
 }

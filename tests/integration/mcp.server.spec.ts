@@ -49,7 +49,7 @@ describe("MCP Server Integration", () => {
 
   describe("Tool Registration", () => {
     it("exports LEXSONA_TOOLS array with all required tools", () => {
-      expect(LEXSONA_TOOLS).toHaveLength(5);
+      expect(LEXSONA_TOOLS).toHaveLength(7);
 
       const toolNames = LEXSONA_TOOLS.map((t) => t.name);
       expect(toolNames).toContain("persona_activate");
@@ -57,6 +57,8 @@ describe("MCP Server Integration", () => {
       expect(toolNames).toContain("rules_learn");
       expect(toolNames).toContain("rules_list");
       expect(toolNames).toContain("persona_list");
+      expect(toolNames).toContain("trust_gap_record");
+      expect(toolNames).toContain("agent_trust_profile");
     });
 
     it("has proper schema for persona_activate", () => {
