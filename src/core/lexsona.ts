@@ -163,15 +163,7 @@ export class LexSona {
     let rules: BehaviorRuleWithConfidence[] = [];
     if (hasLexConnection) {
       const db = this.storageClient!.getDatabase();
-      const ruleContext: RuleContext = {
-        module_id: context.module_id,
-        task_type: context.taskType,
-        environment: context.environment,
-        project: context.domain,
-        agent_family: context.agent_family,
-        context_tags: context.context_tags,
-      };
-
+      const ruleContext = this.createRuleContext(context);
       rules = getRules(db, ruleContext);
     }
 
@@ -228,6 +220,21 @@ export class LexSona {
    */
   getConfig(): LexSonaConfig {
     return this._config;
+  }
+
+  /**
+   * Create a RuleContext from a DeriveContext
+   * Helper to reduce code duplication
+   */
+  private createRuleContext(context: DeriveContext): RuleContext {
+    return {
+      module_id: context.module_id,
+      task_type: context.taskType,
+      environment: context.environment,
+      project: context.domain,
+      agent_family: context.agent_family,
+      context_tags: context.context_tags,
+    };
   }
 
   /**
@@ -318,14 +325,7 @@ export class LexSona {
 
     // Get the rules that were used
     const db = this.storageClient.getDatabase();
-    const ruleContext: RuleContext = {
-      module_id: context.module_id,
-      task_type: context.taskType,
-      environment: context.environment,
-      project: context.domain,
-      agent_family: context.agent_family,
-      context_tags: context.context_tags,
-    };
+    const ruleContext = this.createRuleContext(context);
     const rules = getRules(db, ruleContext);
 
     // Apply trust calibration

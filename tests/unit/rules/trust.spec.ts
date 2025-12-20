@@ -193,7 +193,7 @@ describe("Trust Gap Learning (ADR-007)", () => {
       const profile = getAgentTrustProfile(testDb.db, "unknown-agent");
 
       expect(profile.agent_family).toBe("unknown-agent");
-      expect(profile.total_tasks).toBe(1); // Minimum to avoid division by zero
+      expect(profile.total_tasks).toBe(1); // Minimum baseline for gap rate calculation
       expect(profile.trust_gaps).toBe(0);
       expect(profile.gap_rate).toBe(0);
       expect(profile.common_failure_types).toEqual([]);

@@ -21,6 +21,18 @@ import type {
 const PATTERN_LEARNING_THRESHOLD = 3;
 
 /**
+ * Gap rate threshold for applying trust adjustments (20%)
+ * Agents with gap rates above this will have reduced confidence
+ */
+const GAP_RATE_THRESHOLD = 0.2;
+
+/**
+ * Maximum confidence reduction factor (30%)
+ * Confidence will be reduced by at most this percentage
+ */
+const MAX_CONFIDENCE_REDUCTION = 0.3;
+
+/**
  * Record a trust gap event and apply confidence decay
  *
  * When a trust gap is detected (agent claim !== engine verification):
@@ -186,10 +198,11 @@ export function getAgentTrustProfile(db: Database.Database, agentFamily: string)
   const trustGaps = trustGapRules.length;
 
   // Count total tasks
-  // For now, use total observations across all rules as a proxy for task count
-  // In a real system, this would be tracked separately
+  // TODO: This is a temporary approximation. In a production system,
+  // task tracking should be implemented separately to accurately count
+  // completed tasks per agent family.
   const totalObservations = allRules.reduce((sum, r) => sum + r.observation_count, 0);
-  const totalTasks = Math.max(totalObservations, allRules.length, 1); // Avoid division by zero
+  const totalTasks = Math.max(totalObservations, allRules.length, 1);
 
   // Calculate gap rate
   const gapRate = trustGaps / totalTasks;
@@ -250,13 +263,13 @@ export function applyTrustCalibration(
   trustProfile: AgentTrustProfile
 ): BehaviorRuleWithConfidence[] {
   // Calculate trust adjustment factor
-  // High gap rate (>20%) -> reduce confidence
-  // Low gap rate (<5%) -> no change
+  // High gap rate (>GAP_RATE_THRESHOLD) -> reduce confidence
+  // Low gap rate (<GAP_RATE_THRESHOLD) -> no change
   let trustAdjustment = 1.0;
 
-  if (trustProfile.gap_rate > 0.2) {
-    // Significant trust issues - reduce confidence by up to 30%
-    trustAdjustment = 1.0 - Math.min(0.3, trustProfile.gap_rate);
+  if (trustProfile.gap_rate > GAP_RATE_THRESHOLD) {
+    // Significant trust issues - reduce confidence by up to MAX_CONFIDENCE_REDUCTION
+    trustAdjustment = 1.0 - Math.min(MAX_CONFIDENCE_REDUCTION, trustProfile.gap_rate);
   }
 
   // Apply adjustment to all rules
