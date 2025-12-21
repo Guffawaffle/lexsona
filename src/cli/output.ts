@@ -5,18 +5,21 @@
  * @module
  */
 
+import type { Command } from "commander";
+
 /**
  * Check if JSON mode is enabled via the global --json flag
  */
-export function isJsonMode(command: any): boolean {
+export function isJsonMode(command: Command): boolean {
   // Walk up the command tree to find the root program
-  let current = command;
+  let current: Command | null = command;
   while (current.parent) {
     current = current.parent;
   }
   
   // Check if --json was passed at the global level
-  return current.opts().json === true;
+  const opts = current.opts() as { json?: boolean };
+  return opts.json === true;
 }
 
 /**
@@ -35,12 +38,12 @@ export function output(data: unknown, jsonMode: boolean): void {
 /**
  * Output an error in JSON or human-readable format
  */
-export function outputError(error: { error: string; message?: string; [key: string]: any }, jsonMode: boolean): void {
+export function outputError(error: { error: string; message?: string; [key: string]: unknown }, jsonMode: boolean): void {
   if (jsonMode) {
     console.log(JSON.stringify(error, null, 2));
   } else {
     console.error(`Error: ${error.message || error.error}`);
-    if (error.hint) {
+    if (error.hint && typeof error.hint === "string") {
       console.error(`Hint: ${error.hint}`);
     }
   }
@@ -49,6 +52,6 @@ export function outputError(error: { error: string; message?: string; [key: stri
 /**
  * Output success in JSON format or return for human-readable formatting
  */
-export function formatSuccess(data: any): any {
+export function formatSuccess(data: Record<string, unknown>): Record<string, unknown> {
   return { success: true, ...data };
 }
