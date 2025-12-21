@@ -6,7 +6,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Command } from "commander";
-import { mkdtempSync, rmSync, existsSync } from "fs";
+import { mkdtempSync, rmSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 
@@ -72,8 +72,8 @@ describe("Global --json flag", () => {
     projectDir = join(tempDir, "project");
 
     // Create directories
-    require("fs").mkdirSync(homeDir, { recursive: true });
-    require("fs").mkdirSync(projectDir, { recursive: true });
+    mkdirSync(homeDir, { recursive: true });
+    mkdirSync(projectDir, { recursive: true });
 
     // Save original values
     originalCwd = process.cwd();
