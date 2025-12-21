@@ -12,6 +12,7 @@ import { LexSona, type LexSonaConfig } from "../../core/lexsona.js";
 import { loadPersona } from "../../persona/loader.js";
 import { getActivePersona } from "../../persona/config.js";
 import { type DeriveContext, type ConstraintSet } from "../../constraints/derive.js";
+import { isJsonMode } from "../output.js";
 
 function getProjectConstraintsCachePath(): string {
   return join(process.cwd(), ".smartergpt", "lexsona-constraints.json");
@@ -224,7 +225,10 @@ export function registerConstraintsCommands(program: Command): void {
     .option("--task <type>", "Task type context")
     .option("--persona <name>", "Persona ID to use")
     .option("--json", "Output as JSON")
-    .action(async (options) => {
+    .action(async function (this: Command, options) {
+      // Check both local --json and global --json
+      const jsonMode = options.json || isJsonMode(this);
+      
       const active = getActivePersona().personaId;
       const personaId = options.persona ?? active ?? "quality-first_engineering";
 
@@ -232,8 +236,16 @@ export function registerConstraintsCommands(program: Command): void {
       try {
         await loadPersona(personaId);
       } catch {
-        console.error(`Error: Persona "${personaId}" not found.`);
-        console.error("  Use 'lexsona persona list' to see available personas.");
+        if (jsonMode) {
+          console.log(JSON.stringify({
+            error: "Persona not found",
+            message: `Persona "${personaId}" not found`,
+            hint: "Use 'lexsona persona list' to see available personas",
+          }, null, 2));
+        } else {
+          console.error(`Error: Persona "${personaId}" not found.`);
+          console.error("  Use 'lexsona persona list' to see available personas.");
+        }
         process.exitCode = 1;
         return;
       }
@@ -261,7 +273,7 @@ export function registerConstraintsCommands(program: Command): void {
         // Cache result for show/explain across invocations
         writeCachedConstraintSet(result);
 
-        if (options.json) {
+        if (jsonMode) {
           console.log(JSON.stringify(formatConstraintsAsJson(result), null, 2));
           return;
         }
@@ -269,7 +281,14 @@ export function registerConstraintsCommands(program: Command): void {
         writeConstraintsHumanReadable(result);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        console.error(`Error: ${message}`);
+        if (jsonMode) {
+          console.log(JSON.stringify({
+            error: "Failed to derive constraints",
+            message,
+          }, null, 2));
+        } else {
+          console.error(`Error: ${message}`);
+        }
         process.exitCode = 1;
       } finally {
         instance?.close();
@@ -281,15 +300,26 @@ export function registerConstraintsCommands(program: Command): void {
     .command("show")
     .description("Show last derived constraint set")
     .option("--json", "Output as JSON")
-    .action(async (options) => {
+    .action(async function (this: Command, options) {
+      // Check both local --json and global --json
+      const jsonMode = options.json || isJsonMode(this);
+      
       const cached = readCachedConstraintSet();
       if (!cached) {
-        console.log("No constraint set cached.");
-        console.log("  (Use 'lexsona constraints derive' first)");
+        if (jsonMode) {
+          console.log(JSON.stringify({
+            error: "No cached constraints",
+            message: "No constraint set cached",
+            hint: "Use 'lexsona constraints derive' first",
+          }, null, 2));
+        } else {
+          console.log("No constraint set cached.");
+          console.log("  (Use 'lexsona constraints derive' first)");
+        }
         return;
       }
 
-      if (options.json) {
+      if (jsonMode) {
         console.log(JSON.stringify(formatConstraintsAsJson(cached), null, 2));
         return;
       }
