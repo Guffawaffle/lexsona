@@ -83,7 +83,7 @@ export type AgentTrustProfileInput = z.infer<typeof AgentTrustProfileInputSchema
  */
 export const LEXSONA_TOOLS: Tool[] = [
   {
-    name: "persona_activate",
+    name: "lexsona_persona_activate",
     description: "Activate a persona by ID. Returns persona info.",
     inputSchema: {
       type: "object",
@@ -97,7 +97,7 @@ export const LEXSONA_TOOLS: Tool[] = [
     },
   },
   {
-    name: "constraints_derive",
+    name: "lexsona_constraints_derive",
     description: "Derive constraints for the active persona given a context.",
     inputSchema: {
       type: "object",
@@ -115,7 +115,7 @@ export const LEXSONA_TOOLS: Tool[] = [
     },
   },
   {
-    name: "rules_learn",
+    name: "lexsona_rules_learn",
     description: "Record a behavioral correction to adjust rule weights.",
     inputSchema: {
       type: "object",
@@ -141,7 +141,7 @@ export const LEXSONA_TOOLS: Tool[] = [
     },
   },
   {
-    name: "rules_list",
+    name: "lexsona_rules_list",
     description: "List loaded behavioral rules.",
     inputSchema: {
       type: "object",
@@ -153,7 +153,7 @@ export const LEXSONA_TOOLS: Tool[] = [
     },
   },
   {
-    name: "persona_list",
+    name: "lexsona_persona_list",
     description: "List available personas.",
     inputSchema: {
       type: "object",

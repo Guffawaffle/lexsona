@@ -54,7 +54,7 @@ Suggestions: Check persona ID format (should be: {behavioral-focus}_{domain}); R
 ```javascript
 try {
   // Call LexSona MCP tool
-  await callTool("persona_activate", { persona: "my-persona" });
+  await callTool("lexsona_persona_activate", { persona: "my-persona" });
 } catch (error) {
   const message = error.message || "";
   
@@ -65,11 +65,11 @@ try {
   // Branch on error code
   if (errorCode === "PERSONA_NOT_FOUND") {
     // Fall back to default persona
-    await callTool("persona_activate", { persona: "quality-first_engineering" });
+    await callTool("lexsona_persona_activate", { persona: "quality-first_engineering" });
   } else if (errorCode === "LEX_CONNECTION_FAILED") {
     // Retry with backoff (connection errors are retryable)
     await delay(1000);
-    await callTool("persona_activate", { persona: "my-persona" });
+    await callTool("lexsona_persona_activate", { persona: "my-persona" });
   } else {
     // Non-retryable error
     throw error;

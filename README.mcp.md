@@ -44,7 +44,7 @@ Add to your MCP client settings (e.g., Claude Desktop):
 
 ## Available Tools
 
-### `lexsona_activate`
+### `lexsona_persona_activate`
 
 Activate a persona by ID.
 
@@ -66,7 +66,7 @@ Activate a persona by ID.
 }
 ```
 
-### `lexsona_constraints`
+### `lexsona_constraints_derive`
 
 Derive behavioral constraints for a context.
 
@@ -107,7 +107,7 @@ Derive behavioral constraints for a context.
 }
 ```
 
-### `lexsona_learn`
+### `lexsona_rules_learn`
 
 Record a behavioral correction.
 
@@ -139,7 +139,7 @@ Record a behavioral correction.
 }
 ```
 
-### `lexsona_rules`
+### `lexsona_rules_list`
 
 List learned behavioral rules.
 
@@ -165,7 +165,7 @@ List learned behavioral rules.
 }
 ```
 
-### `lexsona_personas`
+### `lexsona_persona_list`
 
 List available personas.
 
@@ -213,10 +213,10 @@ All business logic lives in LexSona core - the MCP layer is just protocol transl
 
 LexSona can operate without a Lex database connection:
 
-- `lexsona_activate` and `lexsona_personas` work offline
-- `lexsona_constraints` returns empty constraint sets
-- `lexsona_rules` returns empty arrays
-- `lexsona_learn` throws an error
+- `lexsona_persona_activate` and `lexsona_persona_list` work offline
+- `lexsona_constraints_derive` returns empty constraint sets
+- `lexsona_rules_list` returns empty arrays
+- `lexsona_rules_learn` throws an error
 
 Use offline-safe personas (`requires_memory: false`) when disconnected.
 

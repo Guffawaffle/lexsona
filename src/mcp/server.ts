@@ -91,48 +91,48 @@ async function main(): Promise<void> {
 
       let result: object;
       switch (name) {
-        // Canonical names (VS Code displays as mcp_lexsona_{category}_{action})
-        case "persona_activate":
-        case "lexsona_persona_activate": // deprecated alias
+        // Canonical names with namespace prefix
+        case "lexsona_persona_activate":
+        case "persona_activate": // deprecated alias (v0.3.x)
         case "lexsona_activate": {
-          // Deprecated alias
+          // deprecated alias (v0.1.x)
           const input = ActivateInputSchema.parse(args);
           result = await handleActivate(input, state);
           activePersonaId = state.activePersonaId;
           break;
         }
 
-        case "constraints_derive":
-        case "lexsona_constraint_derive": // deprecated alias
+        case "lexsona_constraints_derive":
+        case "constraints_derive": // deprecated alias (v0.3.x)
         case "lexsona_constraints": {
-          // Deprecated alias
+          // deprecated alias (v0.1.x)
           const input = ConstraintsInputSchema.parse(args);
           result = await handleConstraints(input, state, ensureConnected);
           break;
         }
 
-        case "rules_learn":
-        case "lexsona_rule_learn": // deprecated alias
+        case "lexsona_rules_learn":
+        case "rules_learn": // deprecated alias (v0.3.x)
         case "lexsona_learn": {
-          // Deprecated alias
+          // deprecated alias (v0.1.x)
           const input = LearnInputSchema.parse(args);
           result = await handleLearn(input, ensureConnected);
           break;
         }
 
-        case "rules_list":
-        case "lexsona_rule_list": // deprecated alias
+        case "lexsona_rules_list":
+        case "rules_list": // deprecated alias (v0.3.x)
         case "lexsona_rules": {
-          // Deprecated alias
+          // deprecated alias (v0.1.x)
           const input = RulesInputSchema.parse(args);
           result = await handleRules(input, ensureConnected);
           break;
         }
 
-        case "persona_list":
-        case "lexsona_persona_list": // deprecated alias
+        case "lexsona_persona_list":
+        case "persona_list": // deprecated alias (v0.3.x)
         case "lexsona_personas": {
-          // Deprecated alias
+          // deprecated alias (v0.1.x)
           result = await handlePersonas();
           break;
         }
