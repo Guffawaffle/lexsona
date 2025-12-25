@@ -61,7 +61,10 @@ function deriveCapability(manifest: PersonaManifest): PersonaCapability {
 
   // Fallback: basic derivation from focus name
   return {
-    optimizes: [focus.replace("-first", ""), manifest.behavior.domain],
+    optimizes: [
+      focus.replace("-first", ""),
+      manifest.behavior.domain || "general",
+    ].filter(Boolean),
     deprioritizes: ["unknown"],
   };
 }
