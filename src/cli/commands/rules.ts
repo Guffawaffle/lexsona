@@ -7,6 +7,7 @@
 import { Command } from "commander";
 import { LexSona, type LexSonaConfig } from "../../core/lexsona.js";
 import type { RuleScope } from "../../rules/types.js";
+import { isJsonMode } from "../output.js";
 
 /**
  * Initialize LexSona with connection to Lex
@@ -37,9 +38,19 @@ export function registerRulesCommands(program: Command): void {
     .description("List active behavioral rules")
     .option("--domain <domain>", "Filter by project (deprecated name: domain)")
     .option("--min-confidence <n>", "Minimum confidence threshold", parseFloat)
-    .action(async (options) => {
+    .action(async function (this: Command, options) {
+      const jsonMode = isJsonMode(this);
       const instance = await initLexSona();
-      if (!instance) return;
+      if (!instance) {
+        if (jsonMode) {
+          console.log(JSON.stringify({
+            error: "Not connected",
+            message: "Not connected to Lex database",
+            hint: "Set LEX_DB_PATH environment variable or run 'lex init' first",
+          }, null, 2));
+        }
+        return;
+      }
 
       const rulesList = await instance.getRules({
         domain: options.domain,
@@ -47,19 +58,35 @@ export function registerRulesCommands(program: Command): void {
       });
 
       if (rulesList.length === 0) {
-        console.log("No rules found.");
+        if (jsonMode) {
+          console.log(JSON.stringify({ rules: [] }, null, 2));
+        } else {
+          console.log("No rules found.");
+        }
         return;
       }
 
-      console.log(`Found ${rulesList.length} rules:\n`);
-      for (const rule of rulesList) {
-        const scopeStr = rule.scope.module_id ? ` [${rule.scope.module_id}]` : "";
-        console.log(`  ${rule.rule_id}${scopeStr}`);
-        console.log(`    ${rule.text}`);
-        console.log(
-          `    severity: ${rule.severity}, confidence: ${rule.effective_confidence.toFixed(2)}`
-        );
-        console.log("");
+      if (jsonMode) {
+        const rules = rulesList.map((rule) => ({
+          id: rule.rule_id,
+          text: rule.text,
+          category: rule.category,
+          severity: rule.severity,
+          confidence: rule.effective_confidence,
+          scope: rule.scope,
+        }));
+        console.log(JSON.stringify({ rules }, null, 2));
+      } else {
+        console.log(`Found ${rulesList.length} rules:\n`);
+        for (const rule of rulesList) {
+          const scopeStr = rule.scope.module_id ? ` [${rule.scope.module_id}]` : "";
+          console.log(`  ${rule.rule_id}${scopeStr}`);
+          console.log(`    ${rule.text}`);
+          console.log(
+            `    severity: ${rule.severity}, confidence: ${rule.effective_confidence.toFixed(2)}`
+          );
+          console.log("");
+        }
       }
     });
 
@@ -75,7 +102,10 @@ export function registerRulesCommands(program: Command): void {
     .option("--reinforce", "Reinforce (positive polarity)", true)
     .option("--counter", "Counterexample (negative polarity)")
     .option("--json", "Output result as JSON")
-    .action(async (correction: string, options) => {
+    .action(async function (this: Command, correction: string, options) {
+      // Check both local --json and global --json
+      const jsonMode = options.json || isJsonMode(this);
+      
       // Validate correction is not empty
       if (!correction || correction.trim().length === 0) {
         const error = {
@@ -83,7 +113,7 @@ export function registerRulesCommands(program: Command): void {
           message: "Correction text cannot be empty",
           usage: "lexsona rules learn <correction> [options]",
         };
-        if (options.json) {
+        if (jsonMode) {
           console.log(JSON.stringify(error, null, 2));
         } else {
           console.error(`Error: ${error.message}`);
@@ -99,7 +129,7 @@ export function registerRulesCommands(program: Command): void {
           message: "Not connected to Lex database",
           hint: "Set LEX_DB_PATH environment variable or run 'lex init' first",
         };
-        if (options.json) {
+        if (jsonMode) {
           console.log(JSON.stringify(error, null, 2));
         }
         // Error already logged by initLexSona in non-JSON mode
@@ -114,7 +144,7 @@ export function registerRulesCommands(program: Command): void {
           warning: "Both --reinforce and --counter specified",
           message: "--counter takes precedence over --reinforce",
         };
-        if (options.json) {
+        if (jsonMode) {
           // Include warning in JSON but continue
           console.error(JSON.stringify(warning, null, 2));
         } else {
@@ -135,7 +165,7 @@ export function registerRulesCommands(program: Command): void {
           validValues: ["must", "should", "style"],
           hint: "Use --severity with one of: must, should, style",
         };
-        if (options.json) {
+        if (jsonMode) {
           console.log(JSON.stringify(error, null, 2));
         } else {
           console.error(`Error: ${error.message}`);
@@ -153,7 +183,7 @@ export function registerRulesCommands(program: Command): void {
           context: scope,
         });
 
-        if (options.json) {
+        if (jsonMode) {
           const result = {
             success: true,
             correction,
@@ -179,7 +209,7 @@ export function registerRulesCommands(program: Command): void {
           message: errorMsg,
           hint: "Check database connection and permissions",
         };
-        if (options.json) {
+        if (jsonMode) {
           console.log(JSON.stringify(errorObj, null, 2));
         } else {
           console.error(`Error: ${errorObj.message}`);
