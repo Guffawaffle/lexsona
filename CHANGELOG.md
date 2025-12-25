@@ -5,6 +5,24 @@ All notable changes to LexSona will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **AX-003: Persona Capability Matrix** - Enhanced `persona_list` MCP response with structured metadata for agent-driven persona selection:
+  - `behavior`: Primary behavioral focus (e.g., "quality-first", "momentum-first")
+  - `domain`: Domain context (e.g., "engineering", "product")
+  - `optimizes`: Array of what the persona optimizes for
+  - `deprioritizes`: Array of what the persona deprioritizes
+  - `triggerPhrases`: Phrases that suggest this persona
+- Added `PersonaCapability` type and schema for capability matrix validation
+- Added explicit `capability` field to persona manifests (optional, derived if not present)
+
+### Changed
+
+- Updated `persona_list` MCP handler to return capability matrix instead of raw behavior object
+- Updated persona YAML/MD files to include explicit capability matrices
+
 ## [0.3.0] - 2025-12-16
 
 ### ⚠️ BREAKING CHANGE: MCP Tool Names
