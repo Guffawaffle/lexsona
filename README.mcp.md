@@ -191,6 +191,45 @@ List available personas.
 }
 ```
 
+### `introspect`
+
+Get current LexSona state and capabilities for agent self-discovery.
+
+**Input:** None
+
+**Output:**
+
+```json
+{
+  "version": "0.3.0",
+  "state": {
+    "activePersona": "quality-first_engineering",
+    "ruleCount": 12,
+    "lexConnected": true,
+    "lexDbPath": "/path/to/lex.db"
+  },
+  "personas": ["quality-first_engineering", "momentum-first_product"],
+  "capabilities": {
+    "caching": false,
+    "lexIntegration": true
+  },
+  "errorCodes": [
+    "PERSONA_NOT_FOUND",
+    "PERSONA_INVALID_ID",
+    "LEX_CONNECTION_FAILED",
+    "LEX_DB_NOT_FOUND",
+    "VALIDATION_REQUIRED_FIELD",
+    "..."
+  ]
+}
+```
+
+**Use cases:**
+- Agent can discover which persona is currently active
+- Check if Lex connection is healthy
+- Get list of available personas to switch between
+- Access machine-readable error codes for error handling
+
 ## Architecture
 
 The MCP server is a thin adapter layer:

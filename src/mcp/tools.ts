@@ -74,12 +74,17 @@ export const AgentTrustProfileInputSchema = z.object({
   agent_family: z.string().describe("Agent family to get trust profile for"),
 });
 
+export const IntrospectInputSchema = z.object({
+  // No parameters needed - returns current state
+});
+
 export type ActivateInput = z.infer<typeof ActivateInputSchema>;
 export type ConstraintsInput = z.infer<typeof ConstraintsInputSchema>;
 export type LearnInput = z.infer<typeof LearnInputSchema>;
 export type RulesInput = z.infer<typeof RulesInputSchema>;
 export type TrustGapInput = z.infer<typeof TrustGapInputSchema>;
 export type AgentTrustProfileInput = z.infer<typeof AgentTrustProfileInputSchema>;
+export type IntrospectInput = z.infer<typeof IntrospectInputSchema>;
 
 /**
  * Tool definitions for the MCP server
@@ -230,6 +235,15 @@ export const LEXSONA_TOOLS: Tool[] = [
         },
       },
       required: ["agent_family"],
+    },
+  },
+  {
+    name: "introspect",
+    description:
+      "Get current LexSona state and capabilities for agent self-discovery. Returns version, active persona, available personas, Lex connection status, rule count, and error codes.",
+    inputSchema: {
+      type: "object",
+      properties: {},
     },
   },
 ];

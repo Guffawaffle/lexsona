@@ -28,6 +28,7 @@ import {
   RulesInputSchema,
   TrustGapInputSchema,
   AgentTrustProfileInputSchema,
+  IntrospectInputSchema,
 } from "./tools.js";
 import {
   handleActivate,
@@ -37,6 +38,7 @@ import {
   handlePersonas,
   handleTrustGapRecord,
   handleAgentTrustProfile,
+  handleIntrospect,
 } from "./handlers.js";
 import { LexSonaError, isClientError, formatErrorForMcp } from "./errors.js";
 import { RequestCache } from "./idempotency.js";
@@ -180,6 +182,12 @@ async function main(): Promise<void> {
         case "agent_trust_profile": {
           const input = AgentTrustProfileInputSchema.parse(args);
           result = await handleAgentTrustProfile(input, ensureConnected);
+          break;
+        }
+
+        case "introspect": {
+          const input = IntrospectInputSchema.parse(args);
+          result = await handleIntrospect(input, state, ensureConnected);
           break;
         }
 
