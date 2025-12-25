@@ -51,6 +51,17 @@ setInterval(() => {
   requestCache.cleanup();
 }, 60000);
 
+// Mutation operations that should be cached for idempotency
+const MUTATION_OPERATIONS = new Set([
+  "persona_activate",
+  "lexsona_persona_activate",
+  "lexsona_activate",
+  "rules_learn",
+  "lexsona_rule_learn",
+  "lexsona_learn",
+  "trust_gap_record",
+]);
+
 /**
  * Initialize LexSona connection
  */
@@ -177,17 +188,7 @@ async function main(): Promise<void> {
       }
 
       // Store in cache if request_id was provided (only for mutation operations)
-      // Mutation operations: persona_activate, rules_learn, trust_gap_record
-      const isMutation =
-        name === "persona_activate" ||
-        name === "lexsona_persona_activate" ||
-        name === "lexsona_activate" ||
-        name === "rules_learn" ||
-        name === "lexsona_rule_learn" ||
-        name === "lexsona_learn" ||
-        name === "trust_gap_record";
-
-      if (requestId && isMutation) {
+      if (requestId && MUTATION_OPERATIONS.has(name)) {
         requestCache.set(requestId, result);
       }
 

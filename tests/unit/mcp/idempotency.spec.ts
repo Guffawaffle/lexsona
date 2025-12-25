@@ -156,7 +156,8 @@ describe("RequestCache", () => {
       cache.set("req-1", { success: true, version: 2 });
 
       const cached = cache.get("req-1");
-      expect((cached as any).version).toBe(2);
+      expect(cached).toBeDefined();
+      expect((cached as { version: number }).version).toBe(2);
     });
 
     it("handles empty object response", () => {
