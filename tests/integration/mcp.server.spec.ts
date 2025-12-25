@@ -25,12 +25,24 @@ vi.mock("../../src/persona/loader.js", () => ({
   loadPersona: vi.fn(async (id: string) => ({
     id,
     version: "1.0.0",
-    behavior: "Test behavior description",
+    behavior: {
+      primaryFocus: id.includes("quality") ? "quality-first" : "momentum-first",
+      domain: id.includes("engineering") ? "engineering" : "product",
+      description: "Test behavior description",
+    },
     ruleCategories: ["general", "testing"],
     requires_memory: false,
     triggers: {
       phrases: ["test phrase"],
       keywords: ["test"],
+    },
+    capability: {
+      optimizes: id.includes("quality") 
+        ? ["correctness", "testing", "maintainability"]
+        : ["velocity", "iteration", "shipping"],
+      deprioritizes: id.includes("quality") 
+        ? ["velocity"]
+        : ["perfection"],
     },
   })),
   listPersonas: vi.fn(async () => [
@@ -261,7 +273,29 @@ describe("MCP Server Integration", () => {
 
       expect(personas[0]).toHaveProperty("id");
       expect(personas[0]).toHaveProperty("behavior");
-      expect(personas[0]).toHaveProperty("triggers");
+      expect(personas[0]).toHaveProperty("domain");
+      expect(personas[0]).toHaveProperty("optimizes");
+      expect(personas[0]).toHaveProperty("deprioritizes");
+      expect(personas[0]).toHaveProperty("triggerPhrases");
+    });
+
+    it("includes capability matrix for persona selection (AX-003)", async () => {
+      const result = await handlePersonas();
+      const personas = (result as any).personas;
+
+      // Verify structure matches AX-003 requirements
+      const persona = personas[0];
+      expect(persona.id).toBeDefined();
+      expect(persona.behavior).toBeDefined();
+      expect(persona.domain).toBeDefined();
+      expect(Array.isArray(persona.optimizes)).toBe(true);
+      expect(Array.isArray(persona.deprioritizes)).toBe(true);
+      expect(Array.isArray(persona.triggerPhrases)).toBe(true);
+      
+      // Verify arrays are populated
+      expect(persona.optimizes.length).toBeGreaterThan(0);
+      expect(persona.deprioritizes.length).toBeGreaterThan(0);
+      expect(persona.triggerPhrases.length).toBeGreaterThan(0);
     });
   });
 

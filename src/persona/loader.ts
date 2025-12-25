@@ -15,13 +15,56 @@ import { join, dirname } from "path";
 import { homedir } from "os";
 import { fileURLToPath } from "url";
 import { parse as parseYaml } from "yaml";
-import { PersonaManifestSchema, type Persona, type PersonaManifest } from "./types.js";
+import { PersonaManifestSchema, type Persona, type PersonaManifest, type PersonaCapability } from "./types.js";
 import {
   LexSonaErrorCode,
   createPersonaNotFoundError,
   createPersonaManifestError,
   LexSonaError,
 } from "../mcp/errors.js";
+
+/**
+ * Derive capability matrix from persona manifest (AX-003)
+ * Used when capability is not explicitly defined
+ */
+function deriveCapability(manifest: PersonaManifest): PersonaCapability {
+  const focus = manifest.behavior.primaryFocus;
+  
+  // Map of focus patterns to their optimizations and deprioritizations
+  const focusMap: Record<string, { optimizes: string[]; deprioritizes: string[] }> = {
+    "quality-first": {
+      optimizes: ["correctness", "testing", "maintainability"],
+      deprioritizes: ["velocity"],
+    },
+    "momentum-first": {
+      optimizes: ["velocity", "iteration", "shipping"],
+      deprioritizes: ["perfection"],
+    },
+    "risk-reducer": {
+      optimizes: ["safety", "validation", "error-handling"],
+      deprioritizes: ["speed"],
+    },
+    "test-first": {
+      optimizes: ["test-coverage", "reliability", "regression-prevention"],
+      deprioritizes: ["rapid-prototyping"],
+    },
+    "minimal-diff": {
+      optimizes: ["focused-changes", "review-efficiency", "minimal-impact"],
+      deprioritizes: ["comprehensive-refactoring"],
+    },
+  };
+
+  // Return mapped values or derive from behavior description
+  if (focusMap[focus]) {
+    return focusMap[focus];
+  }
+
+  // Fallback: basic derivation from focus name
+  return {
+    optimizes: [focus.replace("-first", ""), manifest.behavior.domain],
+    deprioritizes: ["unknown"],
+  };
+}
 
 /**
  * Get the directory containing bundled personas
@@ -147,6 +190,7 @@ export function loadPersonaFromFile(filePath: string): Persona {
 
   return {
     ...manifest,
+    capability: manifest.capability ?? deriveCapability(manifest),
     body,
   };
 }

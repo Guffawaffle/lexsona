@@ -59,6 +59,17 @@ export interface PersonaTriggers {
 }
 
 /**
+ * Persona capability matrix for agent selection (AX-003)
+ * Structured metadata to help agents autonomously select personas
+ */
+export interface PersonaCapability {
+  /** What this persona optimizes for */
+  optimizes: string[];
+  /** What this persona deprioritizes */
+  deprioritizes: string[];
+}
+
+/**
  * Complete persona definition
  */
 export interface Persona {
@@ -79,6 +90,12 @@ export interface Persona {
 
   /** Activation triggers */
   triggers: PersonaTriggers;
+
+  /**
+   * Capability matrix for agent selection (AX-003)
+   * Optional: if not provided, can be derived from other fields
+   */
+  capability?: PersonaCapability;
 
   /**
    * Rule categories this persona activates
@@ -131,6 +148,7 @@ export interface PersonaManifest {
   behavior: PersonaBehavior;
   duties: PersonaDuties;
   triggers: PersonaTriggers;
+  capability?: PersonaCapability;
   ruleCategories: string[];
   /**
    * Whether this persona requires a Lex memory connection
@@ -178,6 +196,14 @@ export type ApprovedFocusPattern = (typeof APPROVED_FOCUS_PATTERNS)[number];
 export const OfflineSafeConfigSchema = z.object({
   confidence_ceiling: z.number().min(0).max(1),
   no_memory_disclaimer: z.string().min(1),
+});
+
+/**
+ * Schema for persona capability matrix (AX-003)
+ */
+export const PersonaCapabilitySchema = z.object({
+  optimizes: z.array(z.string()),
+  deprioritizes: z.array(z.string()),
 });
 
 /**
@@ -244,6 +270,7 @@ export const PersonaManifestSchema = z
       phrases: z.array(z.string()),
       keywords: z.array(z.string()).optional(),
     }),
+    capability: PersonaCapabilitySchema.optional(),
     ruleCategories: z.array(z.string()),
     requires_memory: z.boolean(),
     offline_safe: OfflineSafeConfigSchema.optional(),
