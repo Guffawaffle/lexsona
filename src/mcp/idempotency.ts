@@ -45,7 +45,7 @@ export class RequestCache {
   /**
    * Get cached response for a request ID
    */
-  get(requestId: string): { response: object; cached: true; originalRequestTime: string } | null {
+  get(requestId: string): (object & { cached: true; originalRequestTime: string }) | null {
     const entry = this.cache.get(requestId);
     if (!entry) {
       return null;
@@ -61,7 +61,7 @@ export class RequestCache {
       ...entry.response,
       cached: true,
       originalRequestTime: entry.timestamp,
-    } as { response: object; cached: true; originalRequestTime: string };
+    };
   }
 
   /**

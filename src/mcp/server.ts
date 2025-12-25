@@ -176,8 +176,18 @@ async function main(): Promise<void> {
           throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
       }
 
-      // Store in cache if request_id was provided (for mutation operations)
-      if (requestId) {
+      // Store in cache if request_id was provided (only for mutation operations)
+      // Mutation operations: persona_activate, rules_learn, trust_gap_record
+      const isMutation =
+        name === "persona_activate" ||
+        name === "lexsona_persona_activate" ||
+        name === "lexsona_activate" ||
+        name === "rules_learn" ||
+        name === "lexsona_rule_learn" ||
+        name === "lexsona_learn" ||
+        name === "trust_gap_record";
+
+      if (requestId && isMutation) {
         requestCache.set(requestId, result);
       }
 
