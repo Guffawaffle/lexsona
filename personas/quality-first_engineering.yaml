@@ -16,6 +16,14 @@ triggers:
     - code
     - engineering
 
+capability:
+  optimizes:
+    - correctness
+    - testing
+    - maintainability
+  deprioritizes:
+    - velocity
+
 duties:
   mustDo:
     - Run all gates (lint, typecheck, test) before any commit

@@ -16,6 +16,14 @@ triggers:
     - scope
     - coordination
 
+capability:
+  optimizes:
+    - velocity
+    - iteration
+    - shipping
+  deprioritizes:
+    - perfection
+
 duties:
   mustDo:
     - Triage issues by severity (critical/high/medium/low)

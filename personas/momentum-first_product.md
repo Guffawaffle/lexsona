@@ -32,6 +32,13 @@ triggers:
     - planning
     - scope
     - coordination
+capability:
+  optimizes:
+    - velocity
+    - iteration
+    - shipping
+  deprioritizes:
+    - perfection
 ruleCategories:
   - workflow
   - completion
