@@ -39,10 +39,17 @@ import {
   handleAgentTrustProfile,
 } from "./handlers.js";
 import { LexSonaError, isClientError, formatErrorForMcp } from "./errors.js";
+import { RequestCache } from "./idempotency.js";
 
 // Server state
 let lexSonaInstance: LexSona | null = null;
 let activePersonaId: string | null = null;
+const requestCache = new RequestCache(300); // 5 minutes TTL
+
+// Periodic cleanup of expired cache entries (every minute)
+setInterval(() => {
+  requestCache.cleanup();
+}, 60000);
 
 /**
  * Initialize LexSona connection
@@ -88,6 +95,22 @@ async function main(): Promise<void> {
 
     try {
       const state = { activePersonaId };
+
+      // Check for request_id in args and see if we have a cached response
+      const requestId = (args as { request_id?: string }).request_id;
+      if (requestId) {
+        const cached = requestCache.get(requestId);
+        if (cached) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(cached, null, 2),
+              },
+            ],
+          };
+        }
+      }
 
       let result: object;
       switch (name) {
@@ -151,6 +174,11 @@ async function main(): Promise<void> {
 
         default:
           throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
+      }
+
+      // Store in cache if request_id was provided (for mutation operations)
+      if (requestId) {
+        requestCache.set(requestId, result);
       }
 
       return {

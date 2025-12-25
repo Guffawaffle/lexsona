@@ -13,6 +13,7 @@ import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 // Input validation schemas
 export const ActivateInputSchema = z.object({
   persona: z.string().describe("Persona ID to activate (e.g., 'quality-first_engineering')"),
+  request_id: z.string().optional().describe("Optional request ID for idempotency"),
 });
 
 export const ConstraintsInputSchema = z.object({
@@ -33,6 +34,7 @@ export const LearnInputSchema = z.object({
   project: z.string().optional().describe("Project scope (canonical)"),
   module_id: z.string().optional().describe("Module scope (canonical)"),
   polarity: z.enum(["reinforce", "counter"]).optional().default("reinforce"),
+  request_id: z.string().optional().describe("Optional request ID for idempotency"),
 });
 
 export const RulesInputSchema = z.object({
@@ -65,6 +67,7 @@ export const TrustGapInputSchema = z.object({
     })
     .optional()
     .describe("Optional context"),
+  request_id: z.string().optional().describe("Optional request ID for idempotency"),
 });
 
 export const AgentTrustProfileInputSchema = z.object({
@@ -91,6 +94,10 @@ export const LEXSONA_TOOLS: Tool[] = [
         persona: {
           type: "string",
           description: "Persona ID to activate (e.g., 'quality-first_engineering')",
+        },
+        request_id: {
+          type: "string",
+          description: "Optional request ID for idempotency",
         },
       },
       required: ["persona"],
@@ -135,6 +142,10 @@ export const LEXSONA_TOOLS: Tool[] = [
           type: "string",
           enum: ["reinforce", "counter"],
           description: "Reinforce or counter the behavior",
+        },
+        request_id: {
+          type: "string",
+          description: "Optional request ID for idempotency",
         },
       },
       required: ["correction"],
@@ -197,6 +208,10 @@ export const LEXSONA_TOOLS: Tool[] = [
             task_type: { type: "string" },
           },
           description: "Optional context",
+        },
+        request_id: {
+          type: "string",
+          description: "Optional request ID for idempotency",
         },
       },
       required: ["task_id", "agent_family", "procedure", "agent_claimed", "verified", "failures"],
