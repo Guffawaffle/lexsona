@@ -18,8 +18,10 @@ import type {
   RulesInput,
   TrustGapInput,
   AgentTrustProfileInput,
+  IntrospectInput,
 } from "./tools.js";
 import { normalizeScopingInputs } from "./scoping.js";
+import { LexSonaErrorCode } from "./errors.js";
 
 /**
  * Handler for lexsona_activate tool
@@ -236,5 +238,56 @@ export async function handleAgentTrustProfile(
     common_failure_types: profile.common_failure_types,
     first_seen: profile.first_seen,
     last_seen: profile.last_seen,
+  };
+}
+
+/**
+ * Handler for introspect tool (AX-002)
+ * Returns current LexSona state, capabilities, and configuration for agent self-discovery
+ */
+export async function handleIntrospect(
+  _input: IntrospectInput,
+  state: { activePersonaId: string | null },
+  getLexSona: () => Promise<LexSona>
+): Promise<object> {
+  // Get available personas
+  const personas = await listPersonas();
+  const personaIds = personas.map((p) => p.id);
+
+  // Get Lex connection state
+  let lexConnected = false;
+  let lexDbPath: string | undefined;
+  let ruleCount = 0;
+
+  try {
+    const instance = await getLexSona();
+    lexConnected = instance.isConnected();
+    lexDbPath = instance.getConfig().lexDb;
+
+    if (lexConnected) {
+      const rules = await instance.getRules();
+      ruleCount = rules.length;
+    }
+  } catch {
+    // If we can't get LexSona instance, lexConnected remains false
+  }
+
+  // Get all error codes as an array of strings
+  const errorCodes = Object.values(LexSonaErrorCode);
+
+  return {
+    version: "0.3.0",
+    state: {
+      activePersona: state.activePersonaId,
+      ruleCount,
+      lexConnected,
+      lexDbPath,
+    },
+    personas: personaIds,
+    capabilities: {
+      caching: false,
+      lexIntegration: lexConnected,
+    },
+    errorCodes,
   };
 }
