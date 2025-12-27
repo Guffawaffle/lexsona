@@ -73,6 +73,14 @@ export const IntrospectInputSchema = z.object({
   // No parameters needed - returns current state
 });
 
+export const ConstraintsShowInputSchema = z.object({
+  // No parameters needed - returns last derivation
+});
+
+export const ConstraintsExplainInputSchema = z.object({
+  constraint_id: z.string().describe("The constraint ID to explain"),
+});
+
 export type ActivateInput = z.infer<typeof ActivateInputSchema>;
 export type ConstraintsInput = z.infer<typeof ConstraintsInputSchema>;
 export type LearnInput = z.infer<typeof LearnInputSchema>;
@@ -80,6 +88,8 @@ export type RulesInput = z.infer<typeof RulesInputSchema>;
 export type TrustGapInput = z.infer<typeof TrustGapInputSchema>;
 export type AgentTrustProfileInput = z.infer<typeof AgentTrustProfileInputSchema>;
 export type IntrospectInput = z.infer<typeof IntrospectInputSchema>;
+export type ConstraintsShowInput = z.infer<typeof ConstraintsShowInputSchema>;
+export type ConstraintsExplainInput = z.infer<typeof ConstraintsExplainInputSchema>;
 
 /**
  * Tool definitions for the MCP server
@@ -231,6 +241,30 @@ export const LEXSONA_TOOLS: Tool[] = [
     inputSchema: {
       type: "object",
       properties: {},
+    },
+  },
+  {
+    name: "constraints_show",
+    description:
+      "Show the last derived constraint set with metadata (derivedAt, inputHash, ruleVersion). Returns cached derivation or error if none exists.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+    },
+  },
+  {
+    name: "constraints_explain",
+    description:
+      "Explain why a specific constraint is active with structured reasoning (persona match, confidence, scope). Returns provenance and decision factors.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        constraint_id: {
+          type: "string",
+          description: "The constraint ID (rule_id) to explain",
+        },
+      },
+      required: ["constraint_id"],
     },
   },
 ];

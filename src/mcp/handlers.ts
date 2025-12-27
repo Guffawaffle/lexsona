@@ -9,7 +9,12 @@
 
 import type { LexSona } from "../core/lexsona.js";
 import { loadPersona, listPersonas } from "../persona/loader.js";
-import { deriveConstraints, type DeriveContext } from "../constraints/derive.js";
+import {
+  deriveConstraints,
+  type DeriveContext,
+  type ConstraintSet,
+  type ConstraintSource,
+} from "../constraints/derive.js";
 import type { BehaviorRuleWithConfidence } from "../rules/types.js";
 import type {
   ActivateInput,
@@ -19,9 +24,18 @@ import type {
   TrustGapInput,
   AgentTrustProfileInput,
   IntrospectInput,
+  ConstraintsShowInput,
+  ConstraintsExplainInput,
 } from "./tools.js";
 import { normalizeScopingInputs } from "./scoping.js";
-import { LexSonaErrorCode } from "./errors.js";
+import {
+  LexSonaErrorCode,
+  createNoDerivationError,
+  createConstraintNotFoundError,
+} from "./errors.js";
+
+// Constants
+const DEFAULT_CONSTRAINT_SOURCE: ConstraintSource = "learned";
 
 /**
  * Handler for lexsona_activate tool
@@ -317,5 +331,106 @@ export async function handleIntrospect(
       lexIntegration: lexConnected,
     },
     errorCodes,
+  };
+}
+
+/**
+ * Handler for constraints_show tool (AX-008)
+ * Returns the last derived constraint set with metadata
+ */
+export async function handleConstraintsShow(
+  _input: ConstraintsShowInput,
+  state: { lastDerivation: ConstraintSet | null }
+): Promise<object> {
+  if (!state.lastDerivation) {
+    throw createNoDerivationError();
+  }
+
+  return state.lastDerivation;
+}
+
+/**
+ * Handler for constraints_explain tool (AX-008)
+ * Provides structured explanation for why a constraint is active
+ */
+export async function handleConstraintsExplain(
+  input: ConstraintsExplainInput,
+  state: { lastDerivation: ConstraintSet | null }
+): Promise<object> {
+  if (!state.lastDerivation) {
+    throw createNoDerivationError();
+  }
+
+  const constraint = state.lastDerivation.constraints.find(
+    (c) => c.rule_id === input.constraint_id
+  );
+
+  if (!constraint) {
+    // Only compute availableIds in error path for better error message
+    const availableIds = state.lastDerivation.constraints.map((c) => c.rule_id);
+    throw createConstraintNotFoundError(input.constraint_id, availableIds);
+  }
+
+  // Build structured explanation
+  const reasons: Array<{
+    source: string;
+    detail: string;
+    weight?: number;
+  }> = [];
+
+  // Persona match reason
+  reasons.push({
+    source: "persona",
+    detail: `Persona "${state.lastDerivation.personaId}" includes category "${constraint.category}"`,
+    weight: 1.0,
+  });
+
+  // Confidence reason
+  reasons.push({
+    source: "confidence",
+    detail: `Confidence ${constraint.confidence.toFixed(2)} >= threshold ${state.lastDerivation.metadata.confidenceThreshold.toFixed(2)}`,
+    weight: constraint.confidence,
+  });
+
+  // Offline mode ceiling if applicable
+  if (state.lastDerivation.metadata.confidenceCeiling !== undefined) {
+    reasons.push({
+      source: "offline-ceiling",
+      detail: `Offline confidence ceiling applied: <= ${state.lastDerivation.metadata.confidenceCeiling.toFixed(2)}`,
+    });
+  }
+
+  // Source information
+  const source = constraint.source ?? DEFAULT_CONSTRAINT_SOURCE;
+  reasons.push({
+    source: source,
+    detail:
+      source === DEFAULT_CONSTRAINT_SOURCE
+        ? "Derived from behavioral rules stored in Lex"
+        : `Source: ${source}`,
+  });
+
+  // Build matched context
+  const matchedContext: Record<string, string | undefined> = {};
+  if (state.lastDerivation.context.domain) {
+    matchedContext.domain = state.lastDerivation.context.domain;
+  }
+  if (state.lastDerivation.context.module_id) {
+    matchedContext.module_id = state.lastDerivation.context.module_id;
+  }
+  if (state.lastDerivation.context.taskType) {
+    matchedContext.taskType = state.lastDerivation.context.taskType;
+  }
+
+  return {
+    constraintId: constraint.rule_id,
+    text: constraint.text,
+    severity: constraint.severity,
+    category: constraint.category,
+    confidence: constraint.confidence,
+    active: true,
+    reasons,
+    matchedContext,
+    derivedAt: state.lastDerivation.derivedAt,
   };
 }
