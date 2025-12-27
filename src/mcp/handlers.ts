@@ -33,6 +33,12 @@ import {
   createNoDerivationError,
   createConstraintNotFoundError,
 } from "./errors.js";
+import {
+  formatConstraints,
+  formatPrinciples,
+  addCompactFlag,
+  type OutputFormat,
+} from "./formatters.js";
 
 // Constants
 const DEFAULT_CONSTRAINT_SOURCE: ConstraintSource = "learned";
@@ -52,7 +58,9 @@ export async function handleActivate(
   const instance = await getLexSona();
   const ruleVersion = instance.getRuleVersion();
 
-  return {
+  const format: OutputFormat = input.format ?? "full";
+
+  let response = {
     success: true,
     ruleVersion,
     persona: {
@@ -62,6 +70,21 @@ export async function handleActivate(
       ruleCategories: persona.ruleCategories,
     },
   };
+
+  if (format === "compact") {
+    response = {
+      success: true,
+      ruleVersion,
+      persona: {
+        id: persona.id,
+        ver: persona.version,
+        bhv: persona.behavior.primaryFocus,
+        cats: persona.ruleCategories,
+      },
+    } as any;
+  }
+
+  return addCompactFlag(response, format);
 }
 
 /**
@@ -112,6 +135,30 @@ export async function handleConstraints(
   };
 
   const result = deriveConstraints(persona, sonaRules, [], context);
+
+  const format: OutputFormat = input.format ?? "full";
+
+  if (format === "compact") {
+    const compactResult = {
+      personaId: result.personaId,
+      derivedAt: result.derivedAt,
+      inputHash: result.inputHash,
+      ctx: result.context,
+      principles: formatPrinciples(result.principles, format),
+      constraints: formatConstraints(result.constraints, format),
+      ruleVer: result.ruleVersion,
+      meta: {
+        rulesConsidered: result.metadata.rulesConsidered,
+        rulesFiltered: result.metadata.rulesFiltered,
+        confThreshold: result.metadata.confidenceThreshold,
+        offline: result.metadata.offlineMode,
+        ...(result.metadata.confidenceCeiling !== undefined && {
+          confCeiling: result.metadata.confidenceCeiling,
+        }),
+      },
+    };
+    return addCompactFlag(compactResult, format);
+  }
 
   return result;
 }
@@ -171,6 +218,27 @@ export async function handleRules(
   });
 
   const ruleVersion = instance.getRuleVersion();
+
+  const format: OutputFormat = input.format ?? "full";
+
+  if (format === "compact") {
+    const compactRules = rules.map((r) => ({
+      id: r.rule_id,
+      txt: r.text,
+      sev: r.severity === "must" ? "m" : r.severity === "should" ? "s" : "st",
+      cat: r.category,
+      conf: Math.round(r.effective_confidence * 100) / 100,
+    }));
+
+    return addCompactFlag(
+      {
+        count: rules.length,
+        ruleVer: ruleVersion,
+        rules: compactRules,
+      },
+      format
+    );
+  }
 
   return {
     count: rules.length,
