@@ -130,7 +130,7 @@ async function main(): Promise<void> {
         // Canonical names (VS Code displays as mcp_lexsona_{category}_{action})
         case "persona_activate": {
           const input = ActivateInputSchema.parse(args);
-          result = await handleActivate(input, state);
+          result = await handleActivate(input, state, ensureConnected);
           activePersonaId = state.activePersonaId;
           break;
         }
@@ -154,7 +154,7 @@ async function main(): Promise<void> {
         }
 
         case "persona_list": {
-          result = await handlePersonas();
+          result = await handlePersonas(ensureConnected);
           break;
         }
 

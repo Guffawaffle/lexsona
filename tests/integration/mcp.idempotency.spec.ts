@@ -51,7 +51,8 @@ describe("MCP Server Idempotency", () => {
       };
 
       const state = { activePersonaId: null };
-      const result = await handleActivate(input, state);
+      const getLexSona = async () => mockLexSona;
+      const result = await handleActivate(input, state, getLexSona);
 
       expect(result).toHaveProperty("success", true);
       expect(state.activePersonaId).toBe("quality-first_engineering");
@@ -63,7 +64,8 @@ describe("MCP Server Idempotency", () => {
       };
 
       const state = { activePersonaId: null };
-      const result = await handleActivate(input, state);
+      const getLexSona = async () => mockLexSona;
+      const result = await handleActivate(input, state, getLexSona);
 
       expect(result).toHaveProperty("success", true);
       expect(state.activePersonaId).toBe("quality-first_engineering");

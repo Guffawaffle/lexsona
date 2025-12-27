@@ -97,6 +97,8 @@ export interface ConstraintSet {
   principles: Principle[];
   /** Derived constraints (from rules) */
   constraints: Constraint[];
+  /** Rule version at time of derivation (for cache invalidation) */
+  ruleVersion?: number;
   /** Metadata */
   metadata: {
     /** Number of rules considered */
