@@ -58,6 +58,10 @@ export enum LexSonaErrorCode {
   CONSTRAINT_DERIVATION_FAILED = "CONSTRAINT_DERIVATION_FAILED",
   /** Context provided for derivation is invalid */
   CONSTRAINT_INVALID_CONTEXT = "CONSTRAINT_INVALID_CONTEXT",
+  /** No constraints have been derived yet */
+  NO_DERIVATION = "NO_DERIVATION",
+  /** Constraint with given ID not found in last derivation */
+  CONSTRAINT_NOT_FOUND = "CONSTRAINT_NOT_FOUND",
 
   // =============================================================================
   // LEX CONNECTION ERRORS
@@ -300,6 +304,46 @@ export function isClientError(code: LexSonaErrorCode): boolean {
     code.startsWith("PERSONA_") ||
     code.startsWith("RULE_") ||
     code.startsWith("CONSTRAINT_")
+  );
+}
+
+/**
+ * Helper to create no derivation error
+ */
+export function createNoDerivationError(): LexSonaError {
+  return new LexSonaError(
+    LexSonaErrorCode.NO_DERIVATION,
+    "No constraints have been derived yet",
+    {
+      retryable: false,
+      suggestions: [
+        "Call constraints_derive first to generate constraints",
+        "Ensure a persona is activated before deriving constraints",
+      ],
+    }
+  );
+}
+
+/**
+ * Helper to create constraint not found error
+ */
+export function createConstraintNotFoundError(
+  constraintId: string,
+  availableIds: string[]
+): LexSonaError {
+  return new LexSonaError(
+    LexSonaErrorCode.CONSTRAINT_NOT_FOUND,
+    `Constraint "${constraintId}" not found in last derivation`,
+    {
+      retryable: false,
+      suggestions: [
+        `Check constraint ID spelling`,
+        availableIds.length > 0
+          ? `Available constraint IDs: ${availableIds.slice(0, 10).join(", ")}${availableIds.length > 10 ? "..." : ""}`
+          : "No constraints in last derivation",
+      ],
+      context: { constraintId, availableCount: availableIds.length },
+    }
   );
 }
 

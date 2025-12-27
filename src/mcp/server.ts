@@ -20,6 +20,7 @@ import {
 import { z } from "zod";
 
 import { LexSona, type LexSonaConfig } from "../core/lexsona.js";
+import type { ConstraintSet } from "../constraints/derive.js";
 import {
   LEXSONA_TOOLS,
   ActivateInputSchema,
@@ -29,6 +30,8 @@ import {
   TrustGapInputSchema,
   AgentTrustProfileInputSchema,
   IntrospectInputSchema,
+  ConstraintsShowInputSchema,
+  ConstraintsExplainInputSchema,
 } from "./tools.js";
 import {
   handleActivate,
@@ -39,6 +42,8 @@ import {
   handleTrustGapRecord,
   handleAgentTrustProfile,
   handleIntrospect,
+  handleConstraintsShow,
+  handleConstraintsExplain,
 } from "./handlers.js";
 import { LexSonaError, isClientError, formatErrorForMcp } from "./errors.js";
 import { RequestCache } from "./idempotency.js";
@@ -46,6 +51,7 @@ import { RequestCache } from "./idempotency.js";
 // Server state
 let lexSonaInstance: LexSona | null = null;
 let activePersonaId: string | null = null;
+let lastDerivation: ConstraintSet | null = null;
 const requestCache = new RequestCache(300); // 5 minutes TTL
 
 // Periodic cleanup of expired cache entries (every minute)
@@ -107,7 +113,7 @@ async function main(): Promise<void> {
     const { name, arguments: args } = request.params;
 
     try {
-      const state = { activePersonaId };
+      const state = { activePersonaId, lastDerivation };
 
       // Check for request_id in args and see if we have a cached response
       const requestId = (args as { request_id?: string }).request_id;
@@ -138,6 +144,8 @@ async function main(): Promise<void> {
         case "constraints_derive": {
           const input = ConstraintsInputSchema.parse(args);
           result = await handleConstraints(input, state, ensureConnected);
+          // Cache the derivation for show/explain
+          lastDerivation = result as ConstraintSet;
           break;
         }
 
@@ -173,6 +181,18 @@ async function main(): Promise<void> {
         case "introspect": {
           const input = IntrospectInputSchema.parse(args);
           result = await handleIntrospect(input, state, ensureConnected);
+          break;
+        }
+
+        case "constraints_show": {
+          const input = ConstraintsShowInputSchema.parse(args);
+          result = await handleConstraintsShow(input, state);
+          break;
+        }
+
+        case "constraints_explain": {
+          const input = ConstraintsExplainInputSchema.parse(args);
+          result = await handleConstraintsExplain(input, state);
           break;
         }
 
