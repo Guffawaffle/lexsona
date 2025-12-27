@@ -61,7 +61,7 @@ describe("MCP Server Integration", () => {
 
   describe("Tool Registration", () => {
     it("exports LEXSONA_TOOLS array with all required tools", () => {
-      expect(LEXSONA_TOOLS).toHaveLength(8);
+      expect(LEXSONA_TOOLS).toHaveLength(10);
 
       const toolNames = LEXSONA_TOOLS.map((t) => t.name);
       expect(toolNames).toContain("persona_activate");
@@ -72,6 +72,8 @@ describe("MCP Server Integration", () => {
       expect(toolNames).toContain("trust_gap_record");
       expect(toolNames).toContain("agent_trust_profile");
       expect(toolNames).toContain("introspect");
+      expect(toolNames).toContain("constraints_show");
+      expect(toolNames).toContain("constraints_explain");
     });
 
     it("has proper schema for persona_activate", () => {
@@ -111,6 +113,21 @@ describe("MCP Server Integration", () => {
       const tool = LEXSONA_TOOLS.find((t) => t.name === "persona_list");
       expect(tool).toBeDefined();
       expect(tool?.description).toContain("available personas");
+    });
+
+    it("has proper schema for constraints_show", () => {
+      const tool = LEXSONA_TOOLS.find((t) => t.name === "constraints_show");
+      expect(tool).toBeDefined();
+      expect(tool?.description).toContain("last derived constraint set");
+      expect(tool?.inputSchema.properties).toBeDefined();
+    });
+
+    it("has proper schema for constraints_explain", () => {
+      const tool = LEXSONA_TOOLS.find((t) => t.name === "constraints_explain");
+      expect(tool).toBeDefined();
+      expect(tool?.description.toLowerCase()).toContain("explain");
+      expect(tool?.inputSchema.properties).toHaveProperty("constraint_id");
+      expect(tool?.inputSchema.required).toContain("constraint_id");
     });
   });
 
