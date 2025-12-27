@@ -1,11 +1,12 @@
 /**
  * Persona Loader
  *
- * Loads persona manifests from YAML/Markdown files.
+ * Loads persona manifests from YAML/Markdown files or Lex database.
  * Supports multiple search paths with precedence:
- * 1. Project-local: .smartergpt/personas/
- * 2. User-global: ~/.smartergpt/personas/
- * 3. Bundled: LexSona package personas/
+ * 1. Project-local filesystem: .smartergpt/personas/ (developer overrides)
+ * 2. Lex database: personas table (shared team/project personas)
+ * 3. User-global filesystem: ~/.smartergpt/personas/ (personal preferences)
+ * 4. Bundled: LexSona package personas/ (fallback defaults)
  *
  * @module
  */
@@ -15,13 +16,135 @@ import { join, dirname } from "path";
 import { homedir } from "os";
 import { fileURLToPath } from "url";
 import { parse as parseYaml } from "yaml";
-import { PersonaManifestSchema, type Persona, type PersonaManifest, type PersonaCapability } from "./types.js";
+import {
+  PersonaManifestSchema,
+  type Persona,
+  type PersonaManifest,
+  type PersonaCapability,
+} from "./types.js";
 import {
   LexSonaErrorCode,
   createPersonaNotFoundError,
   createPersonaManifestError,
   LexSonaError,
 } from "../mcp/errors.js";
+import { connectToLex, type PersonaRecord } from "../core/lexConnection.js";
+
+/**
+ * Source of a persona listing entry
+ */
+export type PersonaListSource = "project-local" | "database" | "user-global" | "bundled";
+
+/**
+ * Result of listing personas with source information
+ */
+export interface PersonaListEntry {
+  id: string;
+  path?: string;
+  source: PersonaListSource;
+  version?: string;
+}
+
+/**
+ * Optional Lex database connection for persona lookup
+ * Initialized lazily on first use
+ */
+let lexDbConnection: ReturnType<typeof connectToLex> | null = null;
+let lexDbInitialized = false;
+
+/**
+ * Get Lex database connection (lazy initialization)
+ * Returns null if database is not available
+ */
+function getLexDb(): ReturnType<typeof connectToLex>["db"] | null {
+  if (!lexDbInitialized) {
+    lexDbInitialized = true;
+    try {
+      const result = connectToLex();
+      if (result.success && result.db) {
+        // Check if personas table exists
+        const tables = result.db
+          .prepare(
+            `
+          SELECT name FROM sqlite_master
+          WHERE type='table' AND name='personas'
+        `
+          )
+          .all();
+
+        if (tables.length > 0) {
+          lexDbConnection = result;
+        } else {
+          // Personas table not available yet
+          result.db.close();
+          lexDbConnection = null;
+        }
+      }
+    } catch {
+      // Database not available, continue without it
+      lexDbConnection = null;
+    }
+  }
+  return lexDbConnection?.db ?? null;
+}
+
+/**
+ * Load a persona from the Lex database by ID
+ * Returns null if not found or database not available
+ */
+function loadPersonaFromDatabase(id: string): Persona | null {
+  const db = getLexDb();
+  if (!db) return null;
+
+  try {
+    const stmt = db.prepare(`SELECT * FROM personas WHERE id = ?`);
+    const row = stmt.get(id) as PersonaRecord | undefined;
+
+    if (!row) return null;
+
+    // Parse the YAML manifest
+    const parsed = parseYaml(row.manifest_yaml) as Record<string, unknown>;
+    const result = PersonaManifestSchema.safeParse(parsed);
+
+    if (!result.success) {
+      // Invalid manifest in database, skip it
+      return null;
+    }
+
+    const manifest = result.data as PersonaManifest;
+
+    return {
+      ...manifest,
+      capability: manifest.capability ?? deriveCapability(manifest),
+      body: undefined,
+    };
+  } catch {
+    // Error loading from database, continue without it
+    return null;
+  }
+}
+
+/**
+ * List personas from the Lex database
+ * Returns empty array if database not available
+ */
+function listPersonasFromDatabase(): PersonaListEntry[] {
+  const db = getLexDb();
+  if (!db) return [];
+
+  try {
+    const stmt = db.prepare(`SELECT id, version FROM personas ORDER BY updated_at DESC`);
+    const rows = stmt.all() as Array<{ id: string; version: string }>;
+
+    return rows.map((row) => ({
+      id: row.id,
+      source: "database" as const,
+      version: row.version,
+    }));
+  } catch {
+    return [];
+  }
+}
 
 /**
  * Derive capability matrix from persona manifest (AX-003)
@@ -29,7 +152,7 @@ import {
  */
 function deriveCapability(manifest: PersonaManifest): PersonaCapability {
   const focus = manifest.behavior.primaryFocus;
-  
+
   // Map of focus patterns to their optimizations and deprioritizations
   const focusMap: Record<string, { optimizes: string[]; deprioritizes: string[] }> = {
     "quality-first": {
@@ -61,10 +184,7 @@ function deriveCapability(manifest: PersonaManifest): PersonaCapability {
 
   // Fallback: basic derivation from focus name
   return {
-    optimizes: [
-      focus.replace("-first", ""),
-      manifest.behavior.domain || "general",
-    ].filter(Boolean),
+    optimizes: [focus.replace("-first", ""), manifest.behavior.domain || "general"].filter(Boolean),
     deprioritizes: ["unknown"],
   };
 }
@@ -242,27 +362,73 @@ export function findPersonaPath(nameOrId: string): string | null {
 
 /**
  * Load a persona by name or ID
+ *
+ * Precedence order:
+ * 1. Project-local filesystem (highest - developer overrides)
+ * 2. Lex database (shared team/project personas)
+ * 3. User-global filesystem (personal preferences)
+ * 4. Bundled (fallback defaults)
  */
 export async function loadPersona(nameOrId: string): Promise<Persona> {
-  const filePath = findPersonaPath(nameOrId);
-  if (!filePath) {
-    const searchPaths = getPersonaSearchPaths();
-    throw createPersonaNotFoundError(nameOrId, searchPaths);
+  // 1. Check project-local filesystem first
+  const projectLocalPath = join(process.cwd(), ".smartergpt", "personas");
+  if (existsSync(projectLocalPath)) {
+    for (const ext of [".yaml", ".yml", ".md"]) {
+      const localPath = join(projectLocalPath, `${nameOrId}${ext}`);
+      if (existsSync(localPath)) {
+        return loadPersonaFromFile(localPath);
+      }
+    }
+    // Also try matching by ID in files
+    const files = readdirSync(projectLocalPath).filter(
+      (f) => f.endsWith(".yaml") || f.endsWith(".yml") || f.endsWith(".md")
+    );
+    for (const file of files) {
+      const filePath = join(projectLocalPath, file);
+      try {
+        const persona = loadPersonaFromFile(filePath);
+        if (persona.id === nameOrId) {
+          return persona;
+        }
+      } catch {
+        continue;
+      }
+    }
   }
-  return loadPersonaFromFile(filePath);
+
+  // 2. Check Lex database (new in V10)
+  const dbPersona = loadPersonaFromDatabase(nameOrId);
+  if (dbPersona) {
+    return dbPersona;
+  }
+
+  // 3. Check user-global and bundled via existing file search
+  const filePath = findPersonaPath(nameOrId);
+  if (filePath) {
+    return loadPersonaFromFile(filePath);
+  }
+
+  // Not found anywhere
+  const searchPaths = getPersonaSearchPaths();
+  throw createPersonaNotFoundError(nameOrId, searchPaths);
 }
 
 /**
- * List all available personas
- * Supports both .yaml and .md files
+ * List all available personas with source information
+ *
+ * Precedence order for deduplication:
+ * 1. Project-local filesystem
+ * 2. Lex database
+ * 3. User-global filesystem
+ * 4. Bundled
  */
-export async function listPersonas(): Promise<{ id: string; path: string }[]> {
-  const searchPaths = getPersonaSearchPaths();
+export async function listPersonasWithSource(): Promise<PersonaListEntry[]> {
   const seen = new Set<string>();
-  const result: { id: string; path: string }[] = [];
+  const result: PersonaListEntry[] = [];
 
-  for (const searchPath of searchPaths) {
-    if (!existsSync(searchPath)) continue;
+  // Helper to add entries from a filesystem path
+  const addFromPath = (searchPath: string, source: PersonaListSource) => {
+    if (!existsSync(searchPath)) return;
 
     const files = readdirSync(searchPath).filter(
       (f) => f.endsWith(".yaml") || f.endsWith(".yml") || f.endsWith(".md")
@@ -271,19 +437,49 @@ export async function listPersonas(): Promise<{ id: string; path: string }[]> {
       const filePath = join(searchPath, file);
       try {
         const persona = loadPersonaFromFile(filePath);
-        // Skip duplicates (earlier paths take precedence)
         if (!seen.has(persona.id)) {
           seen.add(persona.id);
-          result.push({ id: persona.id, path: filePath });
+          result.push({ id: persona.id, path: filePath, source });
         }
       } catch {
-        // Skip invalid personas
         continue;
       }
     }
+  };
+
+  // 1. Project-local
+  addFromPath(join(process.cwd(), ".smartergpt", "personas"), "project-local");
+
+  // 2. Database
+  const dbPersonas = listPersonasFromDatabase();
+  for (const entry of dbPersonas) {
+    if (!seen.has(entry.id)) {
+      seen.add(entry.id);
+      result.push(entry);
+    }
   }
 
+  // 3. User-global
+  addFromPath(join(homedir(), ".smartergpt", "personas"), "user-global");
+
+  // 4. Bundled
+  const bundledPath = getBundledPersonasDir();
+  addFromPath(bundledPath, "bundled");
+
   return result;
+}
+
+/**
+ * List all available personas
+ * Supports both .yaml and .md files
+ * @deprecated Use listPersonasWithSource() for source information
+ */
+export async function listPersonas(): Promise<{ id: string; path: string }[]> {
+  const entries = await listPersonasWithSource();
+  return entries.map((entry) => ({
+    id: entry.id,
+    path: entry.path ?? `database:${entry.id}`,
+  }));
 }
 
 /**

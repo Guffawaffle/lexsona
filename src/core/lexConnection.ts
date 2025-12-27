@@ -31,9 +31,24 @@ export type {
   Correction,
   GetRulesOptions,
   RuleSeverity,
+  // Persona types (V10)
+  PersonaRecord,
+  PersonaSource,
+  ListPersonasFilter,
 } from "@smartergpt/lex/lexsona";
 
 export { LEXSONA_DEFAULTS } from "@smartergpt/lex/lexsona";
+
+// Import persona functions for client wrapper
+import {
+  getPersona as getPersonaFromDb,
+  listPersonasFromDb,
+  savePersona as savePersonaToDb,
+  upsertPersona as upsertPersonaToDb,
+  deletePersona as deletePersonaFromDb,
+  getPersonaChecksum as getPersonaChecksumFromDb,
+} from "@smartergpt/lex/lexsona";
+import type { PersonaRecord, PersonaSource, ListPersonasFilter } from "@smartergpt/lex/lexsona";
 
 /**
  * Connection configuration
@@ -93,9 +108,7 @@ function getCandidatePaths(): Array<{ path: string; source: string }> {
 
   return [
     // 1. Explicit override via environment variable
-    ...(process.env.LEX_DB_PATH
-      ? [{ path: process.env.LEX_DB_PATH, source: "LEX_DB_PATH" }]
-      : []),
+    ...(process.env.LEX_DB_PATH ? [{ path: process.env.LEX_DB_PATH, source: "LEX_DB_PATH" }] : []),
     // 2. Project-local database
     { path: join(cwd, ".smartergpt", "lex", "lex.db"), source: "project-local" },
     // 3. Local override with alternate name
@@ -330,5 +343,78 @@ export class LexStorageClient {
    */
   close(): void {
     closeConnection(this.db);
+  }
+
+  // ============================================================================
+  // PERSONA STORAGE (V10)
+  // ============================================================================
+
+  /**
+   * Get a persona by ID from the database
+   *
+   * @param id - Persona identifier (e.g., "quality-first_engineering")
+   * @returns PersonaRecord or null if not found
+   */
+  getPersona(id: string): PersonaRecord | null {
+    return getPersonaFromDb(this.db, id);
+  }
+
+  /**
+   * List all personas in the database
+   *
+   * @param filter - Optional filter by source
+   * @returns Array of PersonaRecords
+   */
+  listPersonas(filter?: ListPersonasFilter): PersonaRecord[] {
+    return listPersonasFromDb(this.db, filter);
+  }
+
+  /**
+   * Save a persona to the database
+   *
+   * @param id - Persona identifier
+   * @param manifest - Full YAML content
+   * @param version - Semantic version
+   * @param source - Source type (default: "user")
+   */
+  savePersona(id: string, manifest: string, version: string, source: PersonaSource = "user"): void {
+    savePersonaToDb(this.db, id, manifest, version, source);
+  }
+
+  /**
+   * Upsert a persona (update if exists, insert if not)
+   *
+   * @param id - Persona identifier
+   * @param manifest - Full YAML content
+   * @param version - Semantic version
+   * @param source - Source type (default: "user")
+   */
+  upsertPersona(
+    id: string,
+    manifest: string,
+    version: string,
+    source: PersonaSource = "user"
+  ): void {
+    upsertPersonaToDb(this.db, id, manifest, version, source);
+  }
+
+  /**
+   * Delete a persona from the database
+   *
+   * @param id - Persona identifier
+   * @returns true if deleted, false if not found
+   */
+  deletePersona(id: string): boolean {
+    return deletePersonaFromDb(this.db, id);
+  }
+
+  /**
+   * Get the checksum for a persona (for sync detection)
+   *
+   * @param id - Persona identifier
+   * @returns Checksum string or null if not found
+   */
+  getPersonaChecksum(id: string): string | null {
+    return getPersonaChecksumFromDb(this.db, id);
   }
 }
