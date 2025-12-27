@@ -225,7 +225,6 @@ export async function handleRules(
   if (format === "compact") {
     const compactRules = rules.map((r) => ({
       id: r.rule_id,
-      txt: r.text,
       sev: r.severity === "must" ? "m" : r.severity === "should" ? "s" : "st",
       cat: r.category,
       conf: Math.round(r.effective_confidence * 100) / 100,

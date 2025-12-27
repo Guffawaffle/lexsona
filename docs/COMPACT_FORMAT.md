@@ -11,7 +11,7 @@ LexSona MCP tools support a `format` parameter with two values:
 | Full Format | Compact Format |
 |------------|----------------|
 | `rule_id` | `id` |
-| `text` | `txt` |
+| `text` | *omitted* (use `constraints_explain` for details) |
 | `severity` | `sev` (`m`/`s`/`st` for must/should/style) |
 | `confidence` | `conf` (rounded to 2 decimals) |
 | `category` | `cat` |
@@ -59,12 +59,11 @@ LexSona MCP tools support a `format` parameter with two values:
   }
 }
 
-// Compact format
+// Compact format (text omitted - use constraints_explain to get details)
 {
   "personaId": "quality-first_engineering",
   "constraints": [{
     "id": "rule_123",
-    "txt": "Always validate inputs",
     "sev": "m",
     "conf": 0.95,
     "cat": "validation"
@@ -79,25 +78,34 @@ LexSona MCP tools support a `format` parameter with two values:
 
 ### rules_list
 ```json
-// Compact format
+// Compact format (text omitted - IDs only for efficient lookup)
 {
   "count": 2,
   "ruleVer": 42,
   "rules": [
-    {"id": "r1", "txt": "Validate inputs", "sev": "m", "conf": 0.95, "cat": "validation"},
-    {"id": "r2", "txt": "Write tests", "sev": "s", "conf": 0.85, "cat": "testing"}
+    {"id": "r1", "sev": "m", "conf": 0.95, "cat": "validation"},
+    {"id": "r2", "sev": "s", "conf": 0.85, "cat": "testing"}
   ],
   "_compact": true
 }
 ```
 
-## Compact Mode Indicator
-All compact responses include `"_compact": true` to explicitly signal the format.
+## Key Features
+- **Text omitted in compact mode**: Use `constraints_explain` tool to get full constraint details
+- **IDs preserved**: All IDs maintained for follow-up lookups
+- **Compact indicator**: `_compact: true` flag signals the format  
+- **Confidence rounding**: Rounded to 2 decimals to reduce size
+- **Severity codes**: Abbreviated to 1-2 characters (m/s/st)
+
+## Workflow Pattern
+1. **Get list**: Use `constraints_derive` or `rules_list` with `format=compact` for efficient overview
+2. **Get details**: Use `constraints_explain` with specific constraint IDs to retrieve full text and reasoning
+3. **Stay in context**: Compact responses use less tokens, preserving context window for agents
 
 ## Payload Size Reduction
 Compact mode achieves:
-- **20-50%** size reduction for typical responses
-- **50%+** reduction for large constraint sets
+- **50-70%** size reduction for typical constraint lists
+- **60%+** reduction for large rule sets (100+ rules)
 - Preserves all IDs for follow-up lookups
 
 ## Supported Tools

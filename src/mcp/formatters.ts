@@ -13,10 +13,10 @@ export type OutputFormat = "full" | "compact";
 
 /**
  * Compact constraint representation
+ * Omits full text to minimize payload - use constraint_id for lookups
  */
 export interface CompactConstraint {
   id: string;
-  txt: string;
   sev: "m" | "s" | "st";
   conf: number;
   cat: string;
@@ -33,6 +33,8 @@ export interface CompactPrinciple {
 
 /**
  * Format a constraint based on output format
+ * In compact mode, omits full text to reduce payload size
+ * Use constraints_explain tool to get full details for specific constraints
  */
 export function formatConstraint(
   c: Constraint,
@@ -41,7 +43,6 @@ export function formatConstraint(
   if (format === "compact") {
     return {
       id: c.rule_id,
-      txt: c.text,
       sev: c.severity === "must" ? "m" : c.severity === "should" ? "s" : "st",
       conf: Math.round(c.confidence * 100) / 100, // Round to 2 decimals
       cat: c.category,

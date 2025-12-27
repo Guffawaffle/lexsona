@@ -179,13 +179,13 @@ describe("handleConstraints format parameter (AX-009)", () => {
     if (result.constraints.length > 0) {
       const constraint = result.constraints[0];
       expect(constraint).toHaveProperty("id");
-      expect(constraint).toHaveProperty("txt");
       expect(constraint).toHaveProperty("sev");
       expect(constraint).toHaveProperty("conf");
       expect(constraint).toHaveProperty("cat");
-      // Should NOT have full field names
+      // Should NOT have full field names or text (text omitted in compact mode)
       expect(constraint).not.toHaveProperty("rule_id");
       expect(constraint).not.toHaveProperty("text");
+      expect(constraint).not.toHaveProperty("txt");
       expect(constraint).not.toHaveProperty("severity");
       expect(constraint).not.toHaveProperty("confidence");
       expect(constraint).not.toHaveProperty("category");
@@ -257,13 +257,13 @@ describe("handleRules format parameter (AX-009)", () => {
     if (rules.length > 0) {
       const rule = rules[0];
       expect(rule).toHaveProperty("id");
-      expect(rule).toHaveProperty("txt");
       expect(rule).toHaveProperty("sev");
       expect(rule).toHaveProperty("conf");
       expect(rule).toHaveProperty("cat");
-      // Should NOT have full field names
+      // Should NOT have full field names or text (text omitted in compact mode)
       expect(rule).not.toHaveProperty("rule_id");
       expect(rule).not.toHaveProperty("text");
+      expect(rule).not.toHaveProperty("txt");
       expect(rule).not.toHaveProperty("severity");
       expect(rule).not.toHaveProperty("confidence");
       expect(rule).not.toHaveProperty("category");
