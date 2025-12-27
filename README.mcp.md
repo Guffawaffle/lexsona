@@ -167,7 +167,7 @@ List learned behavioral rules.
 
 ### `lexsona_personas`
 
-List available personas.
+List available personas with capability matrix for agent selection (AX-003).
 
 **Input:** None
 
@@ -179,17 +179,31 @@ List available personas.
   "personas": [
     {
       "id": "quality-first_engineering",
-      "behavior": "Prioritizes thoroughness, testing",
-      "triggers": ["quality", "testing", "thorough"]
+      "behavior": "quality-first",
+      "domain": "engineering",
+      "optimizes": ["correctness", "testing", "maintainability"],
+      "deprioritizes": ["velocity"],
+      "triggerPhrases": ["senior dev", "quality first", "engineering mode"]
     },
     {
       "id": "momentum-first_product",
-      "behavior": "Prioritizes velocity, shipping",
-      "triggers": ["ship", "fast", "momentum"]
+      "behavior": "momentum-first",
+      "domain": "product",
+      "optimizes": ["velocity", "iteration", "shipping"],
+      "deprioritizes": ["perfection"],
+      "triggerPhrases": ["eager pm", "momentum first", "product mode"]
     }
   ]
 }
 ```
+
+**Capability Matrix:** Each persona includes structured metadata to help agents autonomously select the right persona:
+
+- `behavior`: Primary behavioral focus (e.g., "quality-first", "momentum-first")
+- `domain`: Domain context (e.g., "engineering", "product")
+- `optimizes`: Array of what this persona optimizes for
+- `deprioritizes`: Array of what this persona deprioritizes
+- `triggerPhrases`: Phrases that suggest this persona
 
 ### `introspect`
 

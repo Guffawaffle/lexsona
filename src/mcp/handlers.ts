@@ -161,7 +161,7 @@ export async function handleRules(
 
 /**
  * Handler for lexsona_personas tool
- * Lists available personas
+ * Lists available personas with capability matrix (AX-003)
  */
 export async function handlePersonas(): Promise<object> {
   const personas = await listPersonas();
@@ -172,8 +172,11 @@ export async function handlePersonas(): Promise<object> {
         const full = await loadPersona(p.id);
         return {
           id: full.id,
-          behavior: full.behavior,
-          triggers: full.triggers?.phrases ?? [],
+          behavior: full.behavior.primaryFocus,
+          domain: full.behavior.domain,
+          optimizes: full.capability?.optimizes ?? [],
+          deprioritizes: full.capability?.deprioritizes ?? [],
+          triggerPhrases: full.triggers?.phrases ?? [],
         };
       } catch {
         return { id: p.id, error: "Failed to load" };

@@ -1,5 +1,5 @@
 id: momentum-first_product
-version: 1.0.0
+version: 1.1.0
 
 behavior:
   primaryFocus: momentum-first
@@ -15,6 +15,14 @@ triggers:
     - planning
     - scope
     - coordination
+
+capability:
+  optimizes:
+    - velocity
+    - iteration
+    - shipping
+  deprioritizes:
+    - perfection
 
 duties:
   mustDo:

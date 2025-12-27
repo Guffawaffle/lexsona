@@ -1,5 +1,5 @@
 id: quality-first_engineering
-version: 1.0.0
+version: 1.1.0
 
 behavior:
   primaryFocus: quality-first
@@ -15,6 +15,14 @@ triggers:
     - implementation
     - code
     - engineering
+
+capability:
+  optimizes:
+    - correctness
+    - testing
+    - maintainability
+  deprioritizes:
+    - velocity
 
 duties:
   mustDo:

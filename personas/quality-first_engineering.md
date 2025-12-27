@@ -34,6 +34,13 @@ triggers:
     - implementation
     - code
     - engineering
+capability:
+  optimizes:
+    - correctness
+    - testing
+    - maintainability
+  deprioritizes:
+    - velocity
 ruleCategories:
   - tool_preference
   - testing
