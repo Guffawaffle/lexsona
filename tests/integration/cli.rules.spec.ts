@@ -57,6 +57,11 @@ describe("rules CLI", () => {
             effective_confidence: 0.67,
           };
           learnedRules.push(rule);
+          // Return LearnResult
+          return {
+            rule,
+            isNew: true,
+          };
         }),
         getRules: vi.fn(async (filter) => {
           // Filter learned rules by domain
@@ -113,9 +118,12 @@ describe("rules CLI", () => {
       const result = JSON.parse(output);
 
       expect(result.success).toBe(true);
-      expect(result.correction).toBe("Always use TypeScript for new files");
-      expect(result.severity).toBe("should"); // default
+      expect(result.isNew).toBe(true);
+      expect(result.rule.text).toBe("Always use TypeScript for new files");
+      expect(result.rule.severity).toBe("should"); // default
       expect(result.polarity).toBe("reinforce"); // default
+      expect(result.summary).toBeDefined();
+      expect(result.summary.totalRules).toBeGreaterThanOrEqual(1);
     });
 
     it("maps --domain to scope.project", async () => {
@@ -215,7 +223,7 @@ describe("rules CLI", () => {
       const result = JSON.parse(output);
 
       expect(result.success).toBe(true);
-      expect(result.severity).toBe("must");
+      expect(result.rule.severity).toBe("must");
     });
 
     it("validates severity values", async () => {
@@ -290,8 +298,8 @@ describe("rules CLI", () => {
       expect(result.context.project).toBe("test-project");
       expect(result.context.module_id).toBe("src/utils");
       expect(result.context.task_type).toBe("refactoring");
-      expect(result.severity).toBe("style");
-      expect(result.category).toBe("code_style");
+      expect(result.rule.severity).toBe("style");
+      expect(result.rule.category).toBe("code_style");
     });
   });
 
@@ -363,14 +371,7 @@ describe("rules CLI", () => {
 
       // List all rules for this domain
       const listProgram = createProgram();
-      await listProgram.parseAsync([
-        "node",
-        "lexsona",
-        "rules",
-        "list",
-        "--domain",
-        "multi-test",
-      ]);
+      await listProgram.parseAsync(["node", "lexsona", "rules", "list", "--domain", "multi-test"]);
 
       const output = logSpy.mock.calls.map((c) => String(c[0])).join("\n");
 
@@ -391,14 +392,7 @@ describe("rules CLI", () => {
       } as unknown as LexSona);
 
       const program = createProgram();
-      await program.parseAsync([
-        "node",
-        "lexsona",
-        "rules",
-        "learn",
-        "Test rule",
-        "--json",
-      ]);
+      await program.parseAsync(["node", "lexsona", "rules", "learn", "Test rule", "--json"]);
 
       const output = logSpy.mock.calls.map((c) => String(c[0])).join("\n");
       const result = JSON.parse(output);

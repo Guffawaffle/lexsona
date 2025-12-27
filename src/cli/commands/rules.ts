@@ -198,7 +198,7 @@ export function registerRulesCommands(program: Command): void {
       }
 
       try {
-        await instance.learn({
+        const learnResult = await instance.learn({
           correction,
           severity,
           category: options.category,
@@ -206,24 +206,85 @@ export function registerRulesCommands(program: Command): void {
           context: scope,
         });
 
+        // Get rule count summary for enhanced output
+        const allRules = await instance.getRules({ minN: 1 });
+        const severityCounts = {
+          must: allRules.filter((r) => r.severity === "must").length,
+          should: allRules.filter((r) => r.severity === "should").length,
+          style: allRules.filter((r) => r.severity === "style").length,
+        };
+
         if (jsonMode) {
           const result = {
             success: true,
-            correction,
-            severity,
-            category: options.category,
+            isNew: learnResult.isNew,
+            rule: {
+              id: learnResult.rule.rule_id,
+              text: learnResult.rule.text,
+              severity: learnResult.rule.severity,
+              category: learnResult.rule.category,
+              observationCount: learnResult.rule.observation_count,
+              confidence: learnResult.rule.effective_confidence,
+            },
             polarity: polarity > 0 ? "reinforce" : "counter",
             context: scope,
+            summary: {
+              totalRules: allRules.length,
+              bySeverity: severityCounts,
+            },
+            ...(learnResult.isNew
+              ? {}
+              : {
+                  previous: {
+                    observationCount: learnResult.previousObservationCount,
+                    confidence: learnResult.previousConfidence,
+                  },
+                }),
           };
           console.log(JSON.stringify(result, null, 2));
         } else {
-          console.log(`✓ Learned: "${correction}"`);
+          // Enhanced human-readable output
+          if (learnResult.isNew) {
+            console.log(`✓ Learned: "${correction}"`);
+          } else {
+            console.log(`✓ Updated rule: "${correction}"`);
+          }
+          console.log("");
+          console.log(`  Severity:  ${severity}`);
+          console.log(`  Polarity:  ${polarity > 0 ? "reinforce" : "counter"}`);
+          console.log(`  Category:  ${options.category}`);
+          if (scope.project) console.log(`  Project:   ${scope.project}`);
+          if (scope.module_id) console.log(`  Module:    ${scope.module_id}`);
+          if (scope.task_type) console.log(`  Task:      ${scope.task_type}`);
+
+          // Show confidence change for updates
+          if (!learnResult.isNew && learnResult.previousConfidence !== undefined) {
+            const delta = learnResult.rule.effective_confidence - learnResult.previousConfidence;
+            const deltaStr = delta >= 0 ? `+${delta.toFixed(2)}` : delta.toFixed(2);
+            console.log("");
+            console.log(
+              `  Confidence: ${learnResult.previousConfidence.toFixed(2)} → ${learnResult.rule.effective_confidence.toFixed(2)} (${deltaStr})`
+            );
+            console.log(
+              `  Observations: ${learnResult.previousObservationCount} → ${learnResult.rule.observation_count}`
+            );
+          }
+
+          // Summary section
+          console.log("");
+          console.log("Rules summary:");
           console.log(
-            `  severity: ${severity}, polarity: ${polarity > 0 ? "reinforce" : "counter"}`
+            `  Total: ${allRules.length} (${learnResult.isNew ? "1 new" : "updated existing"})`
           );
-          if (scope.project) console.log(`  project: ${scope.project}`);
-          if (scope.module_id) console.log(`  module: ${scope.module_id}`);
-          if (scope.task_type) console.log(`  task: ${scope.task_type}`);
+          console.log(
+            `  By severity: ${severityCounts.must} must, ${severityCounts.should} should, ${severityCounts.style} style`
+          );
+
+          // Helpful guidance
+          console.log("");
+          console.log(
+            "💡 Run 'lexsona constraints derive' to see how this affects your constraints."
+          );
         }
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);

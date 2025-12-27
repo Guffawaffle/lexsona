@@ -50,6 +50,7 @@ import {
   // Rule management
   promoteRule as promoteRuleInDb,
   getBehaviorRuleById as getBehaviorRuleByIdFromDb,
+  findRuleByContext as findRuleByContextFromDb,
 } from "@smartergpt/lex/lexsona";
 import type { PersonaRecord, PersonaSource, ListPersonasFilter } from "@smartergpt/lex/lexsona";
 
@@ -435,6 +436,20 @@ export class LexStorageClient {
     ruleId: string
   ): import("@smartergpt/lex/lexsona").BehaviorRuleWithConfidence | null {
     return getBehaviorRuleByIdFromDb(this.db, ruleId);
+  }
+
+  /**
+   * Find an existing rule by matching context (module_id and text)
+   *
+   * @param moduleId - Module ID to match (optional)
+   * @param text - Rule text to match
+   * @returns Rule if found, null otherwise
+   */
+  findRuleByContext(
+    moduleId: string | undefined,
+    text: string
+  ): import("@smartergpt/lex/lexsona").BehaviorRuleWithConfidence | null {
+    return findRuleByContextFromDb(this.db, moduleId, text);
   }
 
   /**

@@ -50,6 +50,20 @@ export interface LexSonaConfig {
 }
 
 /**
+ * Result of learning a correction
+ */
+export interface LearnResult {
+  /** The created or updated rule */
+  rule: import("@smartergpt/lex/lexsona").BehaviorRuleWithConfidence;
+  /** Whether this was a new rule (true) or update to existing (false) */
+  isNew: boolean;
+  /** Previous observation count (for updates) */
+  previousObservationCount?: number;
+  /** Previous confidence (for updates) */
+  previousConfidence?: number;
+}
+
+/**
  * LexSona Runtime Engine
  *
  * Provides the public API for:
@@ -190,13 +204,21 @@ export class LexSona {
    *
    * Records the correction to Lex's behavioral rules store
    * for future constraint derivation.
+   *
+   * @returns The created/updated rule and metadata about the operation
    */
-  async learn(correction: CorrectionInput): Promise<void> {
+  async learn(correction: CorrectionInput): Promise<LearnResult> {
     if (!this.storageClient?.isConnected()) {
       throw createLexNotConnectedError();
     }
 
     const db = this.storageClient.getDatabase();
+
+    // Check if a matching rule already exists
+    const existingRule = this.storageClient.findRuleByContext(
+      correction.context.module_id,
+      correction.correction
+    );
 
     // Convert CorrectionInput to Lex's Correction type
     const lexCorrection: Correction = {
@@ -214,7 +236,21 @@ export class LexSona {
       polarity: correction.polarity,
     };
 
-    recordCorrection(db, lexCorrection);
+    const rule = recordCorrection(db, lexCorrection);
+
+    if (existingRule) {
+      return {
+        rule,
+        isNew: false,
+        previousObservationCount: existingRule.observation_count,
+        previousConfidence: existingRule.effective_confidence,
+      };
+    }
+
+    return {
+      rule,
+      isNew: true,
+    };
   }
 
   /**
