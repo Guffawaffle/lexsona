@@ -29,13 +29,18 @@ import { LexSonaErrorCode } from "./errors.js";
  */
 export async function handleActivate(
   input: ActivateInput,
-  state: { activePersonaId: string | null }
+  state: { activePersonaId: string | null },
+  getLexSona: () => Promise<LexSona>
 ): Promise<object> {
   const persona = await loadPersona(input.persona);
   state.activePersonaId = persona.id;
 
+  const instance = await getLexSona();
+  const ruleVersion = instance.getRuleVersion();
+
   return {
     success: true,
+    ruleVersion,
     persona: {
       id: persona.id,
       version: persona.version,
@@ -121,8 +126,12 @@ export async function handleLearn(
     },
   });
 
+  // Increment rule version after learning
+  const ruleVersion = await instance.incrementRuleVersion();
+
   return {
     success: true,
+    ruleVersion,
     correction: input.correction,
     severity: input.severity,
     polarity: input.polarity,
@@ -147,8 +156,11 @@ export async function handleRules(
     minConfidence: input.minConfidence,
   });
 
+  const ruleVersion = instance.getRuleVersion();
+
   return {
     count: rules.length,
+    ruleVersion,
     rules: rules.map((r) => ({
       rule_id: r.rule_id,
       text: r.text,
@@ -163,7 +175,9 @@ export async function handleRules(
  * Handler for lexsona_personas tool
  * Lists available personas with capability matrix (AX-003)
  */
-export async function handlePersonas(): Promise<object> {
+export async function handlePersonas(
+  getLexSona: () => Promise<LexSona>
+): Promise<object> {
   const personas = await listPersonas();
 
   const details = await Promise.all(
@@ -184,8 +198,12 @@ export async function handlePersonas(): Promise<object> {
     })
   );
 
+  const instance = await getLexSona();
+  const ruleVersion = instance.getRuleVersion();
+
   return {
     count: details.length,
+    ruleVersion,
     personas: details,
   };
 }
@@ -211,9 +229,11 @@ export async function handleTrustGapRecord(
   });
 
   const trustGap = input.agent_claimed !== input.verified;
+  const ruleVersion = instance.getRuleVersion();
 
   return {
     success: true,
+    ruleVersion,
     trust_gap: trustGap,
     message: trustGap
       ? `Trust gap recorded. Confidence decay applied for ${input.agent_family}.`
@@ -232,9 +252,11 @@ export async function handleAgentTrustProfile(
   const instance = await getLexSona();
 
   const profile = await instance.getAgentTrustProfile(input.agent_family);
+  const ruleVersion = instance.getRuleVersion();
 
   return {
     agent_family: profile.agent_family,
+    ruleVersion,
     total_tasks: profile.total_tasks,
     trust_gaps: profile.trust_gaps,
     gap_rate: profile.gap_rate,
@@ -261,11 +283,13 @@ export async function handleIntrospect(
   let lexConnected = false;
   let lexDbPath: string | undefined;
   let ruleCount = 0;
+  let ruleVersion = 0;
 
   try {
     const instance = await getLexSona();
     lexConnected = instance.isConnected();
     lexDbPath = instance.getConfig().lexDb;
+    ruleVersion = instance.getRuleVersion();
 
     if (lexConnected) {
       const rules = await instance.getRules();
@@ -280,6 +304,7 @@ export async function handleIntrospect(
 
   return {
     version: "0.3.0",
+    ruleVersion,
     state: {
       activePersona: state.activePersonaId,
       ruleCount,

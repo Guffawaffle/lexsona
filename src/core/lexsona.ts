@@ -64,6 +64,7 @@ export class LexSona {
   private _config: LexSonaConfig;
   private activePersona: string | null = null;
   private storageClient: LexStorageClient | null = null;
+  private ruleVersion: number = 0;
 
   private constructor(config: LexSonaConfig) {
     this._config = config;
@@ -84,6 +85,8 @@ export class LexSona {
 
     try {
       instance.storageClient = LexStorageClient.connect(connectionConfig);
+      // Load persisted rule version
+      instance.loadRuleVersion();
     } catch (error) {
       // Log warning but allow LexSona to work in disconnected mode
       console.warn(
@@ -149,6 +152,7 @@ export class LexSona {
         context,
         constraints: [],
         principles: DEFAULT_BASELINE_PRINCIPLES,
+        ruleVersion: this.ruleVersion,
         metadata: {
           rulesConsidered: 0,
           rulesFiltered: 0,
@@ -171,9 +175,14 @@ export class LexSona {
     const principles: Principle[] = DEFAULT_BASELINE_PRINCIPLES;
 
     // Call pure derivation function
-    return deriveConstraintsPure(persona, rules, principles, context, {
+    const result = deriveConstraintsPure(persona, rules, principles, context, {
       hasLexConnection,
     });
+    
+    // Add rule version to result
+    result.ruleVersion = this.ruleVersion;
+    
+    return result;
   }
 
   /**
@@ -349,9 +358,111 @@ export class LexSona {
 
     const principles: Principle[] = DEFAULT_BASELINE_PRINCIPLES;
 
-    return deriveConstraintsPure(persona, calibratedRules, principles, context, {
+    const result = deriveConstraintsPure(persona, calibratedRules, principles, context, {
       hasLexConnection: true,
     });
+    
+    // Add rule version to result
+    result.ruleVersion = this.ruleVersion;
+    
+    return result;
+  }
+
+  /**
+   * Get the current rule version
+   * 
+   * @returns Current rule version number
+   */
+  getRuleVersion(): number {
+    return this.ruleVersion;
+  }
+
+  /**
+   * Increment the rule version (called when rules change)
+   * Persists the new version to the database
+   * 
+   * @returns New version number
+   */
+  async incrementRuleVersion(): Promise<number> {
+    this.ruleVersion++;
+    await this.persistRuleVersion();
+    return this.ruleVersion;
+  }
+
+  /**
+   * Ensure metadata table exists
+   * Called before any metadata operations
+   */
+  private ensureMetadataTable(): void {
+    if (!this.storageClient?.isConnected()) {
+      return;
+    }
+
+    const db = this.storageClient.getDatabase();
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS lexsona_metadata (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    `);
+  }
+
+  /**
+   * Load rule version from database
+   * Called during initialization
+   */
+  private loadRuleVersion(): void {
+    if (!this.storageClient?.isConnected()) {
+      return;
+    }
+
+    try {
+      this.ensureMetadataTable();
+      
+      const db = this.storageClient.getDatabase();
+      const result = db
+        .prepare(
+          `SELECT value FROM lexsona_metadata WHERE key = 'rule_version' LIMIT 1`
+        )
+        .get() as { value: string } | undefined;
+
+      if (result) {
+        const parsed = parseInt(result.value, 10);
+        // Validate parsed value is a valid positive integer
+        if (!isNaN(parsed) && parsed >= 0) {
+          this.ruleVersion = parsed;
+        }
+      }
+    } catch {
+      // If table creation or query fails, version stays at 0
+      // This is fine for new databases
+    }
+  }
+
+  /**
+   * Persist rule version to database
+   * Uses INSERT OR REPLACE for atomic updates
+   */
+  private async persistRuleVersion(): Promise<void> {
+    if (!this.storageClient?.isConnected()) {
+      return;
+    }
+
+    try {
+      this.ensureMetadataTable();
+      
+      const db = this.storageClient.getDatabase();
+      db.prepare(
+        `INSERT OR REPLACE INTO lexsona_metadata (key, value, updated_at)
+         VALUES ('rule_version', ?, datetime('now'))`
+      ).run(this.ruleVersion.toString());
+    } catch (error) {
+      // Log error but don't throw - version tracking is non-critical
+      console.warn(
+        `LexSona: Could not persist rule version: ${error instanceof Error ? error.message : error}`
+      );
+    }
   }
 
   /**

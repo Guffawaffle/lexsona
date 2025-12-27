@@ -117,7 +117,8 @@ describe("MCP Server Integration", () => {
   describe("lexsona_activate handler", () => {
     it("returns persona info when activated", async () => {
       const state = { activePersonaId: null };
-      const result = await handleActivate({ persona: "quality-first_engineering" }, state);
+      const getLexSona = async () => mockLexSona;
+      const result = await handleActivate({ persona: "quality-first_engineering" }, state, getLexSona);
 
       expect(result).toHaveProperty("success", true);
       expect(result).toHaveProperty("persona");
@@ -129,7 +130,8 @@ describe("MCP Server Integration", () => {
 
     it("updates state with active persona ID", async () => {
       const state = { activePersonaId: null };
-      await handleActivate({ persona: "momentum-first_product" }, state);
+      const getLexSona = async () => mockLexSona;
+      await handleActivate({ persona: "momentum-first_product" }, state, getLexSona);
 
       expect(state.activePersonaId).toBe("momentum-first_product");
     });
@@ -261,7 +263,8 @@ describe("MCP Server Integration", () => {
 
   describe("lexsona_personas handler", () => {
     it("lists available personas", async () => {
-      const result = await handlePersonas();
+      const getLexSona = async () => mockLexSona;
+      const result = await handlePersonas(getLexSona);
 
       expect(result).toHaveProperty("count", 2);
       expect(result).toHaveProperty("personas");
@@ -269,7 +272,8 @@ describe("MCP Server Integration", () => {
     });
 
     it("includes persona details", async () => {
-      const result = await handlePersonas();
+      const getLexSona = async () => mockLexSona;
+      const result = await handlePersonas(getLexSona);
       const personas = (result as any).personas;
 
       expect(personas[0]).toHaveProperty("id");
@@ -281,7 +285,8 @@ describe("MCP Server Integration", () => {
     });
 
     it("includes capability matrix for persona selection (AX-003)", async () => {
-      const result = await handlePersonas();
+      const getLexSona = async () => mockLexSona;
+      const result = await handlePersonas(getLexSona);
       const personas = (result as any).personas;
 
       // Verify structure matches AX-003 requirements
@@ -303,7 +308,8 @@ describe("MCP Server Integration", () => {
   describe("JSON Output Format", () => {
     it("activate returns valid JSON", async () => {
       const state = { activePersonaId: null };
-      const result = await handleActivate({ persona: "quality-first_engineering" }, state);
+      const getLexSona = async () => mockLexSona;
+      const result = await handleActivate({ persona: "quality-first_engineering" }, state, getLexSona);
 
       const json = JSON.stringify(result, null, 2);
       const parsed = JSON.parse(json);
@@ -334,7 +340,8 @@ describe("MCP Server Integration", () => {
     });
 
     it("personas returns valid JSON", async () => {
-      const result = await handlePersonas();
+      const getLexSona = async () => mockLexSona;
+      const result = await handlePersonas(getLexSona);
 
       const json = JSON.stringify(result, null, 2);
       const parsed = JSON.parse(json);
