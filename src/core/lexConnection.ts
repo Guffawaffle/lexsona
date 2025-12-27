@@ -47,6 +47,9 @@ import {
   upsertPersona as upsertPersonaToDb,
   deletePersona as deletePersonaFromDb,
   getPersonaChecksum as getPersonaChecksumFromDb,
+  // Rule management
+  promoteRule as promoteRuleInDb,
+  getBehaviorRuleById as getBehaviorRuleByIdFromDb,
 } from "@smartergpt/lex/lexsona";
 import type { PersonaRecord, PersonaSource, ListPersonasFilter } from "@smartergpt/lex/lexsona";
 
@@ -416,5 +419,38 @@ export class LexStorageClient {
    */
   getPersonaChecksum(id: string): string | null {
     return getPersonaChecksumFromDb(this.db, id);
+  }
+
+  // ============================================================================
+  // RULE MANAGEMENT
+  // ============================================================================
+
+  /**
+   * Get a behavior rule by ID
+   *
+   * @param ruleId - Rule identifier
+   * @returns BehaviorRuleWithConfidence or null if not found
+   */
+  getBehaviorRuleById(
+    ruleId: string
+  ): import("@smartergpt/lex/lexsona").BehaviorRuleWithConfidence | null {
+    return getBehaviorRuleByIdFromDb(this.db, ruleId);
+  }
+
+  /**
+   * Promote a rule to "core" status
+   *
+   * Core rules are immediately visible without needing multiple observations.
+   * This bumps observation_count to minN and adjusts alpha proportionally.
+   *
+   * @param ruleId - Rule ID to promote
+   * @param targetN - Target observation count (default: MIN_OBSERVATION_COUNT = 3)
+   * @returns Updated rule or null if not found
+   */
+  promoteRule(
+    ruleId: string,
+    targetN?: number
+  ): import("@smartergpt/lex/lexsona").BehaviorRuleWithConfidence | null {
+    return promoteRuleInDb(this.db, ruleId, targetN);
   }
 }

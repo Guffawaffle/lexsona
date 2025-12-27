@@ -393,6 +393,63 @@ export function deriveConstraints(
     source: "learned",
   }));
 
+  // === PERSONA DUTIES → CONSTRAINTS ===
+  // Convert persona duties (mustDo, shouldDo, mustNotDo) to constraints
+  // Duties are optional - some test personas or minimal personas may not have them
+  const personaConstraints: Constraint[] = [];
+  const duties = persona.duties ?? { mustDo: [], mustNotDo: [] };
+
+  // mustDo → severity: must, confidence: 1.0 (authoritative)
+  if (duties.mustDo && duties.mustDo.length > 0) {
+    for (const duty of duties.mustDo) {
+      personaConstraints.push({
+        rule_id: `persona:${persona.id}:must:${duty.slice(0, 20).replace(/\s+/g, "-")}`,
+        text: duty,
+        severity: "must",
+        confidence: 1.0,
+        category: "persona-duty",
+        source: "persona",
+      });
+    }
+  }
+
+  // shouldDo → severity: should, confidence: 1.0 (authoritative)
+  if (duties.shouldDo && duties.shouldDo.length > 0) {
+    for (const duty of duties.shouldDo) {
+      personaConstraints.push({
+        rule_id: `persona:${persona.id}:should:${duty.slice(0, 20).replace(/\s+/g, "-")}`,
+        text: duty,
+        severity: "should",
+        confidence: 1.0,
+        category: "persona-duty",
+        source: "persona",
+      });
+    }
+  }
+
+  // mustNotDo → severity: must, confidence: 1.0 (inverted - "Do not X")
+  // We prefix with "Do not" to make it clear this is a prohibition
+  if (duties.mustNotDo && duties.mustNotDo.length > 0) {
+    for (const duty of duties.mustNotDo) {
+      // If the duty already starts with "not" or "never", use as-is
+      const text =
+        duty.toLowerCase().startsWith("not ") || duty.toLowerCase().startsWith("never ")
+          ? duty
+          : `Do not: ${duty}`;
+      personaConstraints.push({
+        rule_id: `persona:${persona.id}:must-not:${duty.slice(0, 20).replace(/\s+/g, "-")}`,
+        text,
+        severity: "must",
+        confidence: 1.0,
+        category: "persona-duty",
+        source: "persona",
+      });
+    }
+  }
+
+  // Merge: persona constraints come first (highest priority), then learned rules
+  const allConstraints = [...personaConstraints, ...constraints];
+
   // Calculate stable input hash
   const inputHash = calculateInputHash(persona, rules, principles, context);
 
@@ -402,7 +459,7 @@ export function deriveConstraints(
     inputHash,
     context,
     principles,
-    constraints,
+    constraints: allConstraints,
     metadata: {
       rulesConsidered: rules.length,
       rulesFiltered: rules.length - matchingRules.length,

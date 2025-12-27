@@ -127,8 +127,10 @@ describe("LexSona", () => {
       // Metadata should indicate offline mode (no DB)
       expect(result.metadata.offlineMode).toBe(true);
       expect(result.metadata.rulesConsidered).toBe(0);
-      // Should have empty constraints (no rules from DB)
-      expect(result.constraints).toEqual([]);
+      // Should have persona duty constraints (from persona YAML, not DB)
+      expect(result.constraints.length).toBeGreaterThan(0);
+      // All constraints should be from persona (no learned rules in disconnected mode)
+      expect(result.constraints.every((c) => c.source === "persona")).toBe(true);
     });
   });
 

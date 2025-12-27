@@ -8,6 +8,7 @@ import { Command } from "commander";
 import { LexSona, type LexSonaConfig } from "../../core/lexsona.js";
 import type { RuleScope } from "../../rules/types.js";
 import { isJsonMode } from "../output.js";
+import { LEXSONA_DEFAULTS } from "../../core/lexConnection.js";
 
 /**
  * Initialize LexSona with connection to Lex
@@ -38,49 +39,71 @@ export function registerRulesCommands(program: Command): void {
     .description("List active behavioral rules")
     .option("--domain <domain>", "Filter by project (deprecated name: domain)")
     .option("--min-confidence <n>", "Minimum confidence threshold", parseFloat)
+    .option("--all", "Show all rules including those below observation threshold")
     .action(async function (this: Command, options) {
       const jsonMode = isJsonMode(this);
       const instance = await initLexSona();
       if (!instance) {
         if (jsonMode) {
-          console.log(JSON.stringify({
-            error: "Not connected",
-            message: "Not connected to Lex database",
-            hint: "Set LEX_DB_PATH environment variable or run 'lex init' first",
-          }, null, 2));
+          console.log(
+            JSON.stringify(
+              {
+                error: "Not connected",
+                message: "Not connected to Lex database",
+                hint: "Set LEX_DB_PATH environment variable or run 'lex init' first",
+              },
+              null,
+              2
+            )
+          );
         }
         return;
       }
 
+      // --all flag sets minN=1 to show all rules regardless of observation count
+      const minN = options.all ? 1 : LEXSONA_DEFAULTS.MIN_OBSERVATION_COUNT;
+
       const rulesList = await instance.getRules({
         domain: options.domain,
         minConfidence: options.minConfidence ?? 0.3,
+        minN,
       });
 
       if (rulesList.length === 0) {
         if (jsonMode) {
-          console.log(JSON.stringify({ rules: [] }, null, 2));
+          console.log(JSON.stringify({ rules: [], showingAll: !!options.all }, null, 2));
         } else {
-          console.log("No rules found.");
+          if (options.all) {
+            console.log("No rules found.");
+          } else {
+            console.log("No rules found (rules need 3+ observations to appear).");
+            console.log("Use --all to show all rules including new ones.");
+          }
         }
         return;
       }
 
       if (jsonMode) {
-        const rules = rulesList.map((rule) => ({
+        const rulesOutput = rulesList.map((rule) => ({
           id: rule.rule_id,
           text: rule.text,
           category: rule.category,
           severity: rule.severity,
           confidence: rule.effective_confidence,
+          observationCount: rule.observation_count,
           scope: rule.scope,
         }));
-        console.log(JSON.stringify({ rules }, null, 2));
+        console.log(JSON.stringify({ rules: rulesOutput, showingAll: !!options.all }, null, 2));
       } else {
-        console.log(`Found ${rulesList.length} rules:\n`);
+        const allNote = options.all ? " (showing all)" : "";
+        console.log(`Found ${rulesList.length} rules${allNote}:\n`);
         for (const rule of rulesList) {
           const scopeStr = rule.scope.module_id ? ` [${rule.scope.module_id}]` : "";
-          console.log(`  ${rule.rule_id}${scopeStr}`);
+          const obsNote =
+            rule.observation_count < LEXSONA_DEFAULTS.MIN_OBSERVATION_COUNT
+              ? ` (${rule.observation_count}/${LEXSONA_DEFAULTS.MIN_OBSERVATION_COUNT} obs)`
+              : "";
+          console.log(`  ${rule.rule_id}${scopeStr}${obsNote}`);
           console.log(`    ${rule.text}`);
           console.log(
             `    severity: ${rule.severity}, confidence: ${rule.effective_confidence.toFixed(2)}`
@@ -105,7 +128,7 @@ export function registerRulesCommands(program: Command): void {
     .action(async function (this: Command, correction: string, options) {
       // Check both local --json and global --json
       const jsonMode = options.json || isJsonMode(this);
-      
+
       // Validate correction is not empty
       if (!correction || correction.trim().length === 0) {
         const error = {
@@ -226,6 +249,226 @@ export function registerRulesCommands(program: Command): void {
     .action(async (_options) => {
       // TODO: Implement rules application
       console.log("Applying rules to derive constraints...");
+    });
+
+  // lexsona rules teach <correction>
+  rules
+    .command("teach <correction>")
+    .description("Teach a core rule that is immediately active (skips observation threshold)")
+    .option("--domain <domain>", "Project context")
+    .option("--module <id>", "Module scope")
+    .option("--task <type>", "Task type context")
+    .option("--severity <level>", "Severity: must, should, style", "should")
+    .option("--category <cat>", "Rule category", "general")
+    .option("--json", "Output result as JSON")
+    .action(async function (this: Command, correction: string, options) {
+      const jsonMode = options.json || isJsonMode(this);
+
+      if (!correction || correction.trim().length === 0) {
+        const error = {
+          error: "Empty correction",
+          message: "Correction text cannot be empty",
+          usage: "lexsona rules teach <correction> [options]",
+        };
+        if (jsonMode) {
+          console.log(JSON.stringify(error, null, 2));
+        } else {
+          console.error(`Error: ${error.message}`);
+          console.error(`Usage: ${error.usage}`);
+        }
+        return;
+      }
+
+      const instance = await initLexSona();
+      if (!instance) {
+        const error = {
+          error: "Not connected",
+          message: "Not connected to Lex database",
+          hint: "Set LEX_DB_PATH environment variable or run 'lex init' first",
+        };
+        if (jsonMode) {
+          console.log(JSON.stringify(error, null, 2));
+        }
+        return;
+      }
+
+      const severity = options.severity as "must" | "should" | "style";
+      if (!["must", "should", "style"].includes(severity)) {
+        const error = {
+          error: "Invalid severity",
+          message: `Invalid severity: ${severity}`,
+          validValues: ["must", "should", "style"],
+        };
+        if (jsonMode) {
+          console.log(JSON.stringify(error, null, 2));
+        } else {
+          console.error(`Error: ${error.message}`);
+        }
+        return;
+      }
+
+      const scope: RuleScope = {};
+      if (options.domain) scope.project = options.domain;
+      if (options.module) scope.module_id = options.module;
+      if (options.task) scope.task_type = options.task;
+
+      try {
+        const rule = await instance.teach({
+          correction,
+          severity,
+          category: options.category,
+          polarity: 1, // Teaching is always reinforcement
+          context: scope,
+        });
+
+        if (jsonMode) {
+          console.log(
+            JSON.stringify(
+              {
+                success: true,
+                rule: {
+                  id: rule.rule_id,
+                  text: rule.text,
+                  severity: rule.severity,
+                  confidence: rule.effective_confidence,
+                  observationCount: rule.observation_count,
+                  status: "core",
+                },
+              },
+              null,
+              2
+            )
+          );
+        } else {
+          console.log(`✓ Taught core rule: "${correction}"`);
+          console.log(`  id: ${rule.rule_id}`);
+          console.log(
+            `  severity: ${severity}, confidence: ${rule.effective_confidence.toFixed(2)}`
+          );
+          console.log(`  status: core (immediately active)`);
+          if (scope.project) console.log(`  project: ${scope.project}`);
+          if (scope.module_id) console.log(`  module: ${scope.module_id}`);
+        }
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        if (jsonMode) {
+          console.log(
+            JSON.stringify({ error: "Failed to teach rule", message: errorMsg }, null, 2)
+          );
+        } else {
+          console.error(`Error: ${errorMsg}`);
+        }
+      }
+    });
+
+  // lexsona rules promote <id>
+  rules
+    .command("promote <id>")
+    .description("Promote an existing rule to core status (reach observation threshold)")
+    .option("--json", "Output result as JSON")
+    .action(async function (this: Command, ruleId: string, options) {
+      const jsonMode = options.json || isJsonMode(this);
+
+      const instance = await initLexSona();
+      if (!instance) {
+        const error = {
+          error: "Not connected",
+          message: "Not connected to Lex database",
+        };
+        if (jsonMode) {
+          console.log(JSON.stringify(error, null, 2));
+        }
+        return;
+      }
+
+      try {
+        // First get the current rule to show before/after
+        const before = await instance.getRuleById(ruleId);
+        if (!before) {
+          const error = {
+            error: "Rule not found",
+            message: `No rule found with ID: ${ruleId}`,
+            hint: "Use 'lexsona rules list --all' to see all rule IDs",
+          };
+          if (jsonMode) {
+            console.log(JSON.stringify(error, null, 2));
+          } else {
+            console.error(`Error: ${error.message}`);
+            console.error(`Hint: ${error.hint}`);
+          }
+          return;
+        }
+
+        const previousN = before.observation_count;
+
+        // Already at threshold?
+        if (previousN >= LEXSONA_DEFAULTS.MIN_OBSERVATION_COUNT) {
+          if (jsonMode) {
+            console.log(
+              JSON.stringify(
+                {
+                  success: true,
+                  message: "Rule is already at core status",
+                  rule: {
+                    id: before.rule_id,
+                    text: before.text,
+                    observationCount: before.observation_count,
+                    status: "core",
+                  },
+                },
+                null,
+                2
+              )
+            );
+          } else {
+            console.log(
+              `ℹ Rule is already at core status (${before.observation_count} observations)`
+            );
+            console.log(`  ${before.text}`);
+          }
+          return;
+        }
+
+        const promoted = await instance.promoteRule(ruleId);
+        if (!promoted) {
+          throw new Error("Promotion failed unexpectedly");
+        }
+
+        if (jsonMode) {
+          console.log(
+            JSON.stringify(
+              {
+                success: true,
+                rule: {
+                  id: promoted.rule_id,
+                  text: promoted.text,
+                  previousObservationCount: previousN,
+                  newObservationCount: promoted.observation_count,
+                  confidence: promoted.effective_confidence,
+                  status: "core",
+                },
+              },
+              null,
+              2
+            )
+          );
+        } else {
+          console.log(`✓ Promoted rule to core status`);
+          console.log(`  id: ${promoted.rule_id}`);
+          console.log(`  ${promoted.text}`);
+          console.log(`  observations: ${previousN} → ${promoted.observation_count}`);
+          console.log(`  confidence: ${promoted.effective_confidence.toFixed(2)}`);
+        }
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        if (jsonMode) {
+          console.log(
+            JSON.stringify({ error: "Failed to promote rule", message: errorMsg }, null, 2)
+          );
+        } else {
+          console.error(`Error: ${errorMsg}`);
+        }
+      }
     });
 
   // lexsona rules forget <id>

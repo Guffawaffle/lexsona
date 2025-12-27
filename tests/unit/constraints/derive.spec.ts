@@ -28,8 +28,8 @@ function createTestPersona(overrides: Partial<Persona> = {}): Persona {
       description: "Prioritizes correctness and testing",
     },
     duties: {
-      mustDo: ["Write tests"],
-      mustNotDo: ["Skip validation"],
+      mustDo: [], // Empty by default for predictable test counts
+      mustNotDo: [],
     },
     triggers: {
       phrases: ["senior dev mode"],
@@ -274,6 +274,58 @@ describe("deriveConstraints", () => {
       expect(withStyle.constraints).toHaveLength(2);
       expect(withoutStyle.constraints).toHaveLength(1);
       expect(withoutStyle.constraints[0].severity).toBe("must");
+    });
+
+    it("converts persona duties to constraints", () => {
+      const persona = createTestPersona({
+        duties: {
+          mustDo: ["Always run tests"],
+          shouldDo: ["Prefer TypeScript"],
+          mustNotDo: ["Skip validation"],
+        },
+      });
+      const rules: BehaviorRuleWithConfidence[] = [];
+
+      const result = deriveConstraints(persona, rules, [], {});
+
+      // Should have 3 persona duty constraints
+      expect(result.constraints).toHaveLength(3);
+
+      // mustDo → severity: must
+      const mustConstraint = result.constraints.find((c) => c.text === "Always run tests");
+      expect(mustConstraint).toBeDefined();
+      expect(mustConstraint?.severity).toBe("must");
+      expect(mustConstraint?.source).toBe("persona");
+      expect(mustConstraint?.confidence).toBe(1.0);
+
+      // shouldDo → severity: should
+      const shouldConstraint = result.constraints.find((c) => c.text === "Prefer TypeScript");
+      expect(shouldConstraint).toBeDefined();
+      expect(shouldConstraint?.severity).toBe("should");
+      expect(shouldConstraint?.source).toBe("persona");
+
+      // mustNotDo → severity: must, prefixed with "Do not:"
+      const mustNotConstraint = result.constraints.find((c) => c.text.includes("Skip validation"));
+      expect(mustNotConstraint).toBeDefined();
+      expect(mustNotConstraint?.severity).toBe("must");
+      expect(mustNotConstraint?.text).toBe("Do not: Skip validation");
+    });
+
+    it("places persona duties before learned rules", () => {
+      const persona = createTestPersona({
+        duties: {
+          mustDo: ["Persona duty first"],
+          mustNotDo: [],
+        },
+      });
+      const rules = [createTestRule({ text: "Learned rule second" })];
+
+      const result = deriveConstraints(persona, rules, [], {});
+
+      expect(result.constraints).toHaveLength(2);
+      expect(result.constraints[0].source).toBe("persona");
+      expect(result.constraints[0].text).toBe("Persona duty first");
+      expect(result.constraints[1].source).toBe("learned");
     });
   });
 

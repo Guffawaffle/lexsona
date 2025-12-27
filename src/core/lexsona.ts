@@ -178,10 +178,10 @@ export class LexSona {
     const result = deriveConstraintsPure(persona, rules, principles, context, {
       hasLexConnection,
     });
-    
+
     // Add rule version to result
     result.ruleVersion = this.ruleVersion;
-    
+
     return result;
   }
 
@@ -215,6 +215,83 @@ export class LexSona {
     };
 
     recordCorrection(db, lexCorrection);
+  }
+
+  /**
+   * Teach a "core" rule that is immediately active
+   *
+   * Unlike `learn()` which starts with observation_count=1,
+   * `teach()` creates the rule with observation_count=minN (default 3)
+   * so it's immediately visible in getRules().
+   *
+   * @param correction - The correction to teach as a core rule
+   * @returns The created rule with confidence scores
+   */
+  async teach(
+    correction: CorrectionInput
+  ): Promise<import("@smartergpt/lex/lexsona").BehaviorRuleWithConfidence> {
+    if (!this.storageClient?.isConnected()) {
+      throw createLexNotConnectedError();
+    }
+
+    const db = this.storageClient.getDatabase();
+
+    // First create the rule via normal learn path
+    const lexCorrection: Correction = {
+      context: {
+        module_id: correction.context.module_id,
+        task_type: correction.context.task_type,
+        environment: correction.context.environment,
+        project: correction.context.project,
+        agent_family: correction.context.agent_family,
+        context_tags: correction.context.context_tags,
+      },
+      correction: correction.correction,
+      category: correction.category,
+      severity: correction.severity,
+      polarity: correction.polarity ?? 1, // Default to reinforcement
+    };
+
+    const createdRule = recordCorrection(db, lexCorrection);
+
+    // Now promote it to core status
+    const promoted = this.storageClient.promoteRule(createdRule.rule_id);
+    return promoted ?? createdRule;
+  }
+
+  /**
+   * Promote an existing rule to "core" status
+   *
+   * Core rules have observation_count >= minN and are immediately
+   * visible in getRules() without the minN threshold filtering.
+   *
+   * @param ruleId - Rule ID to promote
+   * @returns Updated rule or null if not found
+   */
+  async promoteRule(
+    ruleId: string
+  ): Promise<import("@smartergpt/lex/lexsona").BehaviorRuleWithConfidence | null> {
+    if (!this.storageClient?.isConnected()) {
+      throw createLexNotConnectedError();
+    }
+
+    return this.storageClient.promoteRule(ruleId);
+  }
+
+  /**
+   * Get a behavior rule by ID
+   *
+   * @param ruleId - Rule identifier
+   * @returns Rule or null if not found
+   */
+  async getRuleById(
+    ruleId: string
+  ): Promise<import("@smartergpt/lex/lexsona").BehaviorRuleWithConfidence | null> {
+    if (!this.storageClient?.isConnected()) {
+      return null;
+    }
+
+    return this.storageClient.getBehaviorRuleById(ruleId);
   }
 
   /**
@@ -252,6 +329,8 @@ export class LexSona {
   async getRules(filter?: {
     domain?: string;
     minConfidence?: number;
+    /** Set to 1 to include all rules regardless of observation count */
+    minN?: number;
   }): Promise<import("@smartergpt/lex/lexsona").BehaviorRuleWithConfidence[]> {
     if (!this.storageClient?.isConnected()) {
       return [];
@@ -262,10 +341,13 @@ export class LexSona {
       project: filter?.domain,
     };
 
-    const rules = getRules(db, context);
+    const rules = getRules(db, context, {
+      minN: filter?.minN,
+      minConfidence: filter?.minConfidence ?? 0, // Default to 0 to not filter by confidence in query
+    });
 
-    // Apply confidence filter
-    if (filter?.minConfidence !== undefined) {
+    // Apply confidence filter post-query if specified
+    if (filter?.minConfidence !== undefined && filter.minConfidence > 0) {
       return rules.filter((r) => r.effective_confidence >= filter.minConfidence!);
     }
 
@@ -361,16 +443,16 @@ export class LexSona {
     const result = deriveConstraintsPure(persona, calibratedRules, principles, context, {
       hasLexConnection: true,
     });
-    
+
     // Add rule version to result
     result.ruleVersion = this.ruleVersion;
-    
+
     return result;
   }
 
   /**
    * Get the current rule version
-   * 
+   *
    * @returns Current rule version number
    */
   getRuleVersion(): number {
@@ -380,7 +462,7 @@ export class LexSona {
   /**
    * Increment the rule version (called when rules change)
    * Persists the new version to the database
-   * 
+   *
    * @returns New version number
    */
   async incrementRuleVersion(): Promise<number> {
@@ -419,12 +501,10 @@ export class LexSona {
 
     try {
       this.ensureMetadataTable();
-      
+
       const db = this.storageClient.getDatabase();
       const result = db
-        .prepare(
-          `SELECT value FROM lexsona_metadata WHERE key = 'rule_version' LIMIT 1`
-        )
+        .prepare(`SELECT value FROM lexsona_metadata WHERE key = 'rule_version' LIMIT 1`)
         .get() as { value: string } | undefined;
 
       if (result) {
@@ -451,7 +531,7 @@ export class LexSona {
 
     try {
       this.ensureMetadataTable();
-      
+
       const db = this.storageClient.getDatabase();
       db.prepare(
         `INSERT OR REPLACE INTO lexsona_metadata (key, value, updated_at)
