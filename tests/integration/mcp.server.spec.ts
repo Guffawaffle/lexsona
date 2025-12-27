@@ -74,8 +74,8 @@ describe("MCP Server Integration", () => {
       const tool = LEXSONA_TOOLS.find((t) => t.name === "constraints_derive");
       expect(tool).toBeDefined();
       expect(tool?.description).toContain("Derive constraints");
-      expect(tool?.inputSchema.properties).toHaveProperty("domain");
-      expect(tool?.inputSchema.properties).toHaveProperty("module");
+      expect(tool?.inputSchema.properties).toHaveProperty("project");
+      expect(tool?.inputSchema.properties).toHaveProperty("module_id");
       expect(tool?.inputSchema.properties).toHaveProperty("task");
     });
 
@@ -91,7 +91,7 @@ describe("MCP Server Integration", () => {
       const tool = LEXSONA_TOOLS.find((t) => t.name === "rules_list");
       expect(tool).toBeDefined();
       expect(tool?.description).toContain("behavioral rules");
-      expect(tool?.inputSchema.properties).toHaveProperty("domain");
+      expect(tool?.inputSchema.properties).toHaveProperty("project");
       expect(tool?.inputSchema.properties).toHaveProperty("minConfidence");
     });
 
@@ -130,8 +130,8 @@ describe("MCP Server Integration", () => {
 
       const result = await handleConstraints(
         {
-          domain: "test",
-          module: "test-module",
+          project: "test",
+          module_id: "test-module",
           task: "implementation",
         },
         state,
@@ -228,10 +228,10 @@ describe("MCP Server Integration", () => {
       expect(Array.isArray((result as any).rules)).toBe(true);
     });
 
-    it("filters rules by domain", async () => {
+    it("filters rules by project", async () => {
       const getLexSona = async () => mockLexSona;
 
-      const result = await handleRules({ domain: "test-domain" }, getLexSona);
+      const result = await handleRules({ project: "test-project" }, getLexSona);
 
       expect(result).toHaveProperty("rules");
       // In disconnected mode, returns empty array

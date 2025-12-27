@@ -1,8 +1,8 @@
 /**
  * MCP Handler Scoping Tests (AX-007)
  *
- * Tests that handleLearn correctly maps domain/module to Lex context fields.
- * Validates the fix for AX-007: domain was incorrectly stored as module_id.
+ * Tests that handleLearn correctly uses project/module_id canonical fields.
+ * Validates proper scoping for rule learning.
  */
 
 import { describe, it, expect, vi } from "vitest";
@@ -10,7 +10,7 @@ import { handleLearn } from "../../../src/mcp/handlers.js";
 import { LexSona } from "../../../src/core/lexsona.js";
 
 describe("handleLearn scoping (AX-007)", () => {
-  it("maps module to module_id in context", async () => {
+  it("maps module_id to context correctly", async () => {
     const mockLexSona = await LexSona.connect();
     const learnSpy = vi.spyOn(mockLexSona, "learn").mockResolvedValue();
     const getLexSona = async () => mockLexSona;
@@ -18,7 +18,7 @@ describe("handleLearn scoping (AX-007)", () => {
     await handleLearn(
       {
         correction: "Always use TypeScript strict mode",
-        module: "src/services/auth",
+        module_id: "src/services/auth",
       },
       getLexSona
     );
@@ -33,7 +33,7 @@ describe("handleLearn scoping (AX-007)", () => {
     );
   });
 
-  it("maps domain to project in context", async () => {
+  it("maps project to context correctly", async () => {
     const mockLexSona = await LexSona.connect();
     const learnSpy = vi.spyOn(mockLexSona, "learn").mockResolvedValue();
     const getLexSona = async () => mockLexSona;
@@ -41,7 +41,7 @@ describe("handleLearn scoping (AX-007)", () => {
     await handleLearn(
       {
         correction: "Use JWT for authentication",
-        domain: "lex-core",
+        project: "lex-core",
       },
       getLexSona
     );
@@ -56,7 +56,7 @@ describe("handleLearn scoping (AX-007)", () => {
     );
   });
 
-  it("maps both module and domain correctly when both provided", async () => {
+  it("handles both module_id and project correctly when both provided", async () => {
     const mockLexSona = await LexSona.connect();
     const learnSpy = vi.spyOn(mockLexSona, "learn").mockResolvedValue();
     const getLexSona = async () => mockLexSona;
@@ -64,8 +64,8 @@ describe("handleLearn scoping (AX-007)", () => {
     await handleLearn(
       {
         correction: "Always validate API inputs",
-        module: "src/api/handlers",
-        domain: "lex-core",
+        module_id: "src/api/handlers",
+        project: "lex-core",
       },
       getLexSona
     );
@@ -81,7 +81,7 @@ describe("handleLearn scoping (AX-007)", () => {
     );
   });
 
-  it("handles undefined module gracefully", async () => {
+  it("handles undefined module_id gracefully", async () => {
     const mockLexSona = await LexSona.connect();
     const learnSpy = vi.spyOn(mockLexSona, "learn").mockResolvedValue();
     const getLexSona = async () => mockLexSona;
@@ -89,7 +89,7 @@ describe("handleLearn scoping (AX-007)", () => {
     await handleLearn(
       {
         correction: "Prefer functional patterns",
-        domain: "lex-core",
+        project: "lex-core",
       },
       getLexSona
     );
@@ -104,7 +104,7 @@ describe("handleLearn scoping (AX-007)", () => {
     );
   });
 
-  it("handles undefined domain gracefully", async () => {
+  it("handles undefined project gracefully", async () => {
     const mockLexSona = await LexSona.connect();
     const learnSpy = vi.spyOn(mockLexSona, "learn").mockResolvedValue();
     const getLexSona = async () => mockLexSona;
@@ -112,7 +112,7 @@ describe("handleLearn scoping (AX-007)", () => {
     await handleLearn(
       {
         correction: "Use strict null checks",
-        module: "src/utils",
+        module_id: "src/utils",
       },
       getLexSona
     );
@@ -127,26 +127,6 @@ describe("handleLearn scoping (AX-007)", () => {
     );
   });
 
-  it("does not use domain as fallback for module_id", async () => {
-    const mockLexSona = await LexSona.connect();
-    const learnSpy = vi.spyOn(mockLexSona, "learn").mockResolvedValue();
-    const getLexSona = async () => mockLexSona;
-
-    // This is the key test case from AX-007:
-    // When only domain is provided, it should NOT be stored as module_id
-    await handleLearn(
-      {
-        correction: "Follow project conventions",
-        domain: "lex-core",
-      },
-      getLexSona
-    );
-
-    const call = learnSpy.mock.calls[0][0];
-    expect(call.context.module_id).toBeUndefined();
-    expect(call.context.project).toBe("lex-core");
-  });
-
   it("preserves other correction fields", async () => {
     const mockLexSona = await LexSona.connect();
     const learnSpy = vi.spyOn(mockLexSona, "learn").mockResolvedValue();
@@ -157,8 +137,8 @@ describe("handleLearn scoping (AX-007)", () => {
         correction: "Use error boundaries",
         severity: "must",
         category: "error-handling",
-        module: "src/components",
-        domain: "ui-framework",
+        module_id: "src/components",
+        project: "ui-framework",
         polarity: "reinforce",
       },
       getLexSona
@@ -187,7 +167,7 @@ describe("handleLearn scoping (AX-007)", () => {
       {
         correction: "Don't skip input validation",
         polarity: "counter",
-        module: "src/api",
+        module_id: "src/api",
       },
       getLexSona
     );
@@ -197,27 +177,5 @@ describe("handleLearn scoping (AX-007)", () => {
         polarity: -1,
       })
     );
-  });
-
-  it("returns success response with correct fields", async () => {
-    const mockLexSona = await LexSona.connect();
-    vi.spyOn(mockLexSona, "learn").mockResolvedValue();
-    const getLexSona = async () => mockLexSona;
-
-    const result = await handleLearn(
-      {
-        correction: "Test correction",
-        severity: "should",
-        polarity: "reinforce",
-      },
-      getLexSona
-    );
-
-    expect(result).toEqual({
-      success: true,
-      correction: "Test correction",
-      severity: "should",
-      polarity: "reinforce",
-    });
   });
 });

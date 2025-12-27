@@ -1,10 +1,9 @@
 /**
  * MCP Scoping Validation Tests
  *
- * Tests for the normalizeScopingInputs helper that validates and normalizes
- * deprecated (domain, module) to canonical (project, module_id) fields.
- *
- * This prevents silent mis-routing issues where fields are incorrectly mapped.
+ * Tests for the normalizeScopingInputs helper that validates scoping inputs.
+ * Only canonical fields (project, module_id) are accepted.
+ * Deprecated fields (domain, module) are rejected with clear error messages.
  */
 
 import { describe, it, expect } from "vitest";
@@ -40,184 +39,95 @@ describe("normalizeScopingInputs", () => {
     });
   });
 
-  describe("deprecated fields only", () => {
-    it("maps domain to project", () => {
-      const result = normalizeScopingInputs({ domain: "lex-core" });
-      expect(result).toEqual({ project: "lex-core" });
-    });
-
-    it("maps module to module_id", () => {
-      const result = normalizeScopingInputs({ module: "src/api" });
-      expect(result).toEqual({ module_id: "src/api" });
-    });
-
-    it("maps both deprecated fields to canonical", () => {
-      const result = normalizeScopingInputs({
-        domain: "lex-core",
-        module: "src/api",
-      });
-      expect(result).toEqual({
-        project: "lex-core",
-        module_id: "src/api",
-      });
-    });
-  });
-
-  describe("consistent combinations", () => {
-    it("accepts domain and project with same value", () => {
-      const result = normalizeScopingInputs({
-        domain: "lex-core",
-        project: "lex-core",
-      });
-      expect(result).toEqual({ project: "lex-core" });
-    });
-
-    it("accepts module and module_id with same value", () => {
-      const result = normalizeScopingInputs({
-        module: "src/api",
-        module_id: "src/api",
-      });
-      expect(result).toEqual({ module_id: "src/api" });
-    });
-
-    it("accepts all four fields when values are consistent", () => {
-      const result = normalizeScopingInputs({
-        domain: "lex-core",
-        project: "lex-core",
-        module: "src/api",
-        module_id: "src/api",
-      });
-      expect(result).toEqual({
-        project: "lex-core",
-        module_id: "src/api",
-      });
-    });
-  });
-
-  describe("conflicting combinations - project vs domain", () => {
-    it("throws error when domain and project have different values", () => {
+  describe("deprecated fields are rejected", () => {
+    it("rejects domain field with clear error", () => {
       expect(() =>
-        normalizeScopingInputs({
-          domain: "lex-core",
-          project: "lexsona",
-        })
+        normalizeScopingInputs({ domain: "lex-core" } as Record<string, unknown>)
       ).toThrow(LexSonaError);
     });
 
-    it("provides clear error message for project conflict", () => {
-      try {
+    it("rejects module field with clear error", () => {
+      expect(() =>
+        normalizeScopingInputs({ module: "src/api" } as Record<string, unknown>)
+      ).toThrow(LexSonaError);
+    });
+
+    it("rejects both deprecated fields", () => {
+      expect(() =>
         normalizeScopingInputs({
           domain: "lex-core",
-          project: "lexsona",
-        });
+          module: "src/api",
+        } as Record<string, unknown>)
+      ).toThrow(LexSonaError);
+    });
+
+    it("provides clear error message for deprecated domain field", () => {
+      try {
+        normalizeScopingInputs({ domain: "lex-core" } as Record<string, unknown>);
         expect.fail("Should have thrown");
       } catch (error) {
         expect(error).toBeInstanceOf(LexSonaError);
         const lexError = error as LexSonaError;
         expect(lexError.code).toBe(LexSonaErrorCode.VALIDATION_SCOPING_CONFLICT);
-        expect(lexError.message).toContain("'project'");
-        expect(lexError.message).toContain("'domain'");
-        expect(lexError.message).toContain("lexsona");
-        expect(lexError.message).toContain("lex-core");
+        expect(lexError.message).toContain("Deprecated fields used");
+        expect(lexError.message).toContain("domain");
+        expect(lexError.message).toContain("project");
       }
     });
 
-    it("provides suggestions for project conflict", () => {
+    it("provides clear error message for deprecated module field", () => {
       try {
-        normalizeScopingInputs({
-          domain: "lex-core",
-          project: "lexsona",
-        });
-        expect.fail("Should have thrown");
-      } catch (error) {
-        const lexError = error as LexSonaError;
-        const suggestions = lexError.getSuggestions();
-        expect(suggestions).toContain(`Use 'project' field instead of deprecated 'domain' field`);
-        expect(suggestions.some((s) => s.includes("remove domain field"))).toBe(true);
-      }
-    });
-
-    it("includes context in error metadata", () => {
-      try {
-        normalizeScopingInputs({
-          domain: "lex-core",
-          project: "lexsona",
-        });
-        expect.fail("Should have thrown");
-      } catch (error) {
-        const lexError = error as LexSonaError;
-        expect(lexError.metadata?.context).toEqual({
-          project: "lexsona",
-          domain: "lex-core",
-        });
-      }
-    });
-  });
-
-  describe("conflicting combinations - module_id vs module", () => {
-    it("throws error when module and module_id have different values", () => {
-      expect(() =>
-        normalizeScopingInputs({
-          module: "src/api",
-          module_id: "src/core",
-        })
-      ).toThrow(LexSonaError);
-    });
-
-    it("provides clear error message for module_id conflict", () => {
-      try {
-        normalizeScopingInputs({
-          module: "src/api",
-          module_id: "src/core",
-        });
+        normalizeScopingInputs({ module: "src/api" } as Record<string, unknown>);
         expect.fail("Should have thrown");
       } catch (error) {
         expect(error).toBeInstanceOf(LexSonaError);
         const lexError = error as LexSonaError;
         expect(lexError.code).toBe(LexSonaErrorCode.VALIDATION_SCOPING_CONFLICT);
-        expect(lexError.message).toContain("'module_id'");
-        expect(lexError.message).toContain("'module'");
-        expect(lexError.message).toContain("src/api");
-        expect(lexError.message).toContain("src/core");
+        expect(lexError.message).toContain("Deprecated fields used");
+        expect(lexError.message).toContain("module");
+        expect(lexError.message).toContain("module_id");
       }
     });
 
-    it("provides suggestions for module_id conflict", () => {
+    it("provides suggestions for deprecated field usage", () => {
       try {
-        normalizeScopingInputs({
-          module: "src/api",
-          module_id: "src/core",
-        });
+        normalizeScopingInputs({ domain: "lex-core" } as Record<string, unknown>);
         expect.fail("Should have thrown");
       } catch (error) {
         const lexError = error as LexSonaError;
         const suggestions = lexError.getSuggestions();
-        expect(suggestions).toContain(
-          `Use 'module_id' field instead of deprecated 'module' field`
-        );
-        expect(suggestions.some((s) => s.includes("remove module field"))).toBe(true);
+        expect(suggestions).toContain("Replace 'domain' with 'project'");
+        expect(suggestions).toContain("Replace 'module' with 'module_id'");
       }
     });
 
-    it("includes context in error metadata", () => {
+    it("includes deprecated fields in error context", () => {
       try {
         normalizeScopingInputs({
+          domain: "lex-core",
           module: "src/api",
-          module_id: "src/core",
-        });
+        } as Record<string, unknown>);
         expect.fail("Should have thrown");
       } catch (error) {
         const lexError = error as LexSonaError;
         expect(lexError.metadata?.context).toEqual({
-          module_id: "src/core",
-          module: "src/api",
+          deprecatedFields: ["domain", "module"],
         });
       }
+    });
+
+    it("rejects deprecated fields even when canonical fields are also present", () => {
+      expect(() =>
+        normalizeScopingInputs({
+          project: "lex-core",
+          domain: "lex-core", // deprecated - should still fail
+        } as Record<string, unknown>)
+      ).toThrow(LexSonaError);
     });
   });
 
   describe("edge cases", () => {
-    it("handles empty string values", () => {
+    it("handles empty string values for canonical fields", () => {
       const result = normalizeScopingInputs({
         project: "",
         module_id: "",
@@ -226,15 +136,6 @@ describe("normalizeScopingInputs", () => {
         project: "",
         module_id: "",
       });
-    });
-
-    it("detects conflict with empty strings", () => {
-      expect(() =>
-        normalizeScopingInputs({
-          domain: "",
-          project: "lex",
-        })
-      ).toThrow(LexSonaError);
     });
 
     it("handles whitespace-only values", () => {
@@ -245,6 +146,17 @@ describe("normalizeScopingInputs", () => {
       expect(result).toEqual({
         project: "  ",
         module_id: "\t",
+      });
+    });
+
+    it("handles undefined values", () => {
+      const result = normalizeScopingInputs({
+        project: undefined,
+        module_id: undefined,
+      });
+      expect(result).toEqual({
+        project: undefined,
+        module_id: undefined,
       });
     });
   });

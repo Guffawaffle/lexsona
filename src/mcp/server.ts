@@ -128,47 +128,32 @@ async function main(): Promise<void> {
       let result: object;
       switch (name) {
         // Canonical names (VS Code displays as mcp_lexsona_{category}_{action})
-        case "persona_activate":
-        case "lexsona_persona_activate": // deprecated alias
-        case "lexsona_activate": {
-          // Deprecated alias
+        case "persona_activate": {
           const input = ActivateInputSchema.parse(args);
           result = await handleActivate(input, state);
           activePersonaId = state.activePersonaId;
           break;
         }
 
-        case "constraints_derive":
-        case "lexsona_constraint_derive": // deprecated alias
-        case "lexsona_constraints": {
-          // Deprecated alias
+        case "constraints_derive": {
           const input = ConstraintsInputSchema.parse(args);
           result = await handleConstraints(input, state, ensureConnected);
           break;
         }
 
-        case "rules_learn":
-        case "lexsona_rule_learn": // deprecated alias
-        case "lexsona_learn": {
-          // Deprecated alias
+        case "rules_learn": {
           const input = LearnInputSchema.parse(args);
           result = await handleLearn(input, ensureConnected);
           break;
         }
 
-        case "rules_list":
-        case "lexsona_rule_list": // deprecated alias
-        case "lexsona_rules": {
-          // Deprecated alias
+        case "rules_list": {
           const input = RulesInputSchema.parse(args);
           result = await handleRules(input, ensureConnected);
           break;
         }
 
-        case "persona_list":
-        case "lexsona_persona_list": // deprecated alias
-        case "lexsona_personas": {
-          // Deprecated alias
+        case "persona_list": {
           result = await handlePersonas();
           break;
         }
@@ -218,8 +203,10 @@ async function main(): Promise<void> {
       if (error instanceof LexSonaError) {
         // Map LexSonaError to McpError with metadata preserved
         // Use InvalidParams for client errors, InternalError for server errors
-        const mcpCode = isClientError(error.code) ? ErrorCode.InvalidParams : ErrorCode.InternalError;
-        
+        const mcpCode = isClientError(error.code)
+          ? ErrorCode.InvalidParams
+          : ErrorCode.InternalError;
+
         // Format error message with embedded error code and suggestions
         const enhancedMessage = formatErrorForMcp(error);
         throw new McpError(mcpCode, enhancedMessage);
