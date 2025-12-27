@@ -91,9 +91,9 @@ export function formatPrinciples(
  * Add compact mode flag to response if in compact mode
  */
 export function addCompactFlag(
-  response: Record<string, any>,
+  response: Record<string, unknown>,
   format: OutputFormat
-): Record<string, any> {
+): Record<string, unknown> {
   if (format === "compact") {
     return {
       ...response,

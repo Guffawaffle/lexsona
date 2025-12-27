@@ -60,7 +60,21 @@ export async function handleActivate(
 
   const format: OutputFormat = input.format ?? "full";
 
-  let response = {
+  if (format === "compact") {
+    const compactResponse = {
+      success: true,
+      ruleVersion,
+      persona: {
+        id: persona.id,
+        ver: persona.version,
+        bhv: persona.behavior.primaryFocus,
+        cats: persona.ruleCategories,
+      },
+    };
+    return addCompactFlag(compactResponse, format);
+  }
+
+  const fullResponse = {
     success: true,
     ruleVersion,
     persona: {
@@ -71,20 +85,7 @@ export async function handleActivate(
     },
   };
 
-  if (format === "compact") {
-    response = {
-      success: true,
-      ruleVersion,
-      persona: {
-        id: persona.id,
-        ver: persona.version,
-        bhv: persona.behavior.primaryFocus,
-        cats: persona.ruleCategories,
-      },
-    } as any;
-  }
-
-  return addCompactFlag(response, format);
+  return addCompactFlag(fullResponse, format);
 }
 
 /**
