@@ -28,6 +28,7 @@ import {
   RulesInputSchema,
   TrustGapInputSchema,
   AgentTrustProfileInputSchema,
+  IntrospectInputSchema,
 } from "./tools.js";
 import {
   handleActivate,
@@ -37,12 +38,31 @@ import {
   handlePersonas,
   handleTrustGapRecord,
   handleAgentTrustProfile,
+  handleIntrospect,
 } from "./handlers.js";
 import { LexSonaError, isClientError, formatErrorForMcp } from "./errors.js";
+import { RequestCache } from "./idempotency.js";
 
 // Server state
 let lexSonaInstance: LexSona | null = null;
 let activePersonaId: string | null = null;
+const requestCache = new RequestCache(300); // 5 minutes TTL
+
+// Periodic cleanup of expired cache entries (every minute)
+setInterval(() => {
+  requestCache.cleanup();
+}, 60000);
+
+// Mutation operations that should be cached for idempotency
+const MUTATION_OPERATIONS = new Set([
+  "persona_activate",
+  "lexsona_persona_activate",
+  "lexsona_activate",
+  "rules_learn",
+  "lexsona_rule_learn",
+  "lexsona_learn",
+  "trust_gap_record",
+]);
 
 /**
  * Initialize LexSona connection
@@ -88,6 +108,22 @@ async function main(): Promise<void> {
 
     try {
       const state = { activePersonaId };
+
+      // Check for request_id in args and see if we have a cached response
+      const requestId = (args as { request_id?: string }).request_id;
+      if (requestId) {
+        const cached = requestCache.get(requestId);
+        if (cached) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(cached, null, 2),
+              },
+            ],
+          };
+        }
+      }
 
       let result: object;
       switch (name) {
@@ -149,8 +185,19 @@ async function main(): Promise<void> {
           break;
         }
 
+        case "introspect": {
+          const input = IntrospectInputSchema.parse(args);
+          result = await handleIntrospect(input, state, ensureConnected);
+          break;
+        }
+
         default:
           throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
+      }
+
+      // Store in cache if request_id was provided (only for mutation operations)
+      if (requestId && MUTATION_OPERATIONS.has(name)) {
+        requestCache.set(requestId, result);
       }
 
       return {

@@ -13,6 +13,7 @@ import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 // Input validation schemas
 export const ActivateInputSchema = z.object({
   persona: z.string().describe("Persona ID to activate (e.g., 'quality-first_engineering')"),
+  request_id: z.string().optional().describe("Optional request ID for idempotency"),
 });
 
 export const ConstraintsInputSchema = z.object({
@@ -33,6 +34,7 @@ export const LearnInputSchema = z.object({
   project: z.string().optional().describe("Project scope (canonical)"),
   module_id: z.string().optional().describe("Module scope (canonical)"),
   polarity: z.enum(["reinforce", "counter"]).optional().default("reinforce"),
+  request_id: z.string().optional().describe("Optional request ID for idempotency"),
 });
 
 export const RulesInputSchema = z.object({
@@ -65,10 +67,15 @@ export const TrustGapInputSchema = z.object({
     })
     .optional()
     .describe("Optional context"),
+  request_id: z.string().optional().describe("Optional request ID for idempotency"),
 });
 
 export const AgentTrustProfileInputSchema = z.object({
   agent_family: z.string().describe("Agent family to get trust profile for"),
+});
+
+export const IntrospectInputSchema = z.object({
+  // No parameters needed - returns current state
 });
 
 export type ActivateInput = z.infer<typeof ActivateInputSchema>;
@@ -77,6 +84,7 @@ export type LearnInput = z.infer<typeof LearnInputSchema>;
 export type RulesInput = z.infer<typeof RulesInputSchema>;
 export type TrustGapInput = z.infer<typeof TrustGapInputSchema>;
 export type AgentTrustProfileInput = z.infer<typeof AgentTrustProfileInputSchema>;
+export type IntrospectInput = z.infer<typeof IntrospectInputSchema>;
 
 /**
  * Tool definitions for the MCP server
@@ -91,6 +99,10 @@ export const LEXSONA_TOOLS: Tool[] = [
         persona: {
           type: "string",
           description: "Persona ID to activate (e.g., 'quality-first_engineering')",
+        },
+        request_id: {
+          type: "string",
+          description: "Optional request ID for idempotency",
         },
       },
       required: ["persona"],
@@ -135,6 +147,10 @@ export const LEXSONA_TOOLS: Tool[] = [
           type: "string",
           enum: ["reinforce", "counter"],
           description: "Reinforce or counter the behavior",
+        },
+        request_id: {
+          type: "string",
+          description: "Optional request ID for idempotency",
         },
       },
       required: ["correction"],
@@ -198,6 +214,10 @@ export const LEXSONA_TOOLS: Tool[] = [
           },
           description: "Optional context",
         },
+        request_id: {
+          type: "string",
+          description: "Optional request ID for idempotency",
+        },
       },
       required: ["task_id", "agent_family", "procedure", "agent_claimed", "verified", "failures"],
     },
@@ -215,6 +235,15 @@ export const LEXSONA_TOOLS: Tool[] = [
         },
       },
       required: ["agent_family"],
+    },
+  },
+  {
+    name: "introspect",
+    description:
+      "Get current LexSona state and capabilities for agent self-discovery. Returns version, active persona, available personas, Lex connection status, rule count, and error codes.",
+    inputSchema: {
+      type: "object",
+      properties: {},
     },
   },
 ];
