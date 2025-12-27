@@ -12,11 +12,14 @@ import {
 import type { ConstraintSet } from "../../../src/constraints/derive.js";
 import { LexSonaErrorCode } from "../../../src/mcp/errors.js";
 
+// Test constants
+const MOCK_TIMESTAMP = "2024-01-01T00:00:00.000Z";
+
 describe("handleConstraintsShow (AX-008)", () => {
   it("returns last derivation when available", async () => {
     const mockDerivation: ConstraintSet = {
       personaId: "quality-first_engineering",
-      derivedAt: "2024-01-01T00:00:00.000Z",
+      derivedAt: MOCK_TIMESTAMP,
       inputHash: "abc123",
       context: {
         domain: "test",
@@ -60,7 +63,7 @@ describe("handleConstraintsShow (AX-008)", () => {
   it("includes metadata about derivation", async () => {
     const mockDerivation: ConstraintSet = {
       personaId: "momentum-first_product",
-      derivedAt: "2024-01-01T00:00:00.000Z",
+      derivedAt: MOCK_TIMESTAMP,
       inputHash: "xyz789",
       context: {},
       principles: [],
@@ -86,7 +89,7 @@ describe("handleConstraintsExplain (AX-008)", () => {
   it("explains constraint with structured reasons", async () => {
     const mockDerivation: ConstraintSet = {
       personaId: "quality-first_engineering",
-      derivedAt: "2024-01-01T00:00:00.000Z",
+      derivedAt: MOCK_TIMESTAMP,
       inputHash: "abc123",
       context: {
         domain: "test",
@@ -135,7 +138,7 @@ describe("handleConstraintsExplain (AX-008)", () => {
   it("includes persona match reason", async () => {
     const mockDerivation: ConstraintSet = {
       personaId: "quality-first_engineering",
-      derivedAt: "2024-01-01T00:00:00.000Z",
+      derivedAt: MOCK_TIMESTAMP,
       inputHash: "abc123",
       context: {},
       principles: [],
@@ -173,7 +176,7 @@ describe("handleConstraintsExplain (AX-008)", () => {
   it("includes confidence reason", async () => {
     const mockDerivation: ConstraintSet = {
       personaId: "quality-first_engineering",
-      derivedAt: "2024-01-01T00:00:00.000Z",
+      derivedAt: MOCK_TIMESTAMP,
       inputHash: "abc123",
       context: {},
       principles: [],
@@ -212,7 +215,7 @@ describe("handleConstraintsExplain (AX-008)", () => {
   it("includes offline ceiling reason when applicable", async () => {
     const mockDerivation: ConstraintSet = {
       personaId: "quality-first_engineering",
-      derivedAt: "2024-01-01T00:00:00.000Z",
+      derivedAt: MOCK_TIMESTAMP,
       inputHash: "abc123",
       context: {},
       principles: [],
@@ -250,7 +253,7 @@ describe("handleConstraintsExplain (AX-008)", () => {
   it("includes matched context", async () => {
     const mockDerivation: ConstraintSet = {
       personaId: "quality-first_engineering",
-      derivedAt: "2024-01-01T00:00:00.000Z",
+      derivedAt: MOCK_TIMESTAMP,
       inputHash: "abc123",
       context: {
         domain: "lexsona",
@@ -305,7 +308,7 @@ describe("handleConstraintsExplain (AX-008)", () => {
   it("throws CONSTRAINT_NOT_FOUND error when constraint not found", async () => {
     const mockDerivation: ConstraintSet = {
       personaId: "quality-first_engineering",
-      derivedAt: "2024-01-01T00:00:00.000Z",
+      derivedAt: MOCK_TIMESTAMP,
       inputHash: "abc123",
       context: {},
       principles: [],

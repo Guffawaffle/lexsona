@@ -13,6 +13,7 @@ import {
   deriveConstraints,
   type DeriveContext,
   type ConstraintSet,
+  type ConstraintSource,
 } from "../constraints/derive.js";
 import type { BehaviorRuleWithConfidence } from "../rules/types.js";
 import type {
@@ -32,6 +33,9 @@ import {
   createNoDerivationError,
   createConstraintNotFoundError,
 } from "./errors.js";
+
+// Constants
+const DEFAULT_CONSTRAINT_SOURCE: ConstraintSource = "learned";
 
 /**
  * Handler for lexsona_activate tool
@@ -371,11 +375,11 @@ export async function handleConstraintsExplain(
   }
 
   // Source information
-  const source = constraint.source ?? "learned";
+  const source = constraint.source ?? DEFAULT_CONSTRAINT_SOURCE;
   reasons.push({
     source: source,
     detail:
-      source === "learned"
+      source === DEFAULT_CONSTRAINT_SOURCE
         ? "Derived from behavioral rules stored in Lex"
         : `Source: ${source}`,
   });
