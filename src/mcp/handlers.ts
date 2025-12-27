@@ -341,6 +341,7 @@ export async function handleConstraintsExplain(
   );
 
   if (!constraint) {
+    // Only compute availableIds in error path for better error message
     const availableIds = state.lastDerivation.constraints.map((c) => c.rule_id);
     throw createConstraintNotFoundError(input.constraint_id, availableIds);
   }
