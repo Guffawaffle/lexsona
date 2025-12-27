@@ -390,6 +390,25 @@ export class LexSona {
   }
 
   /**
+   * Ensure metadata table exists
+   * Called before any metadata operations
+   */
+  private ensureMetadataTable(): void {
+    if (!this.storageClient?.isConnected()) {
+      return;
+    }
+
+    const db = this.storageClient.getDatabase();
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS lexsona_metadata (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    `);
+  }
+
+  /**
    * Load rule version from database
    * Called during initialization
    */
@@ -399,17 +418,9 @@ export class LexSona {
     }
 
     try {
+      this.ensureMetadataTable();
+      
       const db = this.storageClient.getDatabase();
-      
-      // Create metadata table if it doesn't exist
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS lexsona_metadata (
-          key TEXT PRIMARY KEY,
-          value TEXT NOT NULL,
-          updated_at TEXT NOT NULL
-        )
-      `);
-      
       const result = db
         .prepare(
           `SELECT value FROM lexsona_metadata WHERE key = 'rule_version' LIMIT 1`
@@ -417,7 +428,11 @@ export class LexSona {
         .get() as { value: string } | undefined;
 
       if (result) {
-        this.ruleVersion = parseInt(result.value, 10);
+        const parsed = parseInt(result.value, 10);
+        // Validate parsed value is a valid positive integer
+        if (!isNaN(parsed) && parsed >= 0) {
+          this.ruleVersion = parsed;
+        }
       }
     } catch {
       // If table creation or query fails, version stays at 0
@@ -435,17 +450,9 @@ export class LexSona {
     }
 
     try {
+      this.ensureMetadataTable();
+      
       const db = this.storageClient.getDatabase();
-      
-      // Create metadata table if it doesn't exist
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS lexsona_metadata (
-          key TEXT PRIMARY KEY,
-          value TEXT NOT NULL,
-          updated_at TEXT NOT NULL
-        )
-      `);
-      
       db.prepare(
         `INSERT OR REPLACE INTO lexsona_metadata (key, value, updated_at)
          VALUES ('rule_version', ?, datetime('now'))`
