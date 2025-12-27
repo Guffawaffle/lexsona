@@ -419,7 +419,7 @@ export class LexSona {
       if (result) {
         this.ruleVersion = parseInt(result.value, 10);
       }
-    } catch (error) {
+    } catch {
       // If table creation or query fails, version stays at 0
       // This is fine for new databases
     }
