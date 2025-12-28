@@ -10,6 +10,7 @@
 import { mkdtempSync, rmSync, existsSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
+import { randomUUID } from "crypto";
 import Database from "better-sqlite3-multiple-ciphers";
 
 /**
@@ -74,7 +75,7 @@ export function createIsolatedTestDb(options: CreateTestDbOptions = {}): Isolate
 
   // Create temp directory and database path
   const tmpDir = mkdtempSync(join(tmpdir(), "lexsona-test-"));
-  const dbPath = join(tmpDir, `test-${Date.now()}.db`);
+  const dbPath = join(tmpDir, `test-${randomUUID()}.db`);
   const db = new Database(dbPath);
 
   // Create schema_version table if requested
@@ -130,9 +131,15 @@ export function createIsolatedTestDb(options: CreateTestDbOptions = {}): Isolate
   }
 
   const cleanup = () => {
-    if (db.open) {
-      db.close();
+    try {
+      if (db.open) {
+        db.close();
+      }
+    } catch (error) {
+      // Log error but continue cleanup
+      console.warn(`Warning: Failed to close database: ${error}`);
     }
+
     if (existsSync(tmpDir)) {
       rmSync(tmpDir, { recursive: true, force: true });
     }
