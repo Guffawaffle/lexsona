@@ -537,8 +537,115 @@ export function registerRulesCommands(program: Command): void {
     .command("forget <id>")
     .description("Forget a specific rule")
     .option("--force", "Skip confirmation")
-    .action(async (id: string, _options) => {
-      // TODO: Implement rule forgetting
-      console.log(`Forgetting rule: ${id}`);
+    .option("--json", "Output result as JSON")
+    .action(async function (this: Command, ruleId: string, options) {
+      const jsonMode = options.json || isJsonMode(this);
+
+      const instance = await initLexSona();
+      if (!instance) {
+        const error = {
+          error: "Not connected",
+          message: "Not connected to Lex database",
+        };
+        if (jsonMode) {
+          console.log(JSON.stringify(error, null, 2));
+        }
+        return;
+      }
+
+      try {
+        // First get the rule to validate it exists
+        const rule = await instance.getRuleById(ruleId);
+        if (!rule) {
+          const error = {
+            error: "Rule not found",
+            message: `No rule found with ID: ${ruleId}`,
+            hint: "Use 'lexsona rules list --all' to see all rule IDs",
+          };
+          if (jsonMode) {
+            console.log(JSON.stringify(error, null, 2));
+          } else {
+            console.error(`Error: ${error.message}`);
+            console.error(`Hint: ${error.hint}`);
+          }
+          return;
+        }
+
+        // Prompt for confirmation unless --force is specified
+        if (!options.force) {
+          if (jsonMode) {
+            // In JSON mode without --force, we can't prompt, so error
+            const error = {
+              error: "Confirmation required",
+              message: "Use --force to skip confirmation in JSON mode",
+              rule: {
+                id: rule.rule_id,
+                text: rule.text,
+              },
+            };
+            console.log(JSON.stringify(error, null, 2));
+            return;
+          }
+
+          // Show rule details
+          console.log(`About to delete rule:`);
+          console.log(`  ID: ${rule.rule_id}`);
+          console.log(`  Text: ${rule.text}`);
+          console.log(`  Severity: ${rule.severity}`);
+          console.log(`  Observations: ${rule.observation_count}`);
+          console.log("");
+
+          // Import readline for confirmation prompt
+          const readline = await import("readline");
+          const rl = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout,
+          });
+
+          const answer = await new Promise<string>((resolve) => {
+            rl.question("Are you sure you want to delete this rule? (y/N): ", resolve);
+          });
+          rl.close();
+
+          if (answer.toLowerCase() !== "y" && answer.toLowerCase() !== "yes") {
+            console.log("Cancelled.");
+            return;
+          }
+        }
+
+        // Delete the rule
+        const deleted = await instance.forgetRule(ruleId);
+        if (!deleted) {
+          throw new Error("Failed to delete rule");
+        }
+
+        if (jsonMode) {
+          console.log(
+            JSON.stringify(
+              {
+                success: true,
+                deletedRule: {
+                  id: rule.rule_id,
+                  text: rule.text,
+                },
+              },
+              null,
+              2
+            )
+          );
+        } else {
+          console.log(`✓ Deleted rule: ${rule.rule_id}`);
+          console.log(`  ${rule.text}`);
+        }
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        if (jsonMode) {
+          console.log(
+            JSON.stringify({ error: "Failed to delete rule", message: errorMsg }, null, 2)
+          );
+        } else {
+          console.error(`Error: ${errorMsg}`);
+        }
+      }
     });
 }

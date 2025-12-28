@@ -401,4 +401,147 @@ describe("rules CLI", () => {
       expect(result.hint).toContain("LEX_DB_PATH");
     });
   });
+
+  describe("forget command", () => {
+    it("requires --force flag in JSON mode", async () => {
+      // Mock instance with a rule
+      connectSpy.mockResolvedValue({
+        isConnected: () => true,
+        getRuleById: vi.fn(async (id: string) => {
+          if (id === "rule-1") {
+            return {
+              rule_id: "rule-1",
+              text: "Test rule to forget",
+              category: "general",
+              severity: "should",
+              scope: {},
+              alpha: 2,
+              beta: 1,
+              observation_count: 5,
+              decay_tau: 30,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              last_observed: new Date().toISOString(),
+              confidence: 0.67,
+              decay_factor: 1.0,
+              effective_confidence: 0.67,
+            };
+          }
+          return null;
+        }),
+        forgetRule: vi.fn(async () => true),
+        close: vi.fn(),
+      } as unknown as LexSona);
+
+      const program = createProgram();
+      await program.parseAsync(["node", "lexsona", "rules", "forget", "rule-1", "--json"]);
+
+      const output = logSpy.mock.calls.map((c) => String(c[0])).join("\n");
+      const result = JSON.parse(output);
+
+      expect(result.error).toBe("Confirmation required");
+      expect(result.message).toContain("--force");
+    });
+
+    it("deletes rule with --force flag in JSON mode", async () => {
+      // Mock instance with a rule
+      connectSpy.mockResolvedValue({
+        isConnected: () => true,
+        getRuleById: vi.fn(async (id: string) => {
+          if (id === "rule-1") {
+            return {
+              rule_id: "rule-1",
+              text: "Test rule to forget",
+              category: "general",
+              severity: "should",
+              scope: {},
+              alpha: 2,
+              beta: 1,
+              observation_count: 5,
+              decay_tau: 30,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              last_observed: new Date().toISOString(),
+              confidence: 0.67,
+              decay_factor: 1.0,
+              effective_confidence: 0.67,
+            };
+          }
+          return null;
+        }),
+        forgetRule: vi.fn(async () => true),
+        close: vi.fn(),
+      } as unknown as LexSona);
+
+      const program = createProgram();
+      await program.parseAsync([
+        "node",
+        "lexsona",
+        "rules",
+        "forget",
+        "rule-1",
+        "--force",
+        "--json",
+      ]);
+
+      const output = logSpy.mock.calls.map((c) => String(c[0])).join("\n");
+      const result = JSON.parse(output);
+
+      expect(result.success).toBe(true);
+      expect(result.deletedRule.id).toBe("rule-1");
+      expect(result.deletedRule.text).toBe("Test rule to forget");
+    });
+
+    it("handles rule not found error", async () => {
+      // Mock instance without the rule
+      connectSpy.mockResolvedValue({
+        isConnected: () => true,
+        getRuleById: vi.fn(async () => null),
+        forgetRule: vi.fn(async () => false),
+        close: vi.fn(),
+      } as unknown as LexSona);
+
+      const program = createProgram();
+      await program.parseAsync([
+        "node",
+        "lexsona",
+        "rules",
+        "forget",
+        "nonexistent",
+        "--force",
+        "--json",
+      ]);
+
+      const output = logSpy.mock.calls.map((c) => String(c[0])).join("\n");
+      const result = JSON.parse(output);
+
+      expect(result.error).toBe("Rule not found");
+      expect(result.message).toContain("nonexistent");
+      expect(result.hint).toContain("lexsona rules list --all");
+    });
+
+    it("handles database connection failure", async () => {
+      // Mock disconnected instance
+      connectSpy.mockResolvedValue({
+        isConnected: () => false,
+        close: vi.fn(),
+      } as unknown as LexSona);
+
+      const program = createProgram();
+      await program.parseAsync([
+        "node",
+        "lexsona",
+        "rules",
+        "forget",
+        "rule-1",
+        "--force",
+        "--json",
+      ]);
+
+      const output = logSpy.mock.calls.map((c) => String(c[0])).join("\n");
+      const result = JSON.parse(output);
+
+      expect(result.error).toBe("Not connected");
+    });
+  });
 });
