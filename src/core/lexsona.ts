@@ -331,6 +331,20 @@ export class LexSona {
   }
 
   /**
+   * Forget (delete) a behavior rule by ID
+   *
+   * @param ruleId - Rule identifier to delete
+   * @returns true if deleted, false if not found
+   */
+  async forgetRule(ruleId: string): Promise<boolean> {
+    if (!this.storageClient?.isConnected()) {
+      throw createLexNotConnectedError();
+    }
+
+    return this.storageClient.deleteRule(ruleId);
+  }
+
+  /**
    * Get the currently active persona ID
    */
   getActivePersona(): string | null {

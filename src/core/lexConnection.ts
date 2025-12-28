@@ -468,4 +468,16 @@ export class LexStorageClient {
   ): import("@smartergpt/lex/lexsona").BehaviorRuleWithConfidence | null {
     return promoteRuleInDb(this.db, ruleId, targetN);
   }
+
+  /**
+   * Delete a behavior rule by ID
+   *
+   * @param ruleId - Rule identifier to delete
+   * @returns true if deleted, false if not found
+   */
+  deleteRule(ruleId: string): boolean {
+    const stmt = this.db.prepare("DELETE FROM lexsona_behavior_rules WHERE rule_id = ?");
+    const result = stmt.run(ruleId);
+    return result.changes > 0;
+  }
 }
