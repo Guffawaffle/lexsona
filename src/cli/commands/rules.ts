@@ -5,6 +5,7 @@
  */
 
 import { Command } from "commander";
+import { createInterface } from "readline";
 import { LexSona, type LexSonaConfig } from "../../core/lexsona.js";
 import type { RuleScope } from "../../rules/types.js";
 import { isJsonMode } from "../output.js";
@@ -595,9 +596,8 @@ export function registerRulesCommands(program: Command): void {
           console.log(`  Observations: ${rule.observation_count}`);
           console.log("");
 
-          // Import readline for confirmation prompt
-          const readline = await import("readline");
-          const rl = readline.createInterface({
+          // Prompt for confirmation
+          const rl = createInterface({
             input: process.stdin,
             output: process.stdout,
           });
@@ -614,9 +614,10 @@ export function registerRulesCommands(program: Command): void {
         }
 
         // Delete the rule
+        // Note: Rule could have been deleted by another process between validation and deletion
         const deleted = await instance.forgetRule(ruleId);
         if (!deleted) {
-          throw new Error("Failed to delete rule");
+          throw new Error("Failed to delete rule (may have been deleted by another process)");
         }
 
         if (jsonMode) {
