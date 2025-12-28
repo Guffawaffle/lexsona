@@ -355,22 +355,85 @@ export function registerConstraintsCommands(program: Command): void {
   constraints
     .command("explain <id>")
     .description("Explain why a constraint is active")
-    .action(async (id: string) => {
+    .action(async function (this: Command, id: string) {
+      const jsonMode = isJsonMode(this);
       const cached = readCachedConstraintSet();
       if (!cached) {
-        console.log("No constraint set cached.");
-        console.log("  (Use 'lexsona constraints derive' first)");
+        if (jsonMode) {
+          console.log(
+            JSON.stringify(
+              {
+                error: "no_cache",
+                message: "No constraint set cached",
+                hint: "Use 'lexsona constraints derive' first",
+              },
+              null,
+              2
+            )
+          );
+        } else {
+          console.log("No constraint set cached.");
+          console.log("  (Use 'lexsona constraints derive' first)");
+        }
         return;
       }
 
       const constraint = cached.constraints.find((c) => c.rule_id === id);
       if (!constraint) {
-        console.error(`Constraint "${id}" not found in last derivation.`);
-        console.error(`  Available: ${cached.constraints.map((c) => c.rule_id).join(", ")}`);
+        if (jsonMode) {
+          console.log(
+            JSON.stringify(
+              {
+                error: "not_found",
+                id,
+                message: `Constraint "${id}" not found in last derivation`,
+                available: cached.constraints.map((c) => c.rule_id),
+              },
+              null,
+              2
+            )
+          );
+        } else {
+          console.error(`Constraint "${id}" not found in last derivation.`);
+          console.error(`  Available: ${cached.constraints.map((c) => c.rule_id).join(", ")}`);
+        }
         process.exitCode = 1;
         return;
       }
 
+      if (jsonMode) {
+        // Structured JSON output for MCP/agent consumption
+        const reasons = [
+          `Persona "${cached.personaId}" includes category "${constraint.category}"`,
+          `Confidence ${constraint.confidence.toFixed(2)} >= threshold ${cached.metadata.confidenceThreshold}`,
+        ];
+        if (cached.metadata.confidenceCeiling !== undefined) {
+          reasons.push(
+            `Offline confidence ceiling applied: <= ${cached.metadata.confidenceCeiling.toFixed(2)}`
+          );
+        }
+
+        const explanation = {
+          id: constraint.rule_id,
+          text: constraint.text,
+          severity: constraint.severity,
+          category: constraint.category,
+          confidence: constraint.confidence,
+          source: constraint.source ?? "learned",
+          reasons,
+          context: cached.context,
+          personaId: cached.personaId,
+          derivedAt: cached.derivedAt,
+          metadata: {
+            confidenceThreshold: cached.metadata.confidenceThreshold,
+            confidenceCeiling: cached.metadata.confidenceCeiling,
+          },
+        };
+        console.log(JSON.stringify(explanation, null, 2));
+        return;
+      }
+
+      // Human-readable output
       console.log(`\nConstraint Explanation`);
       console.log("═════════════════════\n");
 

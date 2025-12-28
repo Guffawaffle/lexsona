@@ -72,7 +72,16 @@ export function registerRulesCommands(program: Command): void {
 
       if (rulesList.length === 0) {
         if (jsonMode) {
-          console.log(JSON.stringify({ rules: [], showingAll: !!options.all }, null, 2));
+          const output: Record<string, unknown> = {
+            rules: [],
+            showingAll: !!options.all,
+          };
+          // Include hint for agents when rules list is empty (AX-004)
+          if (!options.all) {
+            output.hint = "Rules need 3+ observations to appear. Use --all to show all rules.";
+            output.threshold = LEXSONA_DEFAULTS.MIN_OBSERVATION_COUNT;
+          }
+          console.log(JSON.stringify(output, null, 2));
         } else {
           if (options.all) {
             console.log("No rules found.");
