@@ -9,9 +9,7 @@ import {
 import type { Persona, ScopeConstraints } from "../../../src/persona/types.js";
 
 // Test fixture helper
-function createTestPersona(
-  overrides: Partial<Persona> = {}
-): Persona {
+function createTestPersona(overrides: Partial<Persona> = {}): Persona {
   return {
     id: "quality-first_engineering",
     version: "1.0.0",
@@ -163,11 +161,7 @@ describe("deriveScopeConstraints", () => {
     const result = deriveScopeConstraints(persona, "post-merge-fix");
 
     // deny_globs should remain unchanged from base
-    expect(result.deny_globs).toEqual([
-      "node_modules/**",
-      "dist/**",
-      ".git/**",
-    ]);
+    expect(result.deny_globs).toEqual(["node_modules/**", "dist/**", ".git/**"]);
   });
 
   it("handles missing override for procedure", () => {

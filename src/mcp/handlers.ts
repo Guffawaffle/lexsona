@@ -189,9 +189,7 @@ export async function handleRules(
  * Handler for lexsona_personas tool
  * Lists available personas with capability matrix (AX-003)
  */
-export async function handlePersonas(
-  getLexSona: () => Promise<LexSona>
-): Promise<object> {
+export async function handlePersonas(getLexSona: () => Promise<LexSona>): Promise<object> {
   const personas = await listPersonas();
 
   const details = await Promise.all(

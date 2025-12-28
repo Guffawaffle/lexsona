@@ -509,7 +509,18 @@ describe("Trust Gap Learning (ADR-007)", () => {
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `
           )
-          .run(`gap-${i}`, "trust_gap", `Trust gap on proc: claim != verify`, scope, 2.0, 6.0, 1, now, now, now);
+          .run(
+            `gap-${i}`,
+            "trust_gap",
+            `Trust gap on proc: claim != verify`,
+            scope,
+            2.0,
+            6.0,
+            1,
+            now,
+            now,
+            now
+          );
       }
 
       await sona.activate("quality-first_engineering");

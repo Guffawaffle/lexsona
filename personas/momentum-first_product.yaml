@@ -59,14 +59,14 @@ scope_constraints:
     - "docs/**"
     - "src/**"
     - "tests/**"
-  
+
   # Broader write scope (velocity-focused)
   write_globs:
     - "docs/**/*.md"
     - "*.md"
     - "**/*.yaml"
     - "**/*.yml"
-  
+
   # Always deny (safety - cannot be overridden)
   deny_globs:
     - "node_modules/**"
@@ -75,10 +75,10 @@ scope_constraints:
     - "*.lock"
     - ".env*"
     - "secrets/**"
-  
+
   # Cross-repo default
   cross_repo_allowed: false
-  
+
   # Procedure-specific overrides
   overrides:
     planning:

@@ -7,11 +7,7 @@
  */
 
 import { describe, it, expect, vi } from "vitest";
-import {
-  handleLearn,
-  handleConstraints,
-  handleRules,
-} from "../../../src/mcp/handlers.js";
+import { handleLearn, handleConstraints, handleRules } from "../../../src/mcp/handlers.js";
 import { LexSona } from "../../../src/core/lexsona.js";
 
 describe("MCP Handler Scoping Validation", () => {

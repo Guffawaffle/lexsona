@@ -22,7 +22,7 @@
  * - LEX_* : Lex connection and database errors
  * - VALIDATION_* : Input validation errors
  * - INTERNAL_* : Unexpected internal errors
- * 
+ *
  * Note: Enum values are explicitly set to match their keys to ensure stable
  * serialization and prevent potential breaking changes from TypeScript updates.
  */
@@ -161,23 +161,16 @@ export class LexSonaError extends Error {
 /**
  * Helper to create persona not found error with search path suggestions
  */
-export function createPersonaNotFoundError(
-  personaId: string,
-  searchPaths: string[]
-): LexSonaError {
-  return new LexSonaError(
-    LexSonaErrorCode.PERSONA_NOT_FOUND,
-    `Persona not found: ${personaId}`,
-    {
-      retryable: false,
-      suggestions: [
-        `Check persona ID format (should be: {behavioral-focus}_{domain})`,
-        `Available search paths: ${searchPaths.join(", ")}`,
-        "Run 'lexsona persona list' to see available personas",
-      ],
-      context: { personaId, searchPaths },
-    }
-  );
+export function createPersonaNotFoundError(personaId: string, searchPaths: string[]): LexSonaError {
+  return new LexSonaError(LexSonaErrorCode.PERSONA_NOT_FOUND, `Persona not found: ${personaId}`, {
+    retryable: false,
+    suggestions: [
+      `Check persona ID format (should be: {behavioral-focus}_{domain})`,
+      `Available search paths: ${searchPaths.join(", ")}`,
+      "Run 'lexsona persona list' to see available personas",
+    ],
+    context: { personaId, searchPaths },
+  });
 }
 
 /**
@@ -273,11 +266,18 @@ export function createLexMissingTableError(dbPath: string): LexSonaError {
  * Helper to create rule validation error
  */
 export function createRuleValidationError(reason: string): LexSonaError {
-  return new LexSonaError(LexSonaErrorCode.RULE_VALIDATION_FAILED, `Rule validation failed: ${reason}`, {
-    retryable: false,
-    suggestions: ["Check rule text is not empty", "Verify severity is one of: must, should, style"],
-    context: { reason },
-  });
+  return new LexSonaError(
+    LexSonaErrorCode.RULE_VALIDATION_FAILED,
+    `Rule validation failed: ${reason}`,
+    {
+      retryable: false,
+      suggestions: [
+        "Check rule text is not empty",
+        "Verify severity is one of: must, should, style",
+      ],
+      context: { reason },
+    }
+  );
 }
 
 /**
@@ -311,17 +311,13 @@ export function isClientError(code: LexSonaErrorCode): boolean {
  * Helper to create no derivation error
  */
 export function createNoDerivationError(): LexSonaError {
-  return new LexSonaError(
-    LexSonaErrorCode.NO_DERIVATION,
-    "No constraints have been derived yet",
-    {
-      retryable: false,
-      suggestions: [
-        "Call constraints_derive first to generate constraints",
-        "Ensure a persona is activated before deriving constraints",
-      ],
-    }
-  );
+  return new LexSonaError(LexSonaErrorCode.NO_DERIVATION, "No constraints have been derived yet", {
+    retryable: false,
+    suggestions: [
+      "Call constraints_derive first to generate constraints",
+      "Ensure a persona is activated before deriving constraints",
+    ],
+  });
 }
 
 /**

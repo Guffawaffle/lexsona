@@ -12,11 +12,7 @@ import { join } from "path";
 import { tmpdir } from "os";
 
 import { registerPersonaCommands } from "../../src/cli/commands/persona.js";
-import {
-  getProjectConfigPath,
-  getUserConfigPath,
-  readConfig,
-} from "../../src/persona/config.js";
+import { getProjectConfigPath, getUserConfigPath, readConfig } from "../../src/persona/config.js";
 
 /**
  * Create a test program with persona commands registered
@@ -46,10 +42,12 @@ function captureOutput(fn: () => void | Promise<void>): Promise<string> {
   const result = fn();
 
   if (result instanceof Promise) {
-    return result.finally(() => {
-      console.log = originalLog;
-      console.error = originalError;
-    }).then(() => logs.join("\n"));
+    return result
+      .finally(() => {
+        console.log = originalLog;
+        console.error = originalError;
+      })
+      .then(() => logs.join("\n"));
   }
 
   console.log = originalLog;
@@ -144,13 +142,7 @@ describe("persona CLI integration", () => {
     it("activates persona by trigger phrase", async () => {
       const program = createProgram();
       const output = await captureOutput(async () => {
-        await program.parseAsync([
-          "node",
-          "lexsona",
-          "persona",
-          "activate",
-          "senior dev",
-        ]);
+        await program.parseAsync(["node", "lexsona", "persona", "activate", "senior dev"]);
       });
 
       expect(output).toContain("✓ Activated persona for this project: quality-first_engineering");
@@ -357,7 +349,7 @@ describe("persona CLI integration", () => {
     it("does not error when deactivating non-existent state", async () => {
       // Reset exitCode from previous tests
       process.exitCode = 0;
-      
+
       const program = createProgram();
       const output = await captureOutput(async () => {
         await program.parseAsync(["node", "lexsona", "persona", "deactivate"]);

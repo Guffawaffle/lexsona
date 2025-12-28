@@ -59,12 +59,12 @@ scope_constraints:
     - "**/*.json"
     - "**/*.md"
     - "docs/**"
-  
+
   # Default write scope (conservative)
   write_globs:
     - "src/**/*.ts"
     - "tests/**/*.ts"
-  
+
   # Always deny (safety - cannot be overridden)
   deny_globs:
     - "node_modules/**"
@@ -73,17 +73,17 @@ scope_constraints:
     - "*.lock"
     - ".env*"
     - "secrets/**"
-  
+
   # Cross-repo default
   cross_repo_allowed: false
-  
+
   # Procedure-specific overrides
   overrides:
     post-merge-fix:
       write_globs:
-        - "tests/**/*.spec.ts"  # Very narrow for test fixes
+        - "tests/**/*.spec.ts" # Very narrow for test fixes
     fanout-issue:
       write_globs:
         - "src/**/*.ts"
         - "tests/**/*.ts"
-        - "docs/**/*.md"  # Broader for new features
+        - "docs/**/*.md" # Broader for new features

@@ -230,7 +230,7 @@ export function registerConstraintsCommands(program: Command): void {
     .action(async function (this: Command, options) {
       // Check both local --json and global --json
       const jsonMode = options.json || isJsonMode(this);
-      
+
       const active = getActivePersona().personaId;
       const personaId = options.persona ?? active ?? "quality-first_engineering";
 
@@ -239,11 +239,17 @@ export function registerConstraintsCommands(program: Command): void {
         await loadPersona(personaId);
       } catch {
         if (jsonMode) {
-          console.log(JSON.stringify({
-            error: "Persona not found",
-            message: `Persona "${personaId}" not found`,
-            hint: "Use 'lexsona persona list' to see available personas",
-          }, null, 2));
+          console.log(
+            JSON.stringify(
+              {
+                error: "Persona not found",
+                message: `Persona "${personaId}" not found`,
+                hint: "Use 'lexsona persona list' to see available personas",
+              },
+              null,
+              2
+            )
+          );
         } else {
           console.error(`Error: Persona "${personaId}" not found.`);
           console.error("  Use 'lexsona persona list' to see available personas.");
@@ -284,10 +290,16 @@ export function registerConstraintsCommands(program: Command): void {
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         if (jsonMode) {
-          console.log(JSON.stringify({
-            error: "Failed to derive constraints",
-            message,
-          }, null, 2));
+          console.log(
+            JSON.stringify(
+              {
+                error: "Failed to derive constraints",
+                message,
+              },
+              null,
+              2
+            )
+          );
         } else {
           console.error(`Error: ${message}`);
         }
@@ -305,15 +317,21 @@ export function registerConstraintsCommands(program: Command): void {
     .action(async function (this: Command, options) {
       // Check both local --json and global --json
       const jsonMode = options.json || isJsonMode(this);
-      
+
       const cached = readCachedConstraintSet();
       if (!cached) {
         if (jsonMode) {
-          console.log(JSON.stringify({
-            error: "No cached constraints",
-            message: "No constraint set cached",
-            hint: "Use 'lexsona constraints derive' first",
-          }, null, 2));
+          console.log(
+            JSON.stringify(
+              {
+                error: "No cached constraints",
+                message: "No constraint set cached",
+                hint: "Use 'lexsona constraints derive' first",
+              },
+              null,
+              2
+            )
+          );
         } else {
           console.log("No constraint set cached.");
           console.log("  (Use 'lexsona constraints derive' first)");

@@ -5,11 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import {
-  handleActivate,
-  handleLearn,
-  handleTrustGapRecord,
-} from "../../src/mcp/handlers.js";
+import { handleActivate, handleLearn, handleTrustGapRecord } from "../../src/mcp/handlers.js";
 import { LexSona } from "../../src/core/lexsona.js";
 import type { ActivateInput, LearnInput, TrustGapInput } from "../../src/mcp/tools.js";
 

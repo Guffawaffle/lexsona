@@ -16,7 +16,7 @@ export function isJsonMode(command: Command): boolean {
   while (current.parent) {
     current = current.parent;
   }
-  
+
   // Check if --json was passed at the global level
   const opts = current.opts() as { json?: boolean };
   return opts.json === true;
