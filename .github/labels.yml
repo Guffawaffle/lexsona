@@ -1,0 +1,39 @@
+# GitHub Labels Configuration for LexSona
+# This file defines labels used across the Lex suite for consistent issue hygiene
+#
+# To sync labels, use: gh label sync --file .github/labels.yml
+# Or wait for the label-sync workflow to run automatically
+
+# Cross-suite labels (consistent with Lex and LexRunner)
+- name: ax
+  description: Agent experience / AX-first tooling
+  color: "0E8A16"
+
+- name: mcp
+  description: Model Context Protocol surface changes
+  color: "1D76DB"
+
+# General labels
+- name: bug
+  description: Correctness issues (e.g., scoping bugs, incorrect behavior)
+  color: "D73A4A"
+
+- name: dx
+  description: Developer experience improvements
+  color: "0075CA"
+
+- name: enhancement
+  description: New feature or request
+  color: "A2EEEF"
+
+- name: documentation
+  description: Improvements or additions to documentation
+  color: "0075CA"
+
+- name: good first issue
+  description: Good for newcomers
+  color: "7057FF"
+
+- name: help wanted
+  description: Extra attention is needed
+  color: "008672"

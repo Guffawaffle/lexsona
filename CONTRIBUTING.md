@@ -84,6 +84,26 @@ When merging concurrent PRs creates conflicts:
 
 **When uncertain:** Stop and ask. Document the conflict in the PR description.
 
+## Issue Labels
+
+LexSona uses standardized labels across the Lex suite for consistent issue hygiene:
+
+### Cross-Suite Labels
+
+- **`ax`** - Agent experience / AX-first tooling (consistent with Lex and LexRunner)
+- **`mcp`** - Model Context Protocol surface changes (consistent with Lex and LexRunner)
+
+### General Labels
+
+- **`bug`** - Correctness issues (e.g., scoping bugs, incorrect behavior)
+- **`dx`** - Developer experience improvements
+- **`enhancement`** - New feature or request
+- **`documentation`** - Improvements or additions to documentation
+- **`good first issue`** - Good for newcomers
+- **`help wanted`** - Extra attention is needed
+
+Label definitions are maintained in `.github/labels.yml` and automatically synced to the repository. See `scripts/README.md` for manual sync instructions.
+
 ## Commit Style
 
 Use imperative mood with optional prefixes:
