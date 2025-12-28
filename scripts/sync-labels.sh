@@ -34,10 +34,11 @@ fi
 echo "📋 Reading labels from $LABELS_FILE..."
 
 # Parse YAML and create labels
-yq eval '.[] | .name + "|" + .description + "|" + .color' "$LABELS_FILE" | while IFS='|' read -r name description color; do
+# Using tab delimiter (safer than pipe, unlikely to appear in label text)
+yq eval '.[] | .name + "\t" + .description + "\t" + .color' "$LABELS_FILE" | while IFS=$'\t' read -r name description color; do
   echo "   Creating/updating label: $name"
-  gh label create "$name" --description "$description" --color "$color" --force || {
-    echo "   ⚠️  Warning: Failed to create/update label '$name'"
+  error_output=$(gh label create "$name" --description "$description" --color "$color" --force 2>&1) || {
+    echo "   ⚠️  Warning: Failed to create/update label '$name': $error_output"
   }
 done
 
