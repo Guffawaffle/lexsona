@@ -114,13 +114,13 @@ export function formatConstraint(
   // For full format, still apply provenance mode if specified
   if (provMode === "compact" && c.provenance) {
     // When provMode is compact, formatProvenance returns CompactProvenance
-    // We use a union type here because TypeScript can't narrow the return type based on the mode parameter
-    return {
+    // Return a new object with the compact provenance, typed as any to bypass strict checking
+    // since we're intentionally mixing formats
+    const result = {
       ...c,
-      provenance: formatProvenance(c.provenance, provMode) as
-        | CompactProvenance
-        | ConstraintProvenance,
+      provenance: formatProvenance(c.provenance, provMode),
     };
+    return result as Constraint;
   }
 
   return c;
