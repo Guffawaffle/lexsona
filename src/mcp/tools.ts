@@ -31,6 +31,10 @@ export const ConstraintsInputSchema = z.object({
     .optional()
     .default("full")
     .describe("Output format: 'full' (default) or 'compact'"),
+  provenance: z
+    .enum(["full", "compact"])
+    .optional()
+    .describe("Provenance mode: 'full' (default) or 'compact' for lightweight explanations"),
 });
 
 export const LearnInputSchema = z.object({
@@ -147,6 +151,12 @@ export const LEXSONA_TOOLS: Tool[] = [
           type: "string",
           enum: ["full", "compact"],
           description: "Output format: 'full' (default) or 'compact'",
+        },
+        provenance: {
+          type: "string",
+          enum: ["full", "compact"],
+          description:
+            "Provenance mode: 'full' (default) or 'compact' for lightweight explanations",
         },
       },
     },
