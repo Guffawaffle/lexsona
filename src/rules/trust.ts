@@ -9,11 +9,7 @@
 
 import type Database from "better-sqlite3-multiple-ciphers";
 import { recordCorrection, getRules } from "@smartergpt/lex/lexsona";
-import type {
-  TrustGapEvent,
-  AgentTrustProfile,
-  BehaviorRuleWithConfidence,
-} from "./types.js";
+import type { TrustGapEvent, AgentTrustProfile, BehaviorRuleWithConfidence } from "./types.js";
 
 /**
  * Minimum number of observations before pattern learning activates
@@ -180,7 +176,10 @@ function generateLearnedRuleText(
  * @param agentFamily - Agent family identifier
  * @returns Trust profile with gap rate and common failure types
  */
-export function getAgentTrustProfile(db: Database.Database, agentFamily: string): AgentTrustProfile {
+export function getAgentTrustProfile(
+  db: Database.Database,
+  agentFamily: string
+): AgentTrustProfile {
   // Get all rules for this agent family (including those with minimal observations and confidence)
   const allRules = getRules(
     db,

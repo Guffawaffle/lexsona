@@ -65,11 +65,11 @@ describe("Rule Version Tracking (AX-005)", () => {
 
     it("creates metadata table on first access", async () => {
       await sona.incrementRuleVersion();
-      
+
       const tables = testDb.db
         .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='lexsona_metadata'")
         .all();
-      
+
       expect(tables.length).toBe(1);
     });
   });
@@ -90,7 +90,7 @@ describe("Rule Version Tracking (AX-005)", () => {
 
     it("increments version manually", async () => {
       const initialVersion = sona.getRuleVersion();
-      
+
       await sona.learn({
         correction: "Always use TypeScript strict mode",
         severity: "must",
@@ -127,7 +127,7 @@ describe("Rule Version Tracking (AX-005)", () => {
       const sona2 = await LexSona.connect({ lexDb: testDb.dbPath });
 
       expect(sona2.getRuleVersion()).toBe(expectedVersion);
-      
+
       sona2.close();
     });
   });
@@ -156,7 +156,7 @@ describe("Rule Version Tracking (AX-005)", () => {
 
     it("ruleVersion can be incremented after learning", async () => {
       await sona.activate("quality-first_engineering");
-      
+
       const result1 = await sona.deriveConstraints({ domain: "test" });
       const version1 = result1.ruleVersion;
 
@@ -167,7 +167,7 @@ describe("Rule Version Tracking (AX-005)", () => {
         polarity: 1,
         context: { project: "test" },
       });
-      
+
       // Manually increment version (as MCP handler would do)
       await sona.incrementRuleVersion();
 

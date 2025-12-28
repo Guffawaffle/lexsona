@@ -74,21 +74,21 @@ describe("Scope Combinations", () => {
     it("matches when both module and domain match", () => {
       const scope: RuleScope = { module_id: "cli", project: "lexsona" };
       const context: DeriveContext = { module_id: "cli", domain: "lexsona" };
-      
+
       expect(scopeMatches(scope, context)).toBe(true);
     });
 
     it("does not match when module matches but domain does not", () => {
       const scope: RuleScope = { module_id: "cli", project: "lexsona" };
       const context: DeriveContext = { module_id: "cli", domain: "other" };
-      
+
       expect(scopeMatches(scope, context)).toBe(false);
     });
 
     it("does not match when domain matches but module does not", () => {
       const scope: RuleScope = { module_id: "cli", project: "lexsona" };
       const context: DeriveContext = { module_id: "core", domain: "lexsona" };
-      
+
       expect(scopeMatches(scope, context)).toBe(false);
     });
 
@@ -100,18 +100,18 @@ describe("Scope Combinations", () => {
         createTestRule("domain-only", { project: "lexsona" }),
       ];
       const context: DeriveContext = { module_id: "cli", domain: "lexsona" };
-      
+
       const result = deriveConstraints(persona, rules, [], context);
-      
+
       expect(result.constraints[0].rule_id).toBe("combined");
     });
 
     it("handles glob patterns in module+domain combination", () => {
       const scope: RuleScope = { module_id: "cli/*", project: "lexsona" };
       const context: DeriveContext = { module_id: "cli/commands", domain: "lexsona" };
-      
+
       expect(scopeMatches(scope, context)).toBe(true);
-      
+
       const spec = calculateScopeSpecificity(scope, context);
       expect(spec).toBeGreaterThan(0);
     });
@@ -121,7 +121,7 @@ describe("Scope Combinations", () => {
     it("matches context with only module_id specified", () => {
       const scope: RuleScope = { module_id: "cli" };
       const context: DeriveContext = { module_id: "cli" };
-      
+
       expect(scopeMatches(scope, context)).toBe(true);
     });
 
@@ -132,7 +132,7 @@ describe("Scope Combinations", () => {
         domain: "lexsona",
         taskType: "review",
       };
-      
+
       expect(scopeMatches(scope, context)).toBe(true);
     });
 
@@ -144,9 +144,9 @@ describe("Scope Combinations", () => {
         createTestRule("global-rule", {}),
       ];
       const context: DeriveContext = { module_id: "cli" };
-      
+
       const result = deriveConstraints(persona, rules, [], context);
-      
+
       expect(result.constraints).toHaveLength(2);
       expect(result.constraints.map((c: Constraint) => c.rule_id)).toContain("cli-rule");
       expect(result.constraints.map((c: Constraint) => c.rule_id)).toContain("global-rule");
@@ -158,7 +158,7 @@ describe("Scope Combinations", () => {
     it("matches context with only domain specified", () => {
       const scope: RuleScope = { project: "lexsona" };
       const context: DeriveContext = { domain: "lexsona" };
-      
+
       expect(scopeMatches(scope, context)).toBe(true);
     });
 
@@ -169,7 +169,7 @@ describe("Scope Combinations", () => {
         domain: "lexsona",
         taskType: "review",
       };
-      
+
       expect(scopeMatches(scope, context)).toBe(true);
     });
 
@@ -181,9 +181,9 @@ describe("Scope Combinations", () => {
         createTestRule("global-rule", {}),
       ];
       const context: DeriveContext = { domain: "lexsona" };
-      
+
       const result = deriveConstraints(persona, rules, [], context);
-      
+
       expect(result.constraints).toHaveLength(2);
       expect(result.constraints.map((c: Constraint) => c.rule_id)).toContain("lexsona-rule");
       expect(result.constraints.map((c: Constraint) => c.rule_id)).toContain("global-rule");
@@ -194,18 +194,18 @@ describe("Scope Combinations", () => {
   describe("taskType only", () => {
     it("matches context with taskType using partial match", () => {
       // Note: RuleScope uses 'task_type' while DeriveContext uses 'taskType'
-      // This is intentional - RuleScope mirrors Lex API (snake_case), 
+      // This is intentional - RuleScope mirrors Lex API (snake_case),
       // DeriveContext is LexSona's API (camelCase)
       const scope: RuleScope = { task_type: "review" };
       const context: DeriveContext = { taskType: "code-review" };
-      
+
       expect(scopeMatches(scope, context)).toBe(true);
     });
 
     it("matches case-insensitively", () => {
       const scope: RuleScope = { task_type: "REVIEW" };
       const context: DeriveContext = { taskType: "code-review" };
-      
+
       expect(scopeMatches(scope, context)).toBe(true);
     });
 
@@ -217,9 +217,9 @@ describe("Scope Combinations", () => {
         createTestRule("global-rule", {}),
       ];
       const context: DeriveContext = { taskType: "code-review" };
-      
+
       const result = deriveConstraints(persona, rules, [], context);
-      
+
       expect(result.constraints).toHaveLength(2);
       expect(result.constraints.map((c: Constraint) => c.rule_id)).toContain("review-rule");
       expect(result.constraints.map((c: Constraint) => c.rule_id)).toContain("global-rule");
@@ -245,7 +245,7 @@ describe("Scope Combinations", () => {
         environment: "production",
         agent_family: "github-copilot",
       };
-      
+
       expect(scopeMatches(scope, context)).toBe(true);
     });
 
@@ -260,7 +260,7 @@ describe("Scope Combinations", () => {
         domain: "lexsona",
         taskType: "implementation", // Mismatch
       };
-      
+
       expect(scopeMatches(scope, context)).toBe(false);
     });
 
@@ -282,11 +282,11 @@ describe("Scope Combinations", () => {
         domain: "lexsona",
         taskType: "code-review",
       };
-      
+
       const allSpec = calculateScopeSpecificity(allFields, context);
       const twoSpec = calculateScopeSpecificity(twoFields, context);
       const oneSpec = calculateScopeSpecificity(oneField, context);
-      
+
       expect(allSpec).toBeGreaterThan(twoSpec);
       expect(twoSpec).toBeGreaterThan(oneSpec);
     });
@@ -308,9 +308,9 @@ describe("Scope Combinations", () => {
         domain: "lexsona",
         taskType: "code-review",
       };
-      
+
       const result = deriveConstraints(persona, rules, [], context);
-      
+
       expect(result.constraints[0].rule_id).toBe("all-scopes");
       expect(result.constraints[1].rule_id).toBe("two-scopes");
       expect(result.constraints[2].rule_id).toBe("one-scope");
@@ -321,7 +321,7 @@ describe("Scope Combinations", () => {
   describe("none specified (defaults/wildcards)", () => {
     it("empty scope matches any context", () => {
       const scope: RuleScope = {};
-      
+
       expect(scopeMatches(scope, {})).toBe(true);
       expect(scopeMatches(scope, { module_id: "cli" })).toBe(true);
       expect(scopeMatches(scope, { domain: "lexsona", taskType: "review" })).toBe(true);
@@ -330,7 +330,7 @@ describe("Scope Combinations", () => {
     it("empty scope has zero specificity", () => {
       const scope: RuleScope = {};
       const context: DeriveContext = { module_id: "cli", domain: "lexsona" };
-      
+
       const spec = calculateScopeSpecificity(scope, context);
       expect(spec).toBe(0);
     });
@@ -343,9 +343,9 @@ describe("Scope Combinations", () => {
         createTestRule("global-2", {}),
       ];
       const context: DeriveContext = { module_id: "cli", domain: "lexsona" };
-      
+
       const result = deriveConstraints(persona, rules, [], context);
-      
+
       expect(result.constraints).toHaveLength(3);
       expect(result.constraints[0].rule_id).toBe("specific");
       // Global rules come after specific ones
@@ -356,7 +356,7 @@ describe("Scope Combinations", () => {
     it("empty context matches wildcard scopes", () => {
       const scope: RuleScope = { module_id: "cli" };
       const context: DeriveContext = {}; // No fields specified
-      
+
       // When context is empty, scope fields with values still pass (wildcard logic)
       expect(scopeMatches(scope, context)).toBe(true);
     });
@@ -383,9 +383,9 @@ describe("Scope Combinations", () => {
         domain: "lexsona",
         taskType: "code-review",
       };
-      
+
       const result = deriveConstraints(persona, rules, [], context);
-      
+
       // Exact match should be first
       expect(result.constraints[0].rule_id).toBe("exact-all");
       // Glob with all fields should be second
@@ -410,7 +410,7 @@ describe("Scope Combinations", () => {
         environment: "development",
         agent_family: "github-copilot",
       };
-      
+
       expect(scopeMatches(scope, matchingContext)).toBe(true);
       expect(scopeMatches(scope, mismatchContext)).toBe(false);
     });
@@ -431,7 +431,7 @@ describe("Scope Combinations", () => {
         domain: "lexsona",
         context_tags: ["urgent"], // Missing "security"
       };
-      
+
       expect(scopeMatches(scope, matchingContext)).toBe(true);
       expect(scopeMatches(scope, mismatchContext)).toBe(false);
     });

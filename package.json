@@ -35,7 +35,8 @@
     "ci:minimal": "npm run lint && npm run typecheck",
     "ci": "npm run lint && npm run typecheck && npm test && npm run build",
     "ci:full": "npm run lint && npm run typecheck && npm test && npm run build",
-    "local-ci": "npm run ci"
+    "local-ci": "npm run ci",
+    "prepare": "husky"
   },
   "keywords": [
     "ai",
@@ -67,6 +68,8 @@
     "@types/micromatch": "^4.0.10",
     "@types/node": "^25.0.2",
     "eslint": "^9.39.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "prettier": "^3.0.0",
     "typescript": "^5.3.0",
     "typescript-eslint": "^8.49.0",
@@ -80,5 +83,13 @@
     "micromatch": "^4.0.8",
     "yaml": "^2.3.0",
     "zod": "^4.1.13"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,mjs}": [
+      "prettier --check"
+    ],
+    "*.{json,md,yaml,yml}": [
+      "prettier --check"
+    ]
   }
 }

@@ -125,6 +125,85 @@ expect(result.success).toBe(false);
 
 ## Test Utilities
 
+### Database Isolation
+
+**IMPORTANT**: Tests should NEVER hit the real database at `~/.smartergpt/lex/memory.db`.
+
+The `db-fixtures.ts` module provides utilities for creating isolated test databases:
+
+#### `createIsolatedTestDb(options?)`
+
+Create a temporary test database with proper schema:
+
+```typescript
+import { createIsolatedTestDb } from "../utils/db-fixtures.js";
+
+let testDb: ReturnType<typeof createIsolatedTestDb>;
+
+beforeAll(() => {
+  // Create isolated database
+  testDb = createIsolatedTestDb({
+    createRulesTable: true, // Create lexsona_behavior_rules table
+    createPersonasTable: false, // Don't create personas table
+    createSchemaVersionTable: false, // Don't create schema_version table
+  });
+
+  // Point environment to test database
+  process.env.LEX_DB_PATH = testDb.path;
+});
+
+afterAll(() => {
+  // Clean up test database
+  testDb.cleanup();
+});
+```
+
+**Options:**
+
+- `createRulesTable` - Create `lexsona_behavior_rules` table (default: `true`)
+- `createPersonasTable` - Create `personas` table (default: `false`)
+- `createSchemaVersionTable` - Create `schema_version` table (default: `false`)
+- `schemaVersion` - Schema version to set (default: `10`)
+- `closeAfterSetup` - Close DB after creating schema (default: `false`)
+
+#### `withTestEnv(dbPath, fn)`
+
+Run a function with a temporary test database path:
+
+```typescript
+import { createIsolatedTestDb, withTestEnv } from "../utils/db-fixtures.js";
+
+const testDb = createIsolatedTestDb();
+
+await withTestEnv(testDb.path, async () => {
+  // LEX_DB_PATH is set to testDb.path here
+  const sona = await LexSona.connect();
+  // ... test code ...
+});
+// LEX_DB_PATH is restored to original value here
+
+testDb.cleanup();
+```
+
+#### `withTestEnvSync(dbPath, fn)`
+
+Synchronous version of `withTestEnv`:
+
+```typescript
+import { createIsolatedTestDb, withTestEnvSync } from "../utils/db-fixtures.js";
+
+const testDb = createIsolatedTestDb();
+
+withTestEnvSync(testDb.path, () => {
+  // LEX_DB_PATH is set to testDb.path here
+  const dbPath = process.env.LEX_DB_PATH;
+  // ... test code ...
+});
+// LEX_DB_PATH is restored to original value here
+
+testDb.cleanup();
+```
+
 ### Helper Functions
 
 The `test-helpers.ts` module provides factory functions to create test data with sensible defaults:
@@ -326,12 +405,14 @@ npm test -- --coverage
 
 ### Best Practices
 
-1. **Use fixtures for integration tests** - When testing how components work together, use the YAML fixtures
-2. **Use test helpers for unit tests** - For focused unit tests, use helper functions for quick setup
-3. **Use mocks to isolate** - Use MockLexClient to avoid database dependencies
-4. **Keep tests deterministic** - Avoid randomness; use fixed dates/values
-5. **Test edge cases** - Empty arrays, null values, boundary conditions
-6. **Follow existing patterns** - Look at `tests/unit/constraints/derive.spec.ts` for examples
+1. **Always use isolated test databases** - NEVER let tests hit the real database at `~/.smartergpt/lex/memory.db`. Use `createIsolatedTestDb()` for all integration tests.
+2. **Use fixtures for integration tests** - When testing how components work together, use the YAML fixtures
+3. **Use test helpers for unit tests** - For focused unit tests, use helper functions for quick setup
+4. **Use mocks to isolate** - Use MockLexClient to avoid database dependencies
+5. **Keep tests deterministic** - Avoid randomness; use fixed dates/values
+6. **Test edge cases** - Empty arrays, null values, boundary conditions
+7. **Follow existing patterns** - Look at `tests/unit/constraints/derive.spec.ts` for examples
+8. **Clean up after tests** - Always call `testDb.cleanup()` in `afterAll()` or `afterEach()`
 
 ### Test Organization
 
@@ -369,6 +450,12 @@ The test suite must pass before merging.
 
 **Problem:** Vitest not found  
 **Solution:** Run `npm ci` to install dependencies
+
+**Problem:** Test fails with "Database not found" or connects to real database  
+**Solution:** Ensure you're using `createIsolatedTestDb()` and setting `process.env.LEX_DB_PATH = testDb.path` in `beforeAll()` or `beforeEach()`
+
+**Problem:** Tests are flaky or fail based on real DB state  
+**Solution:** Your test is likely hitting the real database. Add database isolation using `createIsolatedTestDb()`
 
 ## Contributing
 

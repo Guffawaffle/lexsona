@@ -112,9 +112,9 @@ function checkDatabase(): {
       .get();
 
     if (hasFramesTable) {
-      const framesCount = result.db
-        .prepare("SELECT COUNT(*) as count FROM frames")
-        .get() as { count: number };
+      const framesCount = result.db.prepare("SELECT COUNT(*) as count FROM frames").get() as {
+        count: number;
+      };
       frames = framesCount.count;
     }
 
@@ -288,7 +288,9 @@ function formatHealthCheck(result: Awaited<ReturnType<typeof performHealthCheck>
 
   // Personas
   lines.push("Personas:");
-  lines.push(`  Found: ${checks.personas.count} persona${checks.personas.count !== 1 ? "s" : ""} ${checks.personas.count > 0 ? "✓" : "⚠️"}`);
+  lines.push(
+    `  Found: ${checks.personas.count} persona${checks.personas.count !== 1 ? "s" : ""} ${checks.personas.count > 0 ? "✓" : "⚠️"}`
+  );
   for (const p of checks.personas.list) {
     lines.push(`    - ${p.id} (v${p.version})`);
   }

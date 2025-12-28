@@ -5,7 +5,7 @@
  * Validates tool registration and handler functionality.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 
@@ -19,6 +19,8 @@ import {
   handlePersonas,
 } from "../../src/mcp/handlers.js";
 import { LexSona } from "../../src/core/lexsona.js";
+import { createIsolatedTestDb } from "../utils/db-fixtures.js";
+import type { IsolatedTestDb } from "../utils/db-fixtures.js";
 
 // Mock persona data
 vi.mock("../../src/persona/loader.js", () => ({
@@ -51,10 +53,44 @@ vi.mock("../../src/persona/loader.js", () => ({
 
 describe("MCP Server Integration", () => {
   let mockLexSona: LexSona;
+  let testDb: IsolatedTestDb;
+  let originalEnv: string | undefined;
 
   beforeEach(async () => {
-    // Create a disconnected LexSona instance for testing
+    // Store original LEX_DB_PATH
+    originalEnv = process.env.LEX_DB_PATH;
+
+    // Create isolated test database
+    testDb = createIsolatedTestDb({
+      createRulesTable: true,
+      createPersonasTable: false,
+      createSchemaVersionTable: false,
+    });
+
+    // Set environment to use test database
+    process.env.LEX_DB_PATH = testDb.path;
+
+    // Create a LexSona instance connected to test database
     mockLexSona = await LexSona.connect();
+  });
+
+  afterEach(() => {
+    // Close LexSona connection
+    if (mockLexSona) {
+      mockLexSona.close();
+    }
+
+    // Clean up test database
+    if (testDb) {
+      testDb.cleanup();
+    }
+
+    // Restore original environment
+    if (originalEnv !== undefined) {
+      process.env.LEX_DB_PATH = originalEnv;
+    } else {
+      delete process.env.LEX_DB_PATH;
+    }
   });
 
   describe("Tool Registration", () => {

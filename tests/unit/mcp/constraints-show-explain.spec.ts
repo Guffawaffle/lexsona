@@ -5,10 +5,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import {
-  handleConstraintsShow,
-  handleConstraintsExplain,
-} from "../../../src/mcp/handlers.js";
+import { handleConstraintsShow, handleConstraintsExplain } from "../../../src/mcp/handlers.js";
 import type { ConstraintSet } from "../../../src/constraints/derive.js";
 import { LexSonaErrorCode } from "../../../src/mcp/errors.js";
 
@@ -116,10 +113,7 @@ describe("handleConstraintsExplain (AX-008)", () => {
     };
 
     const state = { lastDerivation: mockDerivation };
-    const result = await handleConstraintsExplain(
-      { constraint_id: "rule_1" },
-      state
-    );
+    const result = await handleConstraintsExplain({ constraint_id: "rule_1" }, state);
 
     expect(result).toMatchObject({
       constraintId: "rule_1",
@@ -161,10 +155,7 @@ describe("handleConstraintsExplain (AX-008)", () => {
     };
 
     const state = { lastDerivation: mockDerivation };
-    const result = await handleConstraintsExplain(
-      { constraint_id: "rule_1" },
-      state
-    );
+    const result = await handleConstraintsExplain({ constraint_id: "rule_1" }, state);
 
     const reasons = (result as any).reasons;
     const personaReason = reasons.find((r: any) => r.source === "persona");
@@ -199,10 +190,7 @@ describe("handleConstraintsExplain (AX-008)", () => {
     };
 
     const state = { lastDerivation: mockDerivation };
-    const result = await handleConstraintsExplain(
-      { constraint_id: "rule_1" },
-      state
-    );
+    const result = await handleConstraintsExplain({ constraint_id: "rule_1" }, state);
 
     const reasons = (result as any).reasons;
     const confidenceReason = reasons.find((r: any) => r.source === "confidence");
@@ -239,10 +227,7 @@ describe("handleConstraintsExplain (AX-008)", () => {
     };
 
     const state = { lastDerivation: mockDerivation };
-    const result = await handleConstraintsExplain(
-      { constraint_id: "rule_1" },
-      state
-    );
+    const result = await handleConstraintsExplain({ constraint_id: "rule_1" }, state);
 
     const reasons = (result as any).reasons;
     const ceilingReason = reasons.find((r: any) => r.source === "offline-ceiling");
@@ -280,10 +265,7 @@ describe("handleConstraintsExplain (AX-008)", () => {
     };
 
     const state = { lastDerivation: mockDerivation };
-    const result = await handleConstraintsExplain(
-      { constraint_id: "rule_1" },
-      state
-    );
+    const result = await handleConstraintsExplain({ constraint_id: "rule_1" }, state);
 
     expect((result as any).matchedContext).toMatchObject({
       domain: "lexsona",
@@ -295,9 +277,7 @@ describe("handleConstraintsExplain (AX-008)", () => {
   it("throws NO_DERIVATION error when no derivation exists", async () => {
     const state = { lastDerivation: null };
 
-    await expect(
-      handleConstraintsExplain({ constraint_id: "rule_1" }, state)
-    ).rejects.toThrow();
+    await expect(handleConstraintsExplain({ constraint_id: "rule_1" }, state)).rejects.toThrow();
     await expect(
       handleConstraintsExplain({ constraint_id: "rule_1" }, state)
     ).rejects.toMatchObject({
@@ -369,10 +349,7 @@ describe("handleConstraintsExplain (AX-008)", () => {
     };
 
     const state = { lastDerivation: mockDerivation };
-    const result = await handleConstraintsExplain(
-      { constraint_id: "rule_1" },
-      state
-    );
+    const result = await handleConstraintsExplain({ constraint_id: "rule_1" }, state);
 
     expect((result as any).derivedAt).toBe(timestamp);
   });

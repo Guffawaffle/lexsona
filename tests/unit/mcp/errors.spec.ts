@@ -97,13 +97,9 @@ describe("LexSonaErrorCode", () => {
     });
 
     it("isRetryable returns metadata value when provided", () => {
-      const error = new LexSonaError(
-        LexSonaErrorCode.LEX_CONNECTION_FAILED,
-        "Connection failed",
-        {
-          retryable: true,
-        }
-      );
+      const error = new LexSonaError(LexSonaErrorCode.LEX_CONNECTION_FAILED, "Connection failed", {
+        retryable: true,
+      });
 
       expect(error.isRetryable()).toBe(true);
     });

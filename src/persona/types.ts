@@ -218,9 +218,7 @@ export const ScopeConstraintsSchema = z.object({
   write_globs: z.array(z.string()).default([]),
 
   /** Always deny patterns (safety - merged, never removed) */
-  deny_globs: z
-    .array(z.string())
-    .default(["node_modules/**", "dist/**", ".git/**", "*.lock"]),
+  deny_globs: z.array(z.string()).default(["node_modules/**", "dist/**", ".git/**", "*.lock"]),
 
   /** Whether cross-repo operations are allowed */
   cross_repo_allowed: z.boolean().default(false),

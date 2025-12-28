@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **AX-010: Lightweight Provenance Mode** - Added compact provenance format for token-constrained agents:
+  - New `provenance` parameter for `constraints_derive` (CLI and MCP): `full` (default) or `compact`
+  - Compact provenance uses single-char source codes: `p` (persona), `r` (rule/learned), `b` (baseline)
+  - Abbreviated field names: `src` (source), `w` (weight/confidence), `rId` (rule ID when applicable)
+  - Confidence rounded to 2 decimal places
+  - Achieves 25-35% additional payload reduction while maintaining explainability
+  - Independent from format mode - can mix `format=full` with `provenance=compact`
+  - Full provenance still available via `constraints_explain` for debugging
 - **AX-003: Persona Capability Matrix** - Enhanced `persona_list` MCP response with structured metadata for agent-driven persona selection:
   - `behavior`: Primary behavioral focus (e.g., "quality-first", "momentum-first")
   - `domain`: Domain context (e.g., "engineering", "product")
@@ -21,7 +29,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Updated `persona_list` MCP handler to return capability matrix instead of raw behavior object
-- Updated persona YAML/MD files to include explicit capability matrices
 
 ## [0.3.0] - 2025-12-16
 
@@ -33,13 +40,13 @@ This release removes the namespace prefix from tool definitions to match the Git
 
 #### Migration Guide
 
-| v0.3.x Tool Name | v0.3.x Tool Name | VS Code Display |
-|------------------|------------------|-----------------|
-| `lexsona_persona_activate` | `persona_activate` | `mcp_lexsona_persona_activate` |
+| v0.3.x Tool Name            | v0.3.x Tool Name     | VS Code Display                  |
+| --------------------------- | -------------------- | -------------------------------- |
+| `lexsona_persona_activate`  | `persona_activate`   | `mcp_lexsona_persona_activate`   |
 | `lexsona_constraint_derive` | `constraints_derive` | `mcp_lexsona_constraints_derive` |
-| `lexsona_rule_learn` | `rules_learn` | `mcp_lexsona_rules_learn` |
-| `lexsona_rule_list` | `rules_list` | `mcp_lexsona_rules_list` |
-| `lexsona_persona_list` | `persona_list` | `mcp_lexsona_persona_list` |
+| `lexsona_rule_learn`        | `rules_learn`        | `mcp_lexsona_rules_learn`        |
+| `lexsona_rule_list`         | `rules_list`         | `mcp_lexsona_rules_list`         |
+| `lexsona_persona_list`      | `persona_list`       | `mcp_lexsona_persona_list`       |
 
 **Backwards Compatibility:** Old `lexsona_*` names are preserved as deprecated aliases and will continue to work. They will be removed in v1.0.0.
 

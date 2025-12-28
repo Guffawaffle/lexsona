@@ -13,6 +13,7 @@ import { loadPersona } from "../../persona/loader.js";
 import { getActivePersona } from "../../persona/config.js";
 import { type DeriveContext, type ConstraintSet } from "../../constraints/derive.js";
 import { isJsonMode } from "../output.js";
+import { formatProvenance } from "../../mcp/formatters.js";
 
 function getProjectConstraintsCachePath(): string {
   return join(process.cwd(), ".smartergpt", "lexsona-constraints.json");
@@ -118,7 +119,9 @@ function writeCachedConstraintSet(result: ConstraintSet): void {
 /**
  * Format constraint set as JSON output matching the specification
  */
-function formatConstraintsAsJson(result: ConstraintSet) {
+function formatConstraintsAsJson(result: ConstraintSet, provenanceMode?: string) {
+  const provMode = provenanceMode === "compact" ? "compact" : "full";
+
   return {
     version: 1,
     persona: result.personaId,
@@ -133,8 +136,8 @@ function formatConstraintsAsJson(result: ConstraintSet) {
       // baseline guidance is emitted as "principles".
       source: c.source ?? "learned",
       confidence: c.confidence,
-      // Include provenance for explainability (AX-004)
-      provenance: c.provenance,
+      // Include provenance for explainability (AX-004, AX-010)
+      provenance: formatProvenance(c.provenance, provMode),
     })),
     principles: result.principles.map((p) => ({
       id: p.id,
@@ -227,10 +230,11 @@ export function registerConstraintsCommands(program: Command): void {
     .option("--task <type>", "Task type context")
     .option("--persona <name>", "Persona ID to use")
     .option("--json", "Output as JSON")
+    .option("--provenance <mode>", "Provenance mode: 'full' (default) or 'compact'")
     .action(async function (this: Command, options) {
       // Check both local --json and global --json
       const jsonMode = options.json || isJsonMode(this);
-      
+
       const active = getActivePersona().personaId;
       const personaId = options.persona ?? active ?? "quality-first_engineering";
 
@@ -239,11 +243,17 @@ export function registerConstraintsCommands(program: Command): void {
         await loadPersona(personaId);
       } catch {
         if (jsonMode) {
-          console.log(JSON.stringify({
-            error: "Persona not found",
-            message: `Persona "${personaId}" not found`,
-            hint: "Use 'lexsona persona list' to see available personas",
-          }, null, 2));
+          console.log(
+            JSON.stringify(
+              {
+                error: "Persona not found",
+                message: `Persona "${personaId}" not found`,
+                hint: "Use 'lexsona persona list' to see available personas",
+              },
+              null,
+              2
+            )
+          );
         } else {
           console.error(`Error: Persona "${personaId}" not found.`);
           console.error("  Use 'lexsona persona list' to see available personas.");
@@ -276,7 +286,7 @@ export function registerConstraintsCommands(program: Command): void {
         writeCachedConstraintSet(result);
 
         if (jsonMode) {
-          console.log(JSON.stringify(formatConstraintsAsJson(result), null, 2));
+          console.log(JSON.stringify(formatConstraintsAsJson(result, options.provenance), null, 2));
           return;
         }
 
@@ -284,10 +294,16 @@ export function registerConstraintsCommands(program: Command): void {
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         if (jsonMode) {
-          console.log(JSON.stringify({
-            error: "Failed to derive constraints",
-            message,
-          }, null, 2));
+          console.log(
+            JSON.stringify(
+              {
+                error: "Failed to derive constraints",
+                message,
+              },
+              null,
+              2
+            )
+          );
         } else {
           console.error(`Error: ${message}`);
         }
@@ -305,15 +321,21 @@ export function registerConstraintsCommands(program: Command): void {
     .action(async function (this: Command, options) {
       // Check both local --json and global --json
       const jsonMode = options.json || isJsonMode(this);
-      
+
       const cached = readCachedConstraintSet();
       if (!cached) {
         if (jsonMode) {
-          console.log(JSON.stringify({
-            error: "No cached constraints",
-            message: "No constraint set cached",
-            hint: "Use 'lexsona constraints derive' first",
-          }, null, 2));
+          console.log(
+            JSON.stringify(
+              {
+                error: "No cached constraints",
+                message: "No constraint set cached",
+                hint: "Use 'lexsona constraints derive' first",
+              },
+              null,
+              2
+            )
+          );
         } else {
           console.log("No constraint set cached.");
           console.log("  (Use 'lexsona constraints derive' first)");

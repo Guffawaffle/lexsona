@@ -71,7 +71,7 @@ export function registerPersonaCommands(program: Command): void {
     .option("--global", "Store activation in user-global config instead of project-local")
     .action(async function (this: Command, name: string, options: { global?: boolean }) {
       const jsonMode = isJsonMode(this);
-      
+
       // Try to match as trigger phrase first
       const matchedId = await matchTrigger(name);
 
@@ -89,7 +89,7 @@ export function registerPersonaCommands(program: Command): void {
             error: "Failed to persist activation",
             message: error instanceof Error ? error.message : String(error),
           };
-          
+
           if (jsonMode) {
             console.log(JSON.stringify(errorObj, null, 2));
           } else {
@@ -100,21 +100,27 @@ export function registerPersonaCommands(program: Command): void {
         }
 
         const scope = options.global ? "global" : "project";
-        
+
         if (jsonMode) {
-          console.log(JSON.stringify({
-            success: true,
-            persona: {
-              id: p.id,
-              version: p.version,
-              focus: p.behavior.primaryFocus,
-              domain: p.behavior.domain,
-              description: p.behavior.description,
-              mustDo: p.duties?.mustDo ?? [],
-              mustNotDo: p.duties?.mustNotDo ?? [],
-            },
-            scope,
-          }, null, 2));
+          console.log(
+            JSON.stringify(
+              {
+                success: true,
+                persona: {
+                  id: p.id,
+                  version: p.version,
+                  focus: p.behavior.primaryFocus,
+                  domain: p.behavior.domain,
+                  description: p.behavior.description,
+                  mustDo: p.duties?.mustDo ?? [],
+                  mustNotDo: p.duties?.mustNotDo ?? [],
+                },
+                scope,
+              },
+              null,
+              2
+            )
+          );
         } else {
           const scopeText = options.global ? "globally" : "for this project";
           console.log(`✓ Activated persona ${scopeText}: ${p.id}`);
@@ -135,7 +141,7 @@ export function registerPersonaCommands(program: Command): void {
           message: `Persona "${name}" not found`,
           hint: "Use 'lexsona persona list' to see available personas",
         };
-        
+
         if (jsonMode) {
           console.log(JSON.stringify(errorObj, null, 2));
         } else {
@@ -160,11 +166,17 @@ export function registerPersonaCommands(program: Command): void {
           const { personaId: activeId, scope } = getActivePersona();
           if (!activeId) {
             if (jsonMode) {
-              console.log(JSON.stringify({
-                error: "No active persona",
-                message: "No persona currently active",
-                hint: "Use 'lexsona persona activate <name>' to activate one",
-              }, null, 2));
+              console.log(
+                JSON.stringify(
+                  {
+                    error: "No active persona",
+                    message: "No persona currently active",
+                    hint: "Use 'lexsona persona activate <name>' to activate one",
+                  },
+                  null,
+                  2
+                )
+              );
             } else {
               console.log("No persona currently active.");
               console.log("  Use 'lexsona persona activate <name>' to activate one.");
@@ -173,7 +185,7 @@ export function registerPersonaCommands(program: Command): void {
           }
 
           personaId = activeId;
-          
+
           if (!jsonMode) {
             const scopeText = scope === "global" ? "globally" : "for this project";
             console.log(`Currently active persona (${scopeText}):\n`);
@@ -183,7 +195,7 @@ export function registerPersonaCommands(program: Command): void {
             error: "Failed to read active persona",
             message: error instanceof Error ? error.message : String(error),
           };
-          
+
           if (jsonMode) {
             console.log(JSON.stringify(errorObj, null, 2));
           } else {
@@ -200,19 +212,25 @@ export function registerPersonaCommands(program: Command): void {
         const p: Persona = await loadPersona(personaId);
 
         if (jsonMode) {
-          console.log(JSON.stringify({
-            persona: {
-              id: p.id,
-              version: p.version,
-              focus: p.behavior.primaryFocus,
-              domain: p.behavior.domain,
-              description: p.behavior.description,
-              ruleCategories: p.ruleCategories ?? [],
-              triggers: p.triggers?.phrases ?? [],
-              mustDo: p.duties?.mustDo ?? [],
-              mustNotDo: p.duties?.mustNotDo ?? [],
-            },
-          }, null, 2));
+          console.log(
+            JSON.stringify(
+              {
+                persona: {
+                  id: p.id,
+                  version: p.version,
+                  focus: p.behavior.primaryFocus,
+                  domain: p.behavior.domain,
+                  description: p.behavior.description,
+                  ruleCategories: p.ruleCategories ?? [],
+                  triggers: p.triggers?.phrases ?? [],
+                  mustDo: p.duties?.mustDo ?? [],
+                  mustNotDo: p.duties?.mustNotDo ?? [],
+                },
+              },
+              null,
+              2
+            )
+          );
         } else {
           console.log(`Persona: ${p.id}\n`);
           console.log(`Version: ${p.version}`);
@@ -254,7 +272,7 @@ export function registerPersonaCommands(program: Command): void {
           error: "Persona not found",
           message: `Persona "${personaId}" not found`,
         };
-        
+
         if (jsonMode) {
           console.log(JSON.stringify(errorObj, null, 2));
         } else {
@@ -271,17 +289,23 @@ export function registerPersonaCommands(program: Command): void {
     .option("--global", "Clear activation from user-global config instead of project-local")
     .action(async function (this: Command, options: { global?: boolean }) {
       const jsonMode = isJsonMode(this);
-      
+
       try {
         clearActivePersona(options.global ?? false);
         const scope = options.global ? "global" : "project";
-        
+
         if (jsonMode) {
-          console.log(JSON.stringify({
-            success: true,
-            message: "Persona deactivated",
-            scope,
-          }, null, 2));
+          console.log(
+            JSON.stringify(
+              {
+                success: true,
+                message: "Persona deactivated",
+                scope,
+              },
+              null,
+              2
+            )
+          );
         } else {
           const scopeText = options.global ? "globally" : "for this project";
           console.log(`✓ Persona deactivated ${scopeText}`);
@@ -291,7 +315,7 @@ export function registerPersonaCommands(program: Command): void {
           error: "Failed to deactivate persona",
           message: error instanceof Error ? error.message : String(error),
         };
-        
+
         if (jsonMode) {
           console.log(JSON.stringify(errorObj, null, 2));
         } else {

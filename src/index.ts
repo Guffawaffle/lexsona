@@ -27,11 +27,7 @@ export {
   type TrustGapFailure,
   type AgentTrustProfile,
 } from "./rules/types.js";
-export {
-  recordTrustGap,
-  getAgentTrustProfile,
-  applyTrustCalibration,
-} from "./rules/trust.js";
+export { recordTrustGap, getAgentTrustProfile, applyTrustCalibration } from "./rules/trust.js";
 
 // Error codes and types for agent consumption
 export {

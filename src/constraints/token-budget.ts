@@ -120,16 +120,11 @@ const DEFAULT_AGENT_BUDGET: AgentBudgetDefaults = {
 const PROCEDURE_MODIFIERS: Record<string, ProcedureBudgetModifier> = {
   "post-merge-fix": {
     multiplier: 0.8, // Simpler task, less context needed
-    required_fields: [
-      "failure.runner_output_snip",
-      "targets[].hunk",
-    ],
+    required_fields: ["failure.runner_output_snip", "targets[].hunk"],
   },
   "fanout-issue": {
     multiplier: 1.2, // More complex, more context
-    required_fields: [
-      "source_of_truth.excerpt",
-    ],
+    required_fields: ["source_of_truth.excerpt"],
   },
 };
 
@@ -151,12 +146,12 @@ const BASE_TRUNCATION_ORDER = [
   "history.previous_attempts",
   "metadata.tags",
   "environment.variables",
-  
+
   // SHOULD preserve (medium priority)
   "context.related_files",
   "diff.context_lines",
   "source.comments",
-  
+
   // MUST preserve fields are never in truncation order
   // They are specified in required_fields
 ];

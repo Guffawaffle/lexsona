@@ -131,10 +131,7 @@ describe("MCP Handler ruleVersion responses (AX-005)", () => {
         last_seen: new Date().toISOString(),
       });
 
-      const result = await handleAgentTrustProfile(
-        { agent_family: "test-agent" },
-        getLexSona
-      );
+      const result = await handleAgentTrustProfile({ agent_family: "test-agent" }, getLexSona);
 
       expect(result).toHaveProperty("ruleVersion");
       expect(typeof (result as { ruleVersion: number }).ruleVersion).toBe("number");

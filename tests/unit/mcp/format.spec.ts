@@ -5,11 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import {
-  handleActivate,
-  handleConstraints,
-  handleRules,
-} from "../../../src/mcp/handlers.js";
+import { handleActivate, handleConstraints, handleRules } from "../../../src/mcp/handlers.js";
 import type { ConstraintSet } from "../../../src/constraints/derive.js";
 import { createTestConstraintSet } from "../../utils/test-helpers.js";
 
@@ -147,11 +143,7 @@ describe("handleConstraints format parameter (AX-009)", () => {
     const getLexSona = async () => mockLexSona as any;
     const state = { activePersonaId: "quality-first_engineering" };
 
-    const result = await handleConstraints(
-      { format: "compact" },
-      state,
-      getLexSona
-    );
+    const result = await handleConstraints({ format: "compact" }, state, getLexSona);
 
     expect(result).toHaveProperty("_compact", true);
     expect(result).toHaveProperty("ctx");
@@ -167,11 +159,7 @@ describe("handleConstraints format parameter (AX-009)", () => {
     const getLexSona = async () => mockLexSona as any;
     const state = { activePersonaId: "quality-first_engineering" };
 
-    const result = (await handleConstraints(
-      { format: "compact" },
-      state,
-      getLexSona
-    )) as any;
+    const result = (await handleConstraints({ format: "compact" }, state, getLexSona)) as any;
 
     expect(result.constraints).toBeDefined();
     expect(Array.isArray(result.constraints)).toBe(true);
@@ -197,11 +185,7 @@ describe("handleConstraints format parameter (AX-009)", () => {
     const getLexSona = async () => mockLexSona as any;
     const state = { activePersonaId: "quality-first_engineering" };
 
-    const result = (await handleConstraints(
-      { format: "compact" },
-      state,
-      getLexSona
-    )) as any;
+    const result = (await handleConstraints({ format: "compact" }, state, getLexSona)) as any;
 
     expect(result.meta).toBeDefined();
     expect(result.meta).toHaveProperty("rulesConsidered");
@@ -274,10 +258,7 @@ describe("handleRules format parameter (AX-009)", () => {
     const mockLexSona = createMockLexSona();
     const getLexSona = async () => mockLexSona as any;
 
-    const result = (await handleRules(
-      { format: "compact" },
-      getLexSona
-    )) as any;
+    const result = (await handleRules({ format: "compact" }, getLexSona)) as any;
 
     const rules = result.rules;
     const mustRule = rules.find((r: any) => r.sev === "m");
@@ -285,7 +266,7 @@ describe("handleRules format parameter (AX-009)", () => {
 
     // At least one of these should exist based on our mock data
     expect(mustRule || shouldRule).toBeDefined();
-    
+
     if (mustRule) {
       expect(mustRule.sev).toBe("m");
     }
@@ -298,10 +279,7 @@ describe("handleRules format parameter (AX-009)", () => {
     const mockLexSona = createMockLexSona();
     const getLexSona = async () => mockLexSona as any;
 
-    const result = (await handleRules(
-      { format: "compact" },
-      getLexSona
-    )) as any;
+    const result = (await handleRules({ format: "compact" }, getLexSona)) as any;
 
     const rules = result.rules;
     if (rules.length > 0) {
@@ -331,7 +309,7 @@ describe("format parameter payload reduction (AX-009)", () => {
 
     // Calculate reduction percentage
     const reduction = ((fullSize - compactSize) / fullSize) * 100;
-    
+
     // Should achieve at least 20% reduction (conservative test)
     // Real-world usage should achieve 50%+ with larger payloads
     expect(reduction).toBeGreaterThan(20);

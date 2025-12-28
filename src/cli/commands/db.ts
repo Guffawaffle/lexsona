@@ -88,15 +88,17 @@ async function showDatabaseStatus(): Promise<void> {
 
         const hasFramesTable = tables.some((t) => t.name === "frames");
         if (hasFramesTable) {
-          const framesCount = result.db
-            .prepare("SELECT COUNT(*) as count FROM frames")
-            .get() as { count: number };
+          const framesCount = result.db.prepare("SELECT COUNT(*) as count FROM frames").get() as {
+            count: number;
+          };
           console.log(`  Frames: ${framesCount.count}`);
         }
 
         result.db.close();
       } catch (error) {
-        console.log(`  Warning: Could not query database: ${error instanceof Error ? error.message : String(error)}`);
+        console.log(
+          `  Warning: Could not query database: ${error instanceof Error ? error.message : String(error)}`
+        );
         result.db.close();
       }
     } else {

@@ -239,6 +239,7 @@ Get current LexSona state and capabilities for agent self-discovery.
 ```
 
 **Use cases:**
+
 - Agent can discover which persona is currently active
 - Check if Lex connection is healthy
 - Get list of available personas to switch between

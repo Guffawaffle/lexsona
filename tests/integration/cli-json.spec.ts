@@ -21,11 +21,11 @@ function createProgram(): Command {
   const program = new Command();
   program.exitOverride();
   program.option("--json", "Output as JSON");
-  
+
   registerPersonaCommands(program);
   registerRulesCommands(program);
   registerConstraintsCommands(program);
-  
+
   return program;
 }
 
@@ -47,10 +47,12 @@ function captureOutput(fn: () => void | Promise<void>): Promise<string> {
   const result = fn();
 
   if (result instanceof Promise) {
-    return result.finally(() => {
-      console.log = originalLog;
-      console.error = originalError;
-    }).then(() => logs.join("\n"));
+    return result
+      .finally(() => {
+        console.log = originalLog;
+        console.error = originalError;
+      })
+      .then(() => logs.join("\n"));
   }
 
   console.log = originalLog;
@@ -99,20 +101,14 @@ describe("Global --json flag", () => {
     it("persona list outputs valid JSON with --json", async () => {
       const program = createProgram();
       const output = await captureOutput(async () => {
-        await program.parseAsync([
-          "node",
-          "lexsona",
-          "--json",
-          "persona",
-          "list",
-        ]);
+        await program.parseAsync(["node", "lexsona", "--json", "persona", "list"]);
       });
 
       const parsed = JSON.parse(output);
       expect(parsed).toHaveProperty("personas");
       expect(Array.isArray(parsed.personas)).toBe(true);
       expect(parsed.personas.length).toBeGreaterThan(0);
-      
+
       // Validate structure of first persona
       const persona = parsed.personas[0];
       expect(persona).toHaveProperty("id");
@@ -188,13 +184,7 @@ describe("Global --json flag", () => {
       // Then deactivate with JSON output
       const deactivateProgram = createProgram();
       const output = await captureOutput(async () => {
-        await deactivateProgram.parseAsync([
-          "node",
-          "lexsona",
-          "--json",
-          "persona",
-          "deactivate",
-        ]);
+        await deactivateProgram.parseAsync(["node", "lexsona", "--json", "persona", "deactivate"]);
       });
 
       const parsed = JSON.parse(output);
@@ -206,13 +196,7 @@ describe("Global --json flag", () => {
     it("persona show with no active persona outputs error JSON", async () => {
       const program = createProgram();
       const output = await captureOutput(async () => {
-        await program.parseAsync([
-          "node",
-          "lexsona",
-          "--json",
-          "persona",
-          "show",
-        ]);
+        await program.parseAsync(["node", "lexsona", "--json", "persona", "show"]);
       });
 
       const parsed = JSON.parse(output);
@@ -250,12 +234,7 @@ describe("Global --json flag", () => {
     it("persona list outputs human-readable text without --json", async () => {
       const program = createProgram();
       const output = await captureOutput(async () => {
-        await program.parseAsync([
-          "node",
-          "lexsona",
-          "persona",
-          "list",
-        ]);
+        await program.parseAsync(["node", "lexsona", "persona", "list"]);
       });
 
       // Should not be JSON
@@ -302,7 +281,7 @@ describe("Global --json flag", () => {
 
         // Should parse without error
         expect(() => JSON.parse(output)).not.toThrow();
-        
+
         // Should be properly formatted JSON (with indentation)
         const parsed = JSON.parse(output);
         const reformatted = JSON.stringify(parsed, null, 2);
