@@ -4,7 +4,7 @@
  * Tests request_id handling for mutation operations.
  */
 
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   handleActivate,
   handleLearn,
@@ -12,6 +12,8 @@ import {
 } from "../../src/mcp/handlers.js";
 import { LexSona } from "../../src/core/lexsona.js";
 import type { ActivateInput, LearnInput, TrustGapInput } from "../../src/mcp/tools.js";
+import { createIsolatedTestDb } from "../utils/db-fixtures.js";
+import type { IsolatedTestDb } from "../utils/db-fixtures.js";
 
 // Mock persona loading
 vi.mock("../../src/persona/loader.js", () => ({
@@ -28,12 +30,27 @@ describe("MCP Server Idempotency", () => {
   let mockLexSona: LexSona;
   let learnCallCount = 0;
   let recordTrustGapCallCount = 0;
+  let testDb: IsolatedTestDb;
+  let originalEnv: string | undefined;
 
   beforeEach(async () => {
     learnCallCount = 0;
     recordTrustGapCallCount = 0;
 
-    // Create a mock LexSona instance
+    // Store original LEX_DB_PATH
+    originalEnv = process.env.LEX_DB_PATH;
+
+    // Create isolated test database
+    testDb = createIsolatedTestDb({
+      createRulesTable: true,
+      createPersonasTable: false,
+      createSchemaVersionTable: false,
+    });
+
+    // Set environment to use test database
+    process.env.LEX_DB_PATH = testDb.path;
+
+    // Create a mock LexSona instance connected to test database
     mockLexSona = await LexSona.connect();
     vi.spyOn(mockLexSona, "learn").mockImplementation(async () => {
       learnCallCount++;
@@ -41,6 +58,25 @@ describe("MCP Server Idempotency", () => {
     vi.spyOn(mockLexSona, "recordTrustGap").mockImplementation(async () => {
       recordTrustGapCallCount++;
     });
+  });
+
+  afterEach(() => {
+    // Close LexSona connection
+    if (mockLexSona) {
+      mockLexSona.close();
+    }
+
+    // Clean up test database
+    if (testDb) {
+      testDb.cleanup();
+    }
+
+    // Restore original environment
+    if (originalEnv !== undefined) {
+      process.env.LEX_DB_PATH = originalEnv;
+    } else {
+      delete process.env.LEX_DB_PATH;
+    }
   });
 
   describe("persona_activate idempotency", () => {
