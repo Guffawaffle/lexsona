@@ -303,16 +303,6 @@ export function registerRulesCommands(program: Command): void {
       }
     });
 
-  // lexsona rules apply
-  rules
-    .command("apply")
-    .description("Apply rules to derive current constraints")
-    .option("--domain <domain>", "Domain context")
-    .action(async (_options) => {
-      // TODO: Implement rules application
-      console.log("Applying rules to derive constraints...");
-    });
-
   // lexsona rules teach <correction>
   rules
     .command("teach <correction>")
