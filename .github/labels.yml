@@ -1,8 +1,8 @@
 # GitHub Labels Configuration for LexSona
 # This file defines labels used across the Lex suite for consistent issue hygiene
 #
-# To sync labels, use: gh label sync --file .github/labels.yml
-# Or wait for the label-sync workflow to run automatically
+# Labels are automatically synced via the sync-labels workflow.
+# For manual sync, use: ./scripts/sync-labels.sh
 
 # Cross-suite labels (consistent with Lex and LexRunner)
 - name: ax

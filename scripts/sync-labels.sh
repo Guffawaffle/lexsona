@@ -4,7 +4,8 @@
 
 set -e
 
-REPO="Guffawaffle/lexsona"
+# Dynamically get the repository name
+REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || echo "Guffawaffle/lexsona")
 
 echo "Syncing labels for $REPO..."
 
