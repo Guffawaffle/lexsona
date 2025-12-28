@@ -49,11 +49,13 @@ describe("LexSona", () => {
   });
 
   describe("deriveConstraints", () => {
-    it("returns baseline principles when disconnected", async () => {
+    it("returns baseline principles and constraints when disconnected", async () => {
       const result = await sona.deriveConstraints({});
 
       expect(result.personaId).toBe("none");
-      expect(result.constraints).toEqual([]);
+      // Now includes baseline constraints from baseline.yaml
+      expect(result.constraints.length).toBeGreaterThan(0);
+      expect(result.constraints.every((c) => c.source === "baseline")).toBe(true);
       expect(result.principles).toEqual([
         {
           id: "transparency",
@@ -65,7 +67,7 @@ describe("LexSona", () => {
         },
         {
           id: "auditability",
-          description: "All decisions should be traceable",
+          description: "All decisions should be traceable and inspectable",
         },
       ]);
       expect(result.metadata.rulesConsidered).toBe(0);
@@ -127,10 +129,12 @@ describe("LexSona", () => {
       // Metadata should indicate offline mode (no DB)
       expect(result.metadata.offlineMode).toBe(true);
       expect(result.metadata.rulesConsidered).toBe(0);
-      // Should have persona duty constraints (from persona YAML, not DB)
+      // Should have constraints (baseline + persona)
       expect(result.constraints.length).toBeGreaterThan(0);
-      // All constraints should be from persona (no learned rules in disconnected mode)
-      expect(result.constraints.every((c) => c.source === "persona")).toBe(true);
+      // Should have both baseline and persona constraints
+      const sources = new Set(result.constraints.map((c) => c.source));
+      expect(sources.has("baseline")).toBe(true);
+      expect(sources.has("persona")).toBe(true);
     });
   });
 

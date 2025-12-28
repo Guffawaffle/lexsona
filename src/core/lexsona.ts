@@ -26,16 +26,41 @@ import { LexStorageClient, type LexConnectionConfig } from "./lexConnection.js";
 import { loadPersona } from "../persona/loader.js";
 import type { Persona } from "../persona/types.js";
 import { createLexNotConnectedError } from "../mcp/errors.js";
+import { getBaseline, type BaselineData } from "../baseline/index.js";
 
 // Import Lex APIs through the lexsona subpath
 import { getRules, recordCorrection } from "@smartergpt/lex/lexsona";
 import type { RuleContext, Correction } from "@smartergpt/lex/lexsona";
 
-const DEFAULT_BASELINE_PRINCIPLES: Principle[] = [
-  { id: "transparency", description: "Be clear about what you're doing and why" },
-  { id: "determinism", description: "Same inputs should produce same outputs" },
-  { id: "auditability", description: "All decisions should be traceable" },
-];
+// Cached baseline data (loaded from baseline.yaml)
+let cachedBaseline: BaselineData | null = null;
+
+/**
+ * Get baseline data (cached)
+ */
+function getBaselineData(): BaselineData {
+  if (!cachedBaseline) {
+    try {
+      cachedBaseline = getBaseline();
+    } catch (error) {
+      // Fallback to minimal baseline if loading fails
+      console.warn(
+        `LexSona: Could not load baseline.yaml: ${error instanceof Error ? error.message : error}`
+      );
+      cachedBaseline = {
+        version: 1,
+        principles: [
+          { id: "transparency", description: "Be clear about what you're doing and why" },
+          { id: "determinism", description: "Same inputs should produce same outputs" },
+          { id: "auditability", description: "All decisions should be traceable" },
+        ],
+        constraints: [],
+        source: "fallback",
+      };
+    }
+  }
+  return cachedBaseline;
+}
 
 /**
  * Configuration for LexSona connection
@@ -156,16 +181,17 @@ export class LexSona {
       }
     }
 
-    // If no persona loaded, return empty constraint set
+    // If no persona loaded, return empty constraint set with baseline
     // InputHash is empty since there are no inputs to hash
     if (!persona) {
+      const baseline = getBaselineData();
       return {
         personaId: this.activePersona ?? "none",
         derivedAt: new Date().toISOString(),
         inputHash: "", // No persona/rules to hash
         context,
-        constraints: [],
-        principles: DEFAULT_BASELINE_PRINCIPLES,
+        constraints: baseline.constraints,
+        principles: baseline.principles,
         ruleVersion: this.ruleVersion,
         metadata: {
           rulesConsidered: 0,
@@ -185,13 +211,18 @@ export class LexSona {
       rules = getRules(db, ruleContext);
     }
 
-    // Load baseline principles (TODO: wire to Lex baseline.yaml when available)
-    const principles: Principle[] = DEFAULT_BASELINE_PRINCIPLES;
+    // Load baseline from bundled YAML
+    const baseline = getBaselineData();
+    const principles: Principle[] = baseline.principles;
 
     // Call pure derivation function
     const result = deriveConstraintsPure(persona, rules, principles, context, {
       hasLexConnection,
     });
+
+    // Merge baseline constraints with derived constraints
+    // Baseline constraints have source: "baseline" and are always included
+    result.constraints = [...baseline.constraints, ...result.constraints];
 
     // Add rule version to result
     result.ruleVersion = this.ruleVersion;
@@ -488,11 +519,15 @@ export class LexSona {
       return baseConstraints; // Return base if no persona
     }
 
-    const principles: Principle[] = DEFAULT_BASELINE_PRINCIPLES;
+    const baseline = getBaselineData();
+    const principles: Principle[] = baseline.principles;
 
     const result = deriveConstraintsPure(persona, calibratedRules, principles, context, {
       hasLexConnection: true,
     });
+
+    // Merge baseline constraints with derived constraints
+    result.constraints = [...baseline.constraints, ...result.constraints];
 
     // Add rule version to result
     result.ruleVersion = this.ruleVersion;
