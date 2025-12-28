@@ -310,4 +310,86 @@ describe("constraints CLI", () => {
     expect(parsed.constraints[0].provenance.rule_id).toBe("test-rule");
     expect(parsed.constraints[0].provenance.confidence).toBe(0.8);
   });
+
+  it("derive --json --provenance compact outputs compact provenance (AX-010)", async () => {
+    const constraintSet: ConstraintSet = {
+      personaId: "quality-first_engineering",
+      derivedAt: "2025-12-05T23:30:00Z",
+      inputHash: "abc123",
+      context: { domain: "lexrunner" },
+      principles: [],
+      constraints: [
+        {
+          rule_id: "test-rule",
+          text: "Test constraint",
+          severity: "must",
+          confidence: 0.8765,
+          category: "testing",
+          source: "learned",
+          provenance: {
+            source: "learned",
+            rule_id: "test-rule",
+            confidence: 0.8765,
+          },
+        },
+        {
+          rule_id: "persona:duty:1",
+          text: "Persona duty",
+          severity: "must",
+          confidence: 1.0,
+          category: "persona-duty",
+          source: "persona",
+          provenance: {
+            source: "persona",
+            rule_id: null,
+            confidence: 1.0,
+          },
+        },
+      ],
+      metadata: {
+        rulesConsidered: 2,
+        rulesFiltered: 0,
+        confidenceThreshold: 0.3,
+        offlineMode: false,
+      },
+    };
+
+    const stubInstance = {
+      deriveConstraints: vi.fn(async () => constraintSet),
+      close: vi.fn(),
+    } as unknown as LexSona;
+
+    vi.spyOn(LexSona, "connect").mockResolvedValue(stubInstance);
+
+    const program = createProgram();
+    await program.parseAsync([
+      "node",
+      "lexsona",
+      "constraints",
+      "derive",
+      "--persona",
+      "quality-first_engineering",
+      "--json",
+      "--provenance",
+      "compact",
+    ]);
+
+    expect(errorSpy).not.toHaveBeenCalled();
+
+    const logged = logSpy.mock.calls.map((c) => String(c[0])).join("\n");
+    const parsed = JSON.parse(logged) as any;
+
+    // Check learned rule provenance is compact
+    expect(parsed.constraints[0].provenance).toBeDefined();
+    expect(parsed.constraints[0].provenance.src).toBe("r"); // learned -> 'r'
+    expect(parsed.constraints[0].provenance.w).toBe(0.88); // Rounded to 2 decimals
+    expect(parsed.constraints[0].provenance.rId).toBe("test-rule");
+    expect(parsed.constraints[0].provenance.source).toBeUndefined(); // Should not have full field
+
+    // Check persona provenance is compact
+    expect(parsed.constraints[1].provenance).toBeDefined();
+    expect(parsed.constraints[1].provenance.src).toBe("p"); // persona -> 'p'
+    expect(parsed.constraints[1].provenance.w).toBe(1.0);
+    expect(parsed.constraints[1].provenance.rId).toBeUndefined(); // Persona has no rId
+  });
 });

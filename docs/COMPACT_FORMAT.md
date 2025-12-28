@@ -1,9 +1,13 @@
-# Compact Format Mode (AX-009)
+# Compact Format Mode (AX-009, AX-010)
 
 ## Overview
 LexSona MCP tools support a `format` parameter with two values:
 - `full` (default): Complete field names and all metadata
 - `compact`: Abbreviated field names for reduced payload size
+
+LexSona also supports a `provenance` parameter for constraint explanations:
+- `full` (default): Complete provenance with full field names
+- `compact`: Lightweight provenance with single-char source codes (AX-010)
 
 ## Field Mappings
 
@@ -16,6 +20,19 @@ LexSona MCP tools support a `format` parameter with two values:
 | `confidence` | `conf` (rounded to 2 decimals) |
 | `category` | `cat` |
 | `source` | `src` (optional) |
+| `provenance` | `prov` (see Provenance section) |
+
+### Provenance (AX-010)
+| Full Format | Compact Format |
+|------------|----------------|
+| `source` | `src` (`p`/`r`/`b` for persona/rule/baseline) |
+| `rule_id` | `rId` (only when source is `r`) |
+| `confidence` | `w` (weight, rounded to 2 decimals) |
+
+**Source Codes:**
+- `p` = persona duty
+- `r` = learned rule (includes `rId`)
+- `b` = baseline principle
 
 ### Principles
 | Full Format | Compact Format |
@@ -41,7 +58,78 @@ LexSona MCP tools support a `format` parameter with two values:
 
 ## Usage Examples
 
-### constraints_derive
+### constraints_derive with provenance
+
+#### Full format with full provenance (default)
+```json
+{
+  "personaId": "quality-first_engineering",
+  "constraints": [{
+    "rule_id": "rule_123",
+    "text": "Always validate inputs",
+    "severity": "must",
+    "confidence": 0.95,
+    "category": "validation",
+    "provenance": {
+      "source": "learned",
+      "rule_id": "rule_123",
+      "confidence": 0.95
+    }
+  }],
+  "metadata": {
+    "confidenceThreshold": 0.3,
+    "offlineMode": false
+  }
+}
+```
+
+#### Full format with compact provenance
+```json
+{
+  "personaId": "quality-first_engineering",
+  "constraints": [{
+    "rule_id": "rule_123",
+    "text": "Always validate inputs",
+    "severity": "must",
+    "confidence": 0.95,
+    "category": "validation",
+    "provenance": {
+      "src": "r",
+      "w": 0.95,
+      "rId": "rule_123"
+    }
+  }],
+  "metadata": {
+    "confidenceThreshold": 0.3,
+    "offlineMode": false
+  }
+}
+```
+
+#### Compact format with compact provenance (maximum efficiency)
+```json
+{
+  "personaId": "quality-first_engineering",
+  "constraints": [{
+    "id": "rule_123",
+    "sev": "m",
+    "conf": 0.95,
+    "cat": "validation",
+    "prov": {
+      "src": "r",
+      "w": 0.95,
+      "rId": "rule_123"
+    }
+  }],
+  "meta": {
+    "confThreshold": 0.3,
+    "offline": false
+  },
+  "_compact": true
+}
+```
+
+### constraints_derive (legacy)
 ```json
 // Full format (default)
 {
@@ -96,19 +184,35 @@ LexSona MCP tools support a `format` parameter with two values:
 - **Compact indicator**: `_compact: true` flag signals the format  
 - **Confidence rounding**: Rounded to 2 decimals to reduce size
 - **Severity codes**: Abbreviated to 1-2 characters (m/s/st)
+- **Provenance modes**: Independent from format - can mix full format with compact provenance (AX-010)
+- **Single-char source codes**: Provenance sources use `p`/`r`/`b` for persona/rule/baseline
 
 ## Workflow Pattern
 1. **Get list**: Use `constraints_derive` or `rules_list` with `format=compact` for efficient overview
 2. **Get details**: Use `constraints_explain` with specific constraint IDs to retrieve full text and reasoning
-3. **Stay in context**: Compact responses use less tokens, preserving context window for agents
+3. **Provenance efficiency**: Use `provenance=compact` for token-constrained agents while maintaining explainability
+4. **Stay in context**: Compact responses use less tokens, preserving context window for agents
 
 ## Payload Size Reduction
 Compact mode achieves:
 - **50-70%** size reduction for typical constraint lists
 - **60%+** reduction for large rule sets (100+ rules)
+- **25-35%** additional reduction with compact provenance (AX-010)
 - Preserves all IDs for follow-up lookups
 
 ## Supported Tools
-- `persona_activate`
-- `constraints_derive`
-- `rules_list`
+- `persona_activate` (format parameter)
+- `constraints_derive` (format and provenance parameters)
+- `rules_list` (format parameter)
+
+## CLI Usage
+```bash
+# Full format with full provenance (default)
+lexsona constraints derive --json
+
+# Full format with compact provenance
+lexsona constraints derive --json --provenance compact
+
+# Use constraints_explain for detailed provenance on specific constraints
+lexsona constraints explain rule_123
+```
