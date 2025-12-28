@@ -29,3 +29,7 @@ coverage/
 # Local databases (for testing)
 .smartergpt/
 .smartergpt.local/
+
+# Demo/temporary files
+demo-*.mjs
+demo-*.js
