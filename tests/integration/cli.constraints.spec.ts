@@ -73,6 +73,11 @@ describe("constraints CLI", () => {
           confidence: 0.7,
           category: "security_policy",
           source: "learned",
+          provenance: {
+            source: "learned",
+            rule_id: "no_credential_logging",
+            confidence: 0.7,
+          },
         },
         {
           rule_id: "run_local_ci",
@@ -81,6 +86,11 @@ describe("constraints CLI", () => {
           confidence: 0.65,
           category: "testing",
           source: "learned",
+          provenance: {
+            source: "learned",
+            rule_id: "run_local_ci",
+            confidence: 0.65,
+          },
         },
       ],
       metadata: {
@@ -157,6 +167,11 @@ describe("constraints CLI", () => {
           confidence: 0.7,
           category: "safety",
           source: "learned",
+          provenance: {
+            source: "learned",
+            rule_id: "no_false_memories",
+            confidence: 0.7,
+          },
         },
       ],
       metadata: {
@@ -202,6 +217,11 @@ describe("constraints CLI", () => {
           confidence: 0.7,
           category: "security_policy",
           source: "learned",
+          provenance: {
+            source: "learned",
+            rule_id: "no_credential_logging",
+            confidence: 0.7,
+          },
         },
       ],
       metadata: {
@@ -229,5 +249,65 @@ describe("constraints CLI", () => {
     expect(output).toContain("Constraint Explanation");
     expect(output).toContain("ID: no_credential_logging");
     expect(output).toContain("Source: learned");
+  });
+
+  it("derive --json includes provenance in output", async () => {
+    const constraintSet: ConstraintSet = {
+      personaId: "quality-first_engineering",
+      derivedAt: "2025-12-05T23:30:00Z",
+      inputHash: "abc123",
+      context: { domain: "lexrunner" },
+      principles: [],
+      constraints: [
+        {
+          rule_id: "test-rule",
+          text: "Test constraint",
+          severity: "must",
+          confidence: 0.8,
+          category: "testing",
+          source: "learned",
+          provenance: {
+            source: "learned",
+            rule_id: "test-rule",
+            confidence: 0.8,
+          },
+        },
+      ],
+      metadata: {
+        rulesConsidered: 1,
+        rulesFiltered: 0,
+        confidenceThreshold: 0.3,
+        offlineMode: false,
+      },
+    };
+
+    const stubInstance = {
+      deriveConstraints: vi.fn(async () => constraintSet),
+      close: vi.fn(),
+    } as unknown as LexSona;
+
+    vi.spyOn(LexSona, "connect").mockResolvedValue(stubInstance);
+
+    const program = createProgram();
+    await program.parseAsync([
+      "node",
+      "lexsona",
+      "constraints",
+      "derive",
+      "--persona",
+      "quality-first_engineering",
+      "--json",
+    ]);
+
+    expect(errorSpy).not.toHaveBeenCalled();
+
+    const logged = logSpy.mock.calls.map((c) => String(c[0])).join("\n");
+    const parsed = JSON.parse(logged) as any;
+
+    // Check that provenance is in the output
+    expect(parsed.constraints[0].provenance).toBeDefined();
+    expect(parsed.constraints[0].provenance.source).toBe("learned");
+    expect(parsed.constraints[0].provenance.rule_id).toBe("test-rule");
+    expect(parsed.constraints[0].provenance.confidence).toBe(0.8);
   });
 });

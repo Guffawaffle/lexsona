@@ -570,6 +570,97 @@ describe("deriveConstraints", () => {
         confidence: 0.95,
         category: "testing",
         source: "learned",
+        provenance: {
+          source: "learned",
+          rule_id: "test-id",
+          confidence: 0.95,
+        },
+      });
+    });
+
+    it("includes provenance for learned rule constraints", () => {
+      const persona = createTestPersona();
+      const rules = [
+        createTestRule({
+          rule_id: "rule-123",
+          text: "Always run tests",
+          effective_confidence: 0.85,
+          category: "testing",
+        }),
+      ];
+
+      const result = deriveConstraints(persona, rules, [], {}, { hasLexConnection: true });
+
+      expect(result.constraints[0].provenance).toEqual({
+        source: "learned",
+        rule_id: "rule-123",
+        confidence: 0.85,
+      });
+    });
+
+    it("includes provenance for persona duty constraints", () => {
+      const persona = createTestPersona({
+        duties: {
+          mustDo: ["Always write documentation"],
+          mustNotDo: ["Never hardcode secrets"],
+          shouldDo: ["Prefer functional patterns"],
+        },
+      });
+
+      const result = deriveConstraints(persona, [], [], {}, { hasLexConnection: true });
+
+      // Check mustDo constraint provenance
+      const mustDoConstraint = result.constraints.find((c) =>
+        c.text.includes("Always write documentation")
+      );
+      expect(mustDoConstraint?.provenance).toEqual({
+        source: "persona",
+        rule_id: null,
+        confidence: 1.0,
+      });
+
+      // Check mustNotDo constraint provenance
+      const mustNotDoConstraint = result.constraints.find((c) =>
+        c.text.includes("Never hardcode secrets")
+      );
+      expect(mustNotDoConstraint?.provenance).toEqual({
+        source: "persona",
+        rule_id: null,
+        confidence: 1.0,
+      });
+
+      // Check shouldDo constraint provenance
+      const shouldDoConstraint = result.constraints.find((c) =>
+        c.text.includes("Prefer functional patterns")
+      );
+      expect(shouldDoConstraint?.provenance).toEqual({
+        source: "persona",
+        rule_id: null,
+        confidence: 1.0,
+      });
+    });
+
+    it("applies confidence ceiling to provenance when in offline mode", () => {
+      const persona = createTestPersona({
+        offline_safe: {
+          confidence_ceiling: 0.7,
+          no_memory_disclaimer: "Offline mode",
+        },
+      });
+      const rules = [
+        createTestRule({
+          rule_id: "high-confidence-rule",
+          effective_confidence: 0.95,
+          category: "testing",
+        }),
+      ];
+
+      const result = deriveConstraints(persona, rules, [], {}, { hasLexConnection: false });
+
+      expect(result.constraints[0].provenance).toEqual({
+        source: "learned",
+        rule_id: "high-confidence-rule",
+        confidence: 0.7, // Should be capped
       });
     });
   });

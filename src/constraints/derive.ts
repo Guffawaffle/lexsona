@@ -54,6 +54,19 @@ export interface DeriveContext {
 export type ConstraintSource = "baseline" | "persona" | "learned";
 
 /**
+ * Provenance information for a constraint
+ * Tracks why and how a constraint is active
+ */
+export interface ConstraintProvenance {
+  /** Source type: persona duty, learned rule, or baseline principle */
+  source: ConstraintSource;
+  /** Rule ID if source is "learned", null otherwise */
+  rule_id: string | null;
+  /** Effective confidence value */
+  confidence: number;
+}
+
+/**
  * A single constraint (derived from a rule)
  */
 export interface Constraint {
@@ -69,6 +82,8 @@ export interface Constraint {
   category: string;
   /** Where this constraint came from (currently: derived from learned behavioral rules) */
   source?: ConstraintSource;
+  /** Provenance information explaining why this constraint is active */
+  provenance?: ConstraintProvenance;
 }
 
 /**
@@ -381,17 +396,25 @@ export function deriveConstraints(
   const limitedRules = sortedRules.slice(0, cfg.maxConstraints);
 
   // Convert to constraints, applying confidence ceiling if in offline mode
-  const constraints: Constraint[] = limitedRules.map((rule) => ({
-    rule_id: rule.rule_id,
-    text: rule.text,
-    severity: rule.severity,
-    confidence:
+  const constraints: Constraint[] = limitedRules.map((rule) => {
+    const effectiveConfidence =
       confidenceCeiling !== undefined
         ? Math.min(rule.effective_confidence, confidenceCeiling)
-        : rule.effective_confidence,
-    category: rule.category,
-    source: "learned",
-  }));
+        : rule.effective_confidence;
+    return {
+      rule_id: rule.rule_id,
+      text: rule.text,
+      severity: rule.severity,
+      confidence: effectiveConfidence,
+      category: rule.category,
+      source: "learned",
+      provenance: {
+        source: "learned",
+        rule_id: rule.rule_id,
+        confidence: effectiveConfidence,
+      },
+    };
+  });
 
   // === PERSONA DUTIES → CONSTRAINTS ===
   // Convert persona duties (mustDo, shouldDo, mustNotDo) to constraints
@@ -409,6 +432,11 @@ export function deriveConstraints(
         confidence: 1.0,
         category: "persona-duty",
         source: "persona",
+        provenance: {
+          source: "persona",
+          rule_id: null,
+          confidence: 1.0,
+        },
       });
     }
   }
@@ -423,6 +451,11 @@ export function deriveConstraints(
         confidence: 1.0,
         category: "persona-duty",
         source: "persona",
+        provenance: {
+          source: "persona",
+          rule_id: null,
+          confidence: 1.0,
+        },
       });
     }
   }
@@ -443,6 +476,11 @@ export function deriveConstraints(
         confidence: 1.0,
         category: "persona-duty",
         source: "persona",
+        provenance: {
+          source: "persona",
+          rule_id: null,
+          confidence: 1.0,
+        },
       });
     }
   }
