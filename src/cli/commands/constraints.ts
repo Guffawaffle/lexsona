@@ -13,7 +13,7 @@ import { loadPersona } from "../../persona/loader.js";
 import { getActivePersona } from "../../persona/config.js";
 import { type DeriveContext, type ConstraintSet } from "../../constraints/derive.js";
 import { isJsonMode } from "../output.js";
-import { formatProvenance, type ProvenanceMode } from "../../mcp/formatters.js";
+import { formatProvenance } from "../../mcp/formatters.js";
 
 function getProjectConstraintsCachePath(): string {
   return join(process.cwd(), ".smartergpt", "lexsona-constraints.json");
@@ -120,7 +120,7 @@ function writeCachedConstraintSet(result: ConstraintSet): void {
  * Format constraint set as JSON output matching the specification
  */
 function formatConstraintsAsJson(result: ConstraintSet, provenanceMode?: string) {
-  const provMode = (provenanceMode === "compact" ? "compact" : "full") as ProvenanceMode;
+  const provMode = (provenanceMode === "compact" ? "compact" : "full");
   
   return {
     version: 1,

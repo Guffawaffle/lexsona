@@ -10,6 +10,7 @@ import {
   formatConstraint,
   formatConstraints,
   type ProvenanceMode,
+  type CompactProvenance,
 } from "../../../src/mcp/formatters.js";
 import type { Constraint, ConstraintProvenance } from "../../../src/constraints/derive.js";
 
@@ -81,7 +82,7 @@ describe("formatProvenance (AX-010)", () => {
     };
 
     const result = formatProvenance(provenance, "compact");
-    expect((result as any).w).toBe(0.68);
+    expect((result as CompactProvenance).w).toBe(0.68);
   });
 
   it("handles exact 2 decimal confidence values", () => {
@@ -92,7 +93,7 @@ describe("formatProvenance (AX-010)", () => {
     };
 
     const result = formatProvenance(provenance, "compact");
-    expect((result as any).w).toBe(0.75);
+    expect((result as CompactProvenance).w).toBe(0.75);
   });
 
   it("omits rId when source is persona", () => {

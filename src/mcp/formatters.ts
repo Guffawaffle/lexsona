@@ -115,7 +115,7 @@ export function formatConstraint(
   if (provMode === "compact" && c.provenance) {
     return {
       ...c,
-      provenance: formatProvenance(c.provenance, provMode) as ConstraintProvenance,
+      provenance: formatProvenance(c.provenance, provMode) as CompactProvenance | ConstraintProvenance,
     };
   }
 
