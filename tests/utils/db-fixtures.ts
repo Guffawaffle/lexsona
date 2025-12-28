@@ -101,9 +101,9 @@ export function createIsolatedTestDb(options: CreateTestDbOptions = {}): Isolate
         observation_count INTEGER NOT NULL DEFAULT 0,
         severity TEXT NOT NULL DEFAULT 'should',
         decay_tau REAL NOT NULL DEFAULT 30.0,
-        created_at TEXT NOT NULL DEFAULT (datetime('now')),
-        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-        last_observed TEXT NOT NULL DEFAULT (datetime('now')),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        last_observed TEXT NOT NULL,
         frame_id TEXT
       );
     `);
