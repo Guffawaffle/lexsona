@@ -1,26 +1,47 @@
 #!/bin/bash
 # Script to manually sync labels using gh CLI
 # Usage: ./scripts/sync-labels.sh
+#
+# This script reads label definitions from .github/labels.yml and creates/updates
+# them in the repository using the gh CLI.
 
 set -e
 
-# Dynamically get the repository name
-REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || echo "Guffawaffle/lexsona")
+# Determine the script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LABELS_FILE="${SCRIPT_DIR}/../.github/labels.yml"
 
-echo "Syncing labels for $REPO..."
+# Check if labels file exists
+if [[ ! -f "$LABELS_FILE" ]]; then
+  echo "❌ Error: Labels file not found at $LABELS_FILE"
+  exit 1
+fi
 
-# Create or update labels based on .github/labels.yml
-gh label create "ax" --description "Agent experience / AX-first tooling" --color "0E8A16" --force || true
-gh label create "mcp" --description "Model Context Protocol surface changes" --color "1D76DB" --force || true
-gh label create "bug" --description "Correctness issues (e.g., scoping bugs, incorrect behavior)" --color "D73A4A" --force || true
-gh label create "dx" --description "Developer experience improvements" --color "0075CA" --force || true
-gh label create "enhancement" --description "New feature or request" --color "A2EEEF" --force || true
-gh label create "documentation" --description "Improvements or additions to documentation" --color "0075CA" --force || true
-gh label create "good first issue" --description "Good for newcomers" --color "7057FF" --force || true
-gh label create "help wanted" --description "Extra attention is needed" --color "008672" --force || true
+# Check if yq is available
+if ! command -v yq &> /dev/null; then
+  echo "❌ Error: 'yq' command not found. Please install yq to use this script."
+  echo "   See: https://github.com/mikefarah/yq#install"
+  exit 1
+fi
 
+# Check if gh is available
+if ! command -v gh &> /dev/null; then
+  echo "❌ Error: 'gh' command not found. Please install GitHub CLI."
+  echo "   See: https://cli.github.com/"
+  exit 1
+fi
+
+echo "📋 Reading labels from $LABELS_FILE..."
+
+# Parse YAML and create labels
+yq eval '.[] | .name + "|" + .description + "|" + .color' "$LABELS_FILE" | while IFS='|' read -r name description color; do
+  echo "   Creating/updating label: $name"
+  gh label create "$name" --description "$description" --color "$color" --force 2>&1 | grep -v "already exists" || true
+done
+
+echo ""
 echo "✅ Labels synced successfully!"
 echo ""
-echo "To update existing AX/MCP issues (#54-#63), you can run:"
-echo "  gh issue edit <issue-number> --add-label ax"
-echo "  gh issue edit <issue-number> --add-label mcp"
+echo "Note: To apply labels to existing issues, use:"
+echo "  gh issue edit <issue-number> --add-label <label-name>"
+

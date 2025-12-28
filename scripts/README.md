@@ -14,7 +14,12 @@ To manually sync labels using the `gh` CLI:
 ./scripts/sync-labels.sh
 ```
 
-This requires the `gh` CLI to be installed and authenticated.
+**Requirements:**
+
+- `gh` CLI (GitHub CLI) - [Installation guide](https://cli.github.com/)
+- `yq` - YAML processor - [Installation guide](https://github.com/mikefarah/yq#install)
+
+The script reads label definitions directly from `.github/labels.yml`, ensuring consistency between the configuration file and the manual sync process.
 
 ### Label Definitions
 
