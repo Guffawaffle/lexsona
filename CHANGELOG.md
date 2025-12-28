@@ -5,9 +5,37 @@ All notable changes to LexSona will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.0] - 2025-12-28
+
+### ⚠️ BREAKING CHANGES
+
+#### Deprecated MCP Tool Aliases Removed
+
+The deprecated `lexsona_*` MCP tool name aliases have been removed. Only canonical names are now supported.
+
+| Removed Alias (deprecated)  | Use Instead (canonical) |
+| --------------------------- | ----------------------- |
+| `lexsona_persona_activate`  | `persona_activate`      |
+| `lexsona_constraint_derive` | `constraints_derive`    |
+| `lexsona_rule_learn`        | `rules_learn`           |
+| `lexsona_rule_list`         | `rules_list`            |
+| `lexsona_persona_list`      | `persona_list`          |
+
+If you were using the deprecated aliases, update your MCP client configuration to use the canonical names.
 
 ### Added
+
+- **Baseline Constraints Loading** - Load baseline constraints from bundled `baseline.yaml`:
+  - Principles and constraints loaded from YAML (no longer hardcoded)
+  - Baseline constraints marked with `source: "baseline"` in provenance
+  - Constraints automatically included in `deriveConstraints()` output
+  - Priority: persona constraints > learned rules > baseline constraints
+  - Works in offline mode (bundled with package)
+
+- **CLI `--json` Mode Improvements**:
+  - `constraints explain` now respects `--json` flag with structured output
+  - `db status` returns structured JSON with connection details
+  - `rules list` includes `hint` and `threshold` fields in empty response
 
 - **AX-010: Lightweight Provenance Mode** - Added compact provenance format for token-constrained agents:
   - New `provenance` parameter for `constraints_derive` (CLI and MCP): `full` (default) or `compact`
@@ -17,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Achieves 25-35% additional payload reduction while maintaining explainability
   - Independent from format mode - can mix `format=full` with `provenance=compact`
   - Full provenance still available via `constraints_explain` for debugging
+
 - **AX-003: Persona Capability Matrix** - Enhanced `persona_list` MCP response with structured metadata for agent-driven persona selection:
   - `behavior`: Primary behavioral focus (e.g., "quality-first", "momentum-first")
   - `domain`: Domain context (e.g., "engineering", "product")
@@ -25,6 +54,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `triggerPhrases`: Phrases that suggest this persona
 - Added `PersonaCapability` type and schema for capability matrix validation
 - Added explicit `capability` field to persona manifests (optional, derived if not present)
+
+### Removed
+
+- All deprecated `lexsona_*` MCP tool aliases
 
 ### Changed
 

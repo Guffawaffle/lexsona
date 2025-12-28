@@ -44,7 +44,7 @@ import {
 const DEFAULT_CONSTRAINT_SOURCE: ConstraintSource = "learned";
 
 /**
- * Handler for lexsona_activate tool
+ * Handler for persona_activate tool
  * Activates a persona and returns its info
  */
 export async function handleActivate(
@@ -89,7 +89,7 @@ export async function handleActivate(
 }
 
 /**
- * Handler for lexsona_constraints tool
+ * Handler for constraints_derive tool
  * Derives constraints for a given context
  */
 export async function handleConstraints(
@@ -174,7 +174,7 @@ export async function handleConstraints(
 }
 
 /**
- * Handler for lexsona_learn tool
+ * Handler for rules_learn tool
  * Records a behavioral correction
  */
 export async function handleLearn(
@@ -210,7 +210,7 @@ export async function handleLearn(
 }
 
 /**
- * Handler for lexsona_rules tool
+ * Handler for rules_list tool
  * Lists behavioral rules with optional filtering
  */
 export async function handleRules(
@@ -263,7 +263,7 @@ export async function handleRules(
 }
 
 /**
- * Handler for lexsona_personas tool
+ * Handler for persona_list tool
  * Lists available personas with capability matrix (AX-003)
  */
 export async function handlePersonas(getLexSona: () => Promise<LexSona>): Promise<object> {

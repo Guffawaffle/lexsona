@@ -165,7 +165,7 @@ describe("MCP Server Integration", () => {
     });
   });
 
-  describe("lexsona_activate handler", () => {
+  describe("persona_activate handler", () => {
     it("returns persona info when activated", async () => {
       const state = { activePersonaId: null };
       const getLexSona = async () => mockLexSona;
@@ -192,7 +192,7 @@ describe("MCP Server Integration", () => {
     });
   });
 
-  describe("lexsona_constraints handler", () => {
+  describe("constraints_derive handler", () => {
     it("derives constraints with JSON output", async () => {
       const state = { activePersonaId: "quality-first_engineering" };
       const getLexSona = async () => mockLexSona;
@@ -241,7 +241,7 @@ describe("MCP Server Integration", () => {
     });
   });
 
-  describe("lexsona_learn handler", () => {
+  describe("rules_learn handler", () => {
     it("records correction when connected", async () => {
       // Create a connected instance with mocked learn
       const connectedSona = await LexSona.connect();
@@ -286,7 +286,7 @@ describe("MCP Server Integration", () => {
     });
   });
 
-  describe("lexsona_rules handler", () => {
+  describe("rules_list handler", () => {
     it("lists rules with count", async () => {
       const getLexSona = async () => mockLexSona;
 
@@ -317,7 +317,7 @@ describe("MCP Server Integration", () => {
     });
   });
 
-  describe("lexsona_personas handler", () => {
+  describe("persona_list handler", () => {
     it("lists available personas", async () => {
       const getLexSona = async () => mockLexSona;
       const result = await handlePersonas(getLexSona);

@@ -4,7 +4,7 @@
  * MCP server adapter for LexSona
  *
  * Exposes LexSona APIs to AI agents via Model Context Protocol.
- * Read-mostly: only lexsona_learn mutates state.
+ * Read-mostly: only rules_learn mutates state.
  *
  * @module
  */
@@ -60,15 +60,7 @@ setInterval(() => {
 }, 60000);
 
 // Mutation operations that should be cached for idempotency
-const MUTATION_OPERATIONS = new Set([
-  "persona_activate",
-  "lexsona_persona_activate",
-  "lexsona_activate",
-  "rules_learn",
-  "lexsona_rule_learn",
-  "lexsona_learn",
-  "trust_gap_record",
-]);
+const MUTATION_OPERATIONS = new Set(["persona_activate", "rules_learn", "trust_gap_record"]);
 
 /**
  * Initialize LexSona connection
