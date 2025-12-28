@@ -7,7 +7,7 @@
  * @module
  */
 
-import { mkdtempSync, rmSync, unlinkSync, existsSync } from "fs";
+import { mkdtempSync, rmSync, existsSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 import Database from "better-sqlite3-multiple-ciphers";
@@ -84,8 +84,8 @@ export function createIsolatedTestDb(options: CreateTestDbOptions = {}): Isolate
         version INTEGER PRIMARY KEY,
         applied_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
-      INSERT INTO schema_version (version) VALUES (${schemaVersion});
     `);
+    db.prepare("INSERT INTO schema_version (version) VALUES (?)").run(schemaVersion);
   }
 
   // Create lexsona_behavior_rules table (required for LexSona connection)
