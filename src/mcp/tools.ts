@@ -14,6 +14,11 @@ import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 export const ActivateInputSchema = z.object({
   persona: z.string().describe("Persona ID to activate (e.g., 'quality-first_engineering')"),
   request_id: z.string().optional().describe("Optional request ID for idempotency"),
+  format: z
+    .enum(["full", "compact"])
+    .optional()
+    .default("full")
+    .describe("Output format: 'full' (default) or 'compact'"),
 });
 
 export const ConstraintsInputSchema = z.object({
@@ -21,6 +26,11 @@ export const ConstraintsInputSchema = z.object({
   module_id: z.string().optional().describe("Module ID filter"),
   task: z.string().optional().describe("Task type (e.g., 'implementation', 'review')"),
   persona: z.string().optional().describe("Override active persona"),
+  format: z
+    .enum(["full", "compact"])
+    .optional()
+    .default("full")
+    .describe("Output format: 'full' (default) or 'compact'"),
 });
 
 export const LearnInputSchema = z.object({
@@ -36,6 +46,11 @@ export const LearnInputSchema = z.object({
 export const RulesInputSchema = z.object({
   project: z.string().optional().describe("Filter by project"),
   minConfidence: z.number().optional().describe("Minimum confidence threshold"),
+  format: z
+    .enum(["full", "compact"])
+    .optional()
+    .default("full")
+    .describe("Output format: 'full' (default) or 'compact'"),
 });
 
 export const TrustGapInputSchema = z.object({
@@ -109,6 +124,11 @@ export const LEXSONA_TOOLS: Tool[] = [
           type: "string",
           description: "Optional request ID for idempotency",
         },
+        format: {
+          type: "string",
+          enum: ["full", "compact"],
+          description: "Output format: 'full' (default) or 'compact'",
+        },
       },
       required: ["persona"],
     },
@@ -123,6 +143,11 @@ export const LEXSONA_TOOLS: Tool[] = [
         module_id: { type: "string", description: "Module ID filter" },
         task: { type: "string", description: "Task type" },
         persona: { type: "string", description: "Override persona" },
+        format: {
+          type: "string",
+          enum: ["full", "compact"],
+          description: "Output format: 'full' (default) or 'compact'",
+        },
       },
     },
   },
@@ -162,6 +187,11 @@ export const LEXSONA_TOOLS: Tool[] = [
       properties: {
         project: { type: "string", description: "Filter by project" },
         minConfidence: { type: "number", description: "Min confidence" },
+        format: {
+          type: "string",
+          enum: ["full", "compact"],
+          description: "Output format: 'full' (default) or 'compact'",
+        },
       },
     },
   },
