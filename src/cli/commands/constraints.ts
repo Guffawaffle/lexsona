@@ -133,6 +133,8 @@ function formatConstraintsAsJson(result: ConstraintSet) {
       // baseline guidance is emitted as "principles".
       source: c.source ?? "learned",
       confidence: c.confidence,
+      // Include provenance for explainability (AX-004)
+      provenance: c.provenance,
     })),
     principles: result.principles.map((p) => ({
       id: p.id,
