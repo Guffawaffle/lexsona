@@ -13,6 +13,7 @@ import { loadPersona } from "../../persona/loader.js";
 import { getActivePersona } from "../../persona/config.js";
 import { type DeriveContext, type ConstraintSet } from "../../constraints/derive.js";
 import { isJsonMode } from "../output.js";
+import { formatProvenance, type ProvenanceMode } from "../../mcp/formatters.js";
 
 function getProjectConstraintsCachePath(): string {
   return join(process.cwd(), ".smartergpt", "lexsona-constraints.json");
@@ -118,7 +119,9 @@ function writeCachedConstraintSet(result: ConstraintSet): void {
 /**
  * Format constraint set as JSON output matching the specification
  */
-function formatConstraintsAsJson(result: ConstraintSet) {
+function formatConstraintsAsJson(result: ConstraintSet, provenanceMode?: string) {
+  const provMode = (provenanceMode === "compact" ? "compact" : "full") as ProvenanceMode;
+  
   return {
     version: 1,
     persona: result.personaId,
@@ -133,8 +136,8 @@ function formatConstraintsAsJson(result: ConstraintSet) {
       // baseline guidance is emitted as "principles".
       source: c.source ?? "learned",
       confidence: c.confidence,
-      // Include provenance for explainability (AX-004)
-      provenance: c.provenance,
+      // Include provenance for explainability (AX-004, AX-010)
+      provenance: formatProvenance(c.provenance, provMode),
     })),
     principles: result.principles.map((p) => ({
       id: p.id,
@@ -227,6 +230,7 @@ export function registerConstraintsCommands(program: Command): void {
     .option("--task <type>", "Task type context")
     .option("--persona <name>", "Persona ID to use")
     .option("--json", "Output as JSON")
+    .option("--provenance <mode>", "Provenance mode: 'full' (default) or 'compact'")
     .action(async function (this: Command, options) {
       // Check both local --json and global --json
       const jsonMode = options.json || isJsonMode(this);
@@ -276,7 +280,7 @@ export function registerConstraintsCommands(program: Command): void {
         writeCachedConstraintSet(result);
 
         if (jsonMode) {
-          console.log(JSON.stringify(formatConstraintsAsJson(result), null, 2));
+          console.log(JSON.stringify(formatConstraintsAsJson(result, options.provenance), null, 2));
           return;
         }
 

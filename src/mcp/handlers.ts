@@ -138,6 +138,7 @@ export async function handleConstraints(
   const result = deriveConstraints(persona, sonaRules, [], context);
 
   const format: OutputFormat = input.format ?? "full";
+  const provenanceMode = input.provenance;
 
   if (format === "compact") {
     const compactResult = {
@@ -146,7 +147,7 @@ export async function handleConstraints(
       inputHash: result.inputHash,
       ctx: result.context,
       principles: formatPrinciples(result.principles, format),
-      constraints: formatConstraints(result.constraints, format),
+      constraints: formatConstraints(result.constraints, format, provenanceMode),
       ruleVer: result.ruleVersion,
       meta: {
         rulesConsidered: result.metadata.rulesConsidered,
@@ -159,6 +160,14 @@ export async function handleConstraints(
       },
     };
     return addCompactFlag(compactResult, format);
+  }
+
+  // For full format, still apply provenance mode if specified
+  if (provenanceMode === "compact") {
+    return {
+      ...result,
+      constraints: formatConstraints(result.constraints, format, provenanceMode),
+    };
   }
 
   return result;
