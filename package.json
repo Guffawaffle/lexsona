@@ -24,7 +24,7 @@
   },
   "scripts": {
     "build": "tsc -b tsconfig.build.json && npm run copy-assets",
-    "copy-assets": "mkdir -p dist/baseline && cp src/baseline/baseline.yaml dist/baseline/",
+    "copy-assets": "mkdir -p dist/baseline && cp src/baseline/*.yaml dist/baseline/",
     "postbuild": "chmod +x dist/cli/lexsona.js",
     "clean": "rm -rf dist",
     "dev": "tsc -b tsconfig.build.json --watch",

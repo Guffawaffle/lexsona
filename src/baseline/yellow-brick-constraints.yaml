@@ -1,0 +1,212 @@
+# Yellow Brick Pipeline Phase Constraints
+#
+# These constraints enforce the Stone Table invariants during each phase
+# of the Yellow Brick pipeline: D0 → D1 → D2 → D3 → D4
+#
+# Usage: These rules are activated when context.procedure matches a phase.
+#
+# Schema: behavior-rules/v1
+
+version: 1
+
+# =============================================================================
+# D0: Harvest Phase
+# External API access allowed, must pin all state
+# =============================================================================
+
+rules:
+  - id: d0_pin_all_state
+    phase: D0
+    text: "Pin all external state at harvest time. Every SHA, timestamp, and status must be captured with its fetch time."
+    severity: must
+    category: stone_table
+    scope:
+      procedure: fanout_harvest
+
+  - id: d0_mark_unknown
+    phase: D0
+    text: "Mark missing data as 'unknown' or 'unavailable', never infer or default. Unknown is not false."
+    severity: must
+    category: stone_table
+    scope:
+      procedure: fanout_harvest
+
+  - id: d0_no_analysis
+    phase: D0
+    text: "Do not analyze or interpret data during harvest. Only normalize and pin."
+    severity: must
+    category: stone_table
+    scope:
+      procedure: fanout_harvest
+
+  - id: d0_output_digest
+    phase: D0
+    text: "Compute and include outputDigest as SHA256 of the bundle content."
+    severity: must
+    category: stone_table
+    scope:
+      procedure: fanout_harvest
+
+  # =============================================================================
+  # D1: Analyze Phase
+  # Facts only, no recommendations, deterministic
+  # =============================================================================
+
+  - id: d1_facts_only
+    phase: D1
+    text: "Extract only observable facts. No recommendations, no prose, no speculation."
+    severity: must
+    category: stone_table
+    scope:
+      procedure: fanout_analyze
+
+  - id: d1_deterministic
+    phase: D1
+    text: "Same HarvestBundle must produce identical AnalysisPool. No randomness, no timestamps in deterministic fields."
+    severity: must
+    category: stone_table
+    scope:
+      procedure: fanout_analyze
+
+  - id: d1_preserve_confidence
+    phase: D1
+    text: "Preserve confidence levels from harvest. If something was 'unknown' in D0, it remains 'unknown' in D1."
+    severity: must
+    category: stone_table
+    scope:
+      procedure: fanout_analyze
+
+  - id: d1_chain_digest
+    phase: D1
+    text: "inputDigest must equal the HarvestBundle's outputDigest. The digest chain must be unbroken."
+    severity: must
+    category: stone_table
+    scope:
+      procedure: fanout_analyze
+
+  - id: d1_no_network
+    phase: D1
+    text: "No network calls during analysis. All data must come from the HarvestBundle."
+    severity: must
+    category: stone_table
+    scope:
+      procedure: fanout_analyze
+
+  # =============================================================================
+  # D2: Plan Phase
+  # Ordered actions with EID citations, human-reviewable
+  # =============================================================================
+
+  - id: d2_cite_eids
+    phase: D2
+    text: "Every step must cite at least one EID from the AnalysisPool. No action without evidence."
+    severity: must
+    category: stone_table
+    scope:
+      procedure: fanout_plan
+
+  - id: d2_chain_digest
+    phase: D2
+    text: "inputDigest must equal the AnalysisPool's outputDigest. The digest chain must be unbroken."
+    severity: must
+    category: stone_table
+    scope:
+      procedure: fanout_plan
+
+  - id: d2_budget_required
+    phase: D2
+    text: "Plan must include budget limits: maxSteps, maxMerges, maxRetries."
+    severity: must
+    category: stone_table
+    scope:
+      procedure: fanout_plan
+
+  - id: d2_human_reviewable
+    phase: D2
+    text: "Plan output must be human-reviewable before execution. Mark gated steps appropriately."
+    severity: should
+    category: stone_table
+    scope:
+      procedure: fanout_plan
+
+  - id: d2_topo_order
+    phase: D2
+    text: "Steps must respect dependency order. A step cannot execute before its dependsOn steps."
+    severity: must
+    category: stone_table
+    scope:
+      procedure: fanout_plan
+
+  # =============================================================================
+  # D3: Execute Phase
+  # Record what happened, not what was intended
+  # =============================================================================
+
+  - id: d3_receipts_required
+    phase: D3
+    text: "Every executed step must produce a receipt with evidence (URLs, SHAs, timestamps)."
+    severity: must
+    category: stone_table
+    scope:
+      procedure: fanout_execute
+
+  - id: d3_chain_digest
+    phase: D3
+    text: "inputDigest must equal the MergePlan's outputDigest. The digest chain must be unbroken."
+    severity: must
+    category: stone_table
+    scope:
+      procedure: fanout_execute
+
+  - id: d3_classify_failures
+    phase: D3
+    text: "Classify failures as transient, deterministic, external, budget_exceeded, or policy_violation."
+    severity: must
+    category: stone_table
+    scope:
+      procedure: fanout_execute
+
+  - id: d3_respect_budget
+    phase: D3
+    text: "Stop execution if budget limits are exceeded. Record as budget_exceeded failure."
+    severity: must
+    category: stone_table
+    scope:
+      procedure: fanout_execute
+
+  - id: d3_no_silent_failures
+    phase: D3
+    text: "Never swallow errors. All failures must be recorded in the receipt."
+    severity: must
+    category: stone_table
+    scope:
+      procedure: fanout_execute
+
+  # =============================================================================
+  # D4: Verify Phase
+  # Compare receipt against plan, ensure Second Star reached
+  # =============================================================================
+
+  - id: d4_verify_digest_chain
+    phase: D4
+    text: "Verify the complete digest chain: D0 → D1 → D2 → D3. Any break indicates tampering or corruption."
+    severity: must
+    category: stone_table
+    scope:
+      procedure: fanout_verify
+
+  - id: d4_verify_second_star
+    phase: D4
+    text: "Verify that finalSha matches the plan's secondStar target. If not, report drift."
+    severity: must
+    category: stone_table
+    scope:
+      procedure: fanout_verify
+
+  - id: d4_replay_possible
+    phase: D4
+    text: "Archive artifacts such that the entire pipeline can be replayed for audit."
+    severity: should
+    category: stone_table
+    scope:
+      procedure: fanout_verify

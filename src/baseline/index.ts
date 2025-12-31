@@ -7,3 +7,12 @@
  */
 
 export { loadBaseline, getBaseline, clearBaselineCache, type BaselineData } from "./loader.js";
+
+export {
+  loadYellowBrickConstraints,
+  getYellowBrickConstraints,
+  getYellowBrickConstraintsForPhase,
+  getYellowBrickConstraintsForProcedure,
+  clearYellowBrickCache,
+  type YellowBrickConstraint,
+} from "./yellow-brick-loader.js";
