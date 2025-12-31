@@ -1,7 +1,7 @@
-# Yellow Brick Pipeline Phase Constraints
+# Replayable Analysis Pipeline Phase Constraints
 #
-# These constraints enforce the Stone Table invariants during each phase
-# of the Yellow Brick pipeline: D0 → D1 → D2 → D3 → D4
+# These constraints enforce the non-negotiable invariants during each phase
+# of the analysis pipeline: D0 → D1 → D2 → D3 → D4
 #
 # Usage: These rules are activated when context.procedure matches a phase.
 #
