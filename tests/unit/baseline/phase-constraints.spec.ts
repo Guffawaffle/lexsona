@@ -11,7 +11,6 @@ import {
   getPhaseConstraintsForPhase,
   getPhaseConstraintsForProcedure,
   clearPhaseConstraintsCache,
-  type PhaseConstraint,
   // Deprecated aliases should still work
   loadYellowBrickConstraints,
   getYellowBrickConstraints,
