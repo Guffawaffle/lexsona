@@ -14,6 +14,7 @@ import { getActivePersona } from "../../persona/config.js";
 import { type DeriveContext, type ConstraintSet } from "../../constraints/derive.js";
 import { isJsonMode } from "../output.js";
 import { formatProvenance } from "../../mcp/formatters.js";
+import { inferScope } from "../../scope/index.js";
 
 function getProjectConstraintsCachePath(): string {
   return join(process.cwd(), ".smartergpt", "lexsona-constraints.json");
@@ -229,6 +230,8 @@ export function registerConstraintsCommands(program: Command): void {
     .option("--module <id>", "Module ID context")
     .option("--task <type>", "Task type context")
     .option("--persona <name>", "Persona ID to use")
+    .option("--auto-scope", "Automatically infer scope from git diff or touched files")
+    .option("--verbose", "Show detailed information including inferred scope")
     .option("--json", "Output as JSON")
     .option("--provenance <mode>", "Provenance mode: 'full' (default) or 'compact'")
     .action(async function (this: Command, options) {
@@ -264,9 +267,45 @@ export function registerConstraintsCommands(program: Command): void {
 
       // Build context - prefer --project over --domain
       const projectOrDomain = options.project ?? options.domain;
+
+      // Handle auto-scope inference
+      let moduleId = options.module;
+
+      if (options.autoScope && !moduleId) {
+        try {
+          const inferResult = await inferScope({
+            includeStaged: true,
+          });
+
+          if (inferResult.moduleIds.length > 0) {
+            // Use first matched module (could be enhanced to support multiple)
+            moduleId = inferResult.moduleIds[0];
+
+            if (options.verbose && !jsonMode) {
+              console.log(
+                `Inferred scope: [${inferResult.moduleIds.join(", ")}] from ${inferResult.touchedFiles.length} files`
+              );
+              console.log(`  Source: ${inferResult.source}`);
+              console.log("");
+            }
+          } else if (options.verbose && !jsonMode) {
+            console.log("No scope inferred (no lexmap found or no matching modules)");
+            console.log("");
+          }
+        } catch (error) {
+          // Don't fail hard on scope inference errors - just warn
+          if (options.verbose && !jsonMode) {
+            console.warn(
+              `Warning: Scope inference failed: ${error instanceof Error ? error.message : String(error)}`
+            );
+            console.log("");
+          }
+        }
+      }
+
       const context: DeriveContext = {
         domain: projectOrDomain,
-        module_id: options.module,
+        module_id: moduleId,
         taskType: options.task,
       };
 
