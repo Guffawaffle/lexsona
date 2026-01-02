@@ -16,6 +16,11 @@ import type {
 } from "./types.js";
 
 /**
+ * Wildcard indicator for scope overlap display
+ */
+const SCOPE_WILDCARD = "*";
+
+/**
  * Infer polarity from rule text using heuristics
  * Returns +1 for prescriptive rules, -1 for permissive/exception rules
  */
@@ -172,19 +177,19 @@ function calculateScopeOverlap(scopeA: RuleScope, scopeB: RuleScope): Partial<Ru
   if (scopeA.module_id === scopeB.module_id && scopeA.module_id !== undefined) {
     overlap.module_id = scopeA.module_id;
   } else if (!scopeA.module_id || !scopeB.module_id) {
-    overlap.module_id = scopeA.module_id || scopeB.module_id || "*";
+    overlap.module_id = scopeA.module_id || scopeB.module_id || SCOPE_WILDCARD;
   }
 
   if (scopeA.project === scopeB.project && scopeA.project !== undefined) {
     overlap.project = scopeA.project;
   } else if (!scopeA.project || !scopeB.project) {
-    overlap.project = scopeA.project || scopeB.project || "*";
+    overlap.project = scopeA.project || scopeB.project || SCOPE_WILDCARD;
   }
 
   if (scopeA.task_type === scopeB.task_type && scopeA.task_type !== undefined) {
     overlap.task_type = scopeA.task_type;
   } else if (!scopeA.task_type || !scopeB.task_type) {
-    overlap.task_type = scopeA.task_type || scopeB.task_type || "*";
+    overlap.task_type = scopeA.task_type || scopeB.task_type || SCOPE_WILDCARD;
   }
 
   return overlap;
