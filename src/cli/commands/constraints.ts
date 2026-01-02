@@ -12,6 +12,13 @@ import { LexSona, type LexSonaConfig } from "../../core/lexsona.js";
 import { loadPersona } from "../../persona/loader.js";
 import { getActivePersona } from "../../persona/config.js";
 import { type DeriveContext, type ConstraintSet } from "../../constraints/derive.js";
+import { explainConstraint, explainAllConstraints } from "../../constraints/explainer.js";
+import {
+  formatExplanationProse,
+  formatExplanationJson,
+  formatAllExplanationsProse,
+  formatAllExplanationsJson,
+} from "../../constraints/narrative.js";
 import { isJsonMode } from "../output.js";
 import { formatProvenance } from "../../mcp/formatters.js";
 import { inferScope } from "../../scope/index.js";
@@ -390,15 +397,18 @@ export function registerConstraintsCommands(program: Command): void {
       writeConstraintsHumanReadable(cached);
     });
 
-  // lexsona constraints explain <id>
+  // lexsona constraints explain [id]
   constraints
-    .command("explain <id>")
-    .description("Explain why a constraint is active")
-    .action(async function (this: Command, id: string) {
+    .command("explain [id]")
+    .description("Explain why constraint(s) are active")
+    .option("--format <format>", "Output format: prose (default) or json")
+    .action(async function (this: Command, id: string | undefined, options: { format?: string }) {
       const jsonMode = isJsonMode(this);
+      const outputFormat = options.format || (jsonMode ? "json" : "prose");
+
       const cached = readCachedConstraintSet();
       if (!cached) {
-        if (jsonMode) {
+        if (jsonMode || outputFormat === "json") {
           console.log(
             JSON.stringify(
               {
@@ -417,9 +427,22 @@ export function registerConstraintsCommands(program: Command): void {
         return;
       }
 
+      // If no ID provided, explain all constraints
+      if (!id) {
+        const explanations = explainAllConstraints(cached);
+
+        if (outputFormat === "json") {
+          console.log(JSON.stringify(formatAllExplanationsJson(explanations), null, 2));
+        } else {
+          console.log(formatAllExplanationsProse(explanations));
+        }
+        return;
+      }
+
+      // Explain specific constraint
       const constraint = cached.constraints.find((c) => c.rule_id === id);
       if (!constraint) {
-        if (jsonMode) {
+        if (jsonMode || outputFormat === "json") {
           console.log(
             JSON.stringify(
               {
@@ -440,82 +463,16 @@ export function registerConstraintsCommands(program: Command): void {
         return;
       }
 
-      if (jsonMode) {
-        // Structured JSON output for MCP/agent consumption
-        const reasons = [
-          `Persona "${cached.personaId}" includes category "${constraint.category}"`,
-          `Confidence ${constraint.confidence.toFixed(2)} >= threshold ${cached.metadata.confidenceThreshold}`,
-        ];
-        if (cached.metadata.confidenceCeiling !== undefined) {
-          reasons.push(
-            `Offline confidence ceiling applied: <= ${cached.metadata.confidenceCeiling.toFixed(2)}`
-          );
-        }
+      const explanation = explainConstraint(constraint, cached);
 
-        const explanation = {
-          id: constraint.rule_id,
-          text: constraint.text,
-          severity: constraint.severity,
-          category: constraint.category,
-          confidence: constraint.confidence,
-          source: constraint.source ?? "learned",
-          reasons,
-          context: cached.context,
-          personaId: cached.personaId,
-          derivedAt: cached.derivedAt,
-          metadata: {
-            confidenceThreshold: cached.metadata.confidenceThreshold,
-            confidenceCeiling: cached.metadata.confidenceCeiling,
-          },
-        };
-        console.log(JSON.stringify(explanation, null, 2));
-        return;
+      if (outputFormat === "json") {
+        console.log(JSON.stringify(formatExplanationJson(explanation), null, 2));
+      } else {
+        // Human-readable prose output
+        console.log("\nConstraint Explanation");
+        console.log("═════════════════════\n");
+        console.log(formatExplanationProse(explanation));
+        console.log("");
       }
-
-      // Human-readable output
-      console.log(`\nConstraint Explanation`);
-      console.log("═════════════════════\n");
-
-      console.log(`ID: ${constraint.rule_id}`);
-      console.log(`Text: ${constraint.text}`);
-      console.log(`Severity: ${constraint.severity}`);
-      console.log(`Category: ${constraint.category}`);
-      console.log(`Confidence: ${constraint.confidence.toFixed(2)}\n`);
-
-      console.log(`Why is this constraint active?\n`);
-      console.log(`  ✓ Persona "${cached.personaId}" includes category "${constraint.category}"`);
-      console.log(
-        `  ✓ Confidence ${constraint.confidence.toFixed(2)} >= threshold ${cached.metadata.confidenceThreshold}`
-      );
-
-      if (cached.metadata.confidenceCeiling !== undefined) {
-        console.log(
-          `  ✓ Offline confidence ceiling applied: <= ${cached.metadata.confidenceCeiling.toFixed(2)}`
-        );
-      }
-
-      // Show derivation context if present
-      const hasContext =
-        cached.context.domain || cached.context.module_id || cached.context.taskType;
-
-      if (hasContext) {
-        console.log(`\nDerived in context:`);
-        if (cached.context.domain) {
-          console.log(`  Domain: ${cached.context.domain}`);
-        }
-        if (cached.context.module_id) {
-          console.log(`  Module: ${cached.context.module_id}`);
-        }
-        if (cached.context.taskType) {
-          console.log(`  Task: ${cached.context.taskType}`);
-        }
-      }
-
-      const source = constraint.source ?? "learned";
-      console.log(`\nSource: ${source}`);
-      if (source === "learned") {
-        console.log("  (derived from behavioral rules stored in Lex)");
-      }
-      console.log("");
     });
 }
