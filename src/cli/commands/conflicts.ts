@@ -110,11 +110,31 @@ export function registerConflictsCommands(program: Command): void {
         let rules = allRules;
         if (options.scope) {
           const [field, value] = options.scope.split(":");
-          if (field && value) {
+          // Validate field is a valid RuleScope key
+          const validFields = ["module_id", "project", "task_type", "environment", "agent_family"];
+          if (field && value && validFields.includes(field)) {
             rules = allRules.filter((rule) => {
               const scopeValue = rule.scope[field as keyof typeof rule.scope];
               return scopeValue === value;
             });
+          } else if (field && !validFields.includes(field)) {
+            if (jsonMode) {
+              console.log(
+                JSON.stringify(
+                  {
+                    error: "Invalid scope field",
+                    message: `Invalid scope field: ${field}`,
+                    validFields,
+                  },
+                  null,
+                  2
+                )
+              );
+            } else {
+              console.error(`Error: Invalid scope field: ${field}`);
+              console.error(`Valid fields: ${validFields.join(", ")}`);
+            }
+            return;
           }
         }
 

@@ -30,7 +30,7 @@ export function inferPolarity(rule: BehaviorRule): 1 | -1 {
   // Negative/exception indicators
   const negativePatterns = [
     /\b(skip|avoid|don't|never|not|except|unless|may skip|optional)\b/,
-    /\b(can be omitted|no need|unnecessary)\b/,
+    /\b(can be (omitted|skipped)|may be (omitted|skipped)|is optional|no need|unnecessary)\b/,
     /\b(for .+ only|in .+ cases)\b/, // e.g., "for hotfixes only"
   ];
 
@@ -169,28 +169,30 @@ export function suggestResolution(
 }
 
 /**
+ * Helper to calculate overlap for a single scope field
+ */
+function calculateFieldOverlap(
+  valueA: string | undefined,
+  valueB: string | undefined
+): string | undefined {
+  if (valueA === valueB && valueA !== undefined) {
+    return valueA;
+  }
+  if (!valueA || !valueB) {
+    return valueA || valueB || SCOPE_WILDCARD;
+  }
+  return undefined;
+}
+
+/**
  * Calculate scope overlap information
  */
 function calculateScopeOverlap(scopeA: RuleScope, scopeB: RuleScope): Partial<RuleScope> {
   const overlap: Partial<RuleScope> = {};
 
-  if (scopeA.module_id === scopeB.module_id && scopeA.module_id !== undefined) {
-    overlap.module_id = scopeA.module_id;
-  } else if (!scopeA.module_id || !scopeB.module_id) {
-    overlap.module_id = scopeA.module_id || scopeB.module_id || SCOPE_WILDCARD;
-  }
-
-  if (scopeA.project === scopeB.project && scopeA.project !== undefined) {
-    overlap.project = scopeA.project;
-  } else if (!scopeA.project || !scopeB.project) {
-    overlap.project = scopeA.project || scopeB.project || SCOPE_WILDCARD;
-  }
-
-  if (scopeA.task_type === scopeB.task_type && scopeA.task_type !== undefined) {
-    overlap.task_type = scopeA.task_type;
-  } else if (!scopeA.task_type || !scopeB.task_type) {
-    overlap.task_type = scopeA.task_type || scopeB.task_type || SCOPE_WILDCARD;
-  }
+  overlap.module_id = calculateFieldOverlap(scopeA.module_id, scopeB.module_id);
+  overlap.project = calculateFieldOverlap(scopeA.project, scopeB.project);
+  overlap.task_type = calculateFieldOverlap(scopeA.task_type, scopeB.task_type);
 
   return overlap;
 }
