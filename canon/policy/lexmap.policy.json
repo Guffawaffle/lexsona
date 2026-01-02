@@ -1,0 +1,32 @@
+{
+  "modules": {
+    "cli": {
+      "paths": ["src/cli/**"],
+      "constraints": ["user-facing", "helpful-errors"]
+    },
+    "constraints": {
+      "paths": ["src/constraints/**"],
+      "constraints": ["no-side-effects", "pure-functions"]
+    },
+    "scope": {
+      "paths": ["src/scope/**"],
+      "constraints": ["deterministic", "testable"]
+    },
+    "persona": {
+      "paths": ["src/persona/**"],
+      "constraints": ["schema-validation", "yaml-parsing"]
+    },
+    "rules": {
+      "paths": ["src/rules/**"],
+      "constraints": ["scoping", "trust-metrics"]
+    },
+    "core": {
+      "paths": ["src/core/**"],
+      "constraints": ["lex-integration", "connection-management"]
+    },
+    "tests": {
+      "paths": ["tests/**/*.spec.ts", "tests/**/*.test.ts"],
+      "constraints": ["test-coverage", "isolation"]
+    }
+  }
+}
