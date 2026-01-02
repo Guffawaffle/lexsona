@@ -54,7 +54,7 @@ async function getTouchedFiles(
   options: InferScopeOptions
 ): Promise<{ files: string[]; source: InferScopeResult["source"] }> {
   // 1. Explicit files (highest priority)
-  if (options.files && options.files.length > 0) {
+  if (options.files !== undefined) {
     return { files: options.files, source: "explicit" };
   }
 
