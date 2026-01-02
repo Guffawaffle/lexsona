@@ -392,4 +392,171 @@ describe("constraints CLI", () => {
     expect(parsed.constraints[1].provenance.w).toBe(1.0);
     expect(parsed.constraints[1].provenance.rId).toBeUndefined(); // Persona has no rId
   });
+
+  it("explain with no ID explains all constraints in prose format", async () => {
+    const seeded: ConstraintSet = {
+      personaId: "quality-first_engineering",
+      derivedAt: "2025-12-05T23:30:00Z",
+      inputHash: "abc123",
+      context: { domain: "lexrunner" },
+      principles: [],
+      constraints: [
+        {
+          rule_id: "rule-1",
+          text: "First constraint",
+          severity: "must",
+          confidence: 0.8,
+          category: "validation",
+          source: "learned",
+          provenance: {
+            source: "learned",
+            rule_id: "rule-1",
+            confidence: 0.8,
+          },
+        },
+        {
+          rule_id: "rule-2",
+          text: "Second constraint",
+          severity: "should",
+          confidence: 0.6,
+          category: "testing",
+          source: "learned",
+          provenance: {
+            source: "learned",
+            rule_id: "rule-2",
+            confidence: 0.6,
+          },
+        },
+      ],
+      metadata: {
+        rulesConsidered: 2,
+        rulesFiltered: 0,
+        confidenceThreshold: 0.3,
+        offlineMode: false,
+      },
+    };
+    writeFileSync(cachePath, JSON.stringify(seeded, null, 2), "utf-8");
+
+    const program = createProgram();
+    await program.parseAsync(["node", "lexsona", "constraints", "explain"]);
+
+    expect(errorSpy).not.toHaveBeenCalled();
+
+    const output = logSpy.mock.calls.map((c) => String(c[0])).join("\n");
+    expect(output).toContain("📋 Active Constraints");
+    expect(output).toContain("1. rule-1");
+    expect(output).toContain("2. rule-2");
+    expect(output).toContain("First constraint");
+    expect(output).toContain("Second constraint");
+    expect(output).toContain("Why active:");
+  });
+
+  it("explain with --format json outputs structured JSON", async () => {
+    const seeded: ConstraintSet = {
+      personaId: "quality-first_engineering",
+      derivedAt: "2025-12-05T23:30:00Z",
+      inputHash: "abc123",
+      context: { domain: "lexrunner", module_id: "cli/commands" },
+      principles: [],
+      constraints: [
+        {
+          rule_id: "test-rule",
+          text: "Test constraint",
+          severity: "should",
+          confidence: 0.75,
+          category: "testing",
+          source: "learned",
+          provenance: {
+            source: "learned",
+            rule_id: "test-rule",
+            confidence: 0.75,
+          },
+        },
+      ],
+      metadata: {
+        rulesConsidered: 1,
+        rulesFiltered: 0,
+        confidenceThreshold: 0.3,
+        offlineMode: false,
+      },
+    };
+    writeFileSync(cachePath, JSON.stringify(seeded, null, 2), "utf-8");
+
+    const program = createProgram();
+    await program.parseAsync([
+      "node",
+      "lexsona",
+      "constraints",
+      "explain",
+      "test-rule",
+      "--format",
+      "json",
+    ]);
+
+    expect(errorSpy).not.toHaveBeenCalled();
+
+    const logged = logSpy.mock.calls.map((c) => String(c[0])).join("\n");
+    const parsed = JSON.parse(logged) as any;
+
+    expect(parsed.constraintId).toBe("test-rule");
+    expect(parsed.statement).toBe("Test constraint");
+    expect(parsed.severity).toBe("should");
+    expect(parsed.category).toBe("testing");
+    expect(parsed.confidence).toBe("high"); // 0.75 >= 0.7
+    expect(Array.isArray(parsed.reasons)).toBe(true);
+    expect(parsed.reasons.length).toBeGreaterThan(0);
+    expect(parsed.matchedContext).toBeDefined();
+    expect(parsed.matchedContext.domain).toBe("lexrunner");
+    expect(parsed.matchedContext.module_id).toBe("cli/commands");
+  });
+
+  it("explain all with --format json outputs array of explanations", async () => {
+    const seeded: ConstraintSet = {
+      personaId: "quality-first_engineering",
+      derivedAt: "2025-12-05T23:30:00Z",
+      inputHash: "abc123",
+      context: {},
+      principles: [],
+      constraints: [
+        {
+          rule_id: "rule-1",
+          text: "First",
+          severity: "must",
+          confidence: 0.9,
+          category: "test",
+          source: "learned",
+        },
+        {
+          rule_id: "rule-2",
+          text: "Second",
+          severity: "should",
+          confidence: 0.5,
+          category: "test",
+          source: "learned",
+        },
+      ],
+      metadata: {
+        rulesConsidered: 2,
+        rulesFiltered: 0,
+        confidenceThreshold: 0.3,
+        offlineMode: false,
+      },
+    };
+    writeFileSync(cachePath, JSON.stringify(seeded, null, 2), "utf-8");
+
+    const program = createProgram();
+    await program.parseAsync(["node", "lexsona", "constraints", "explain", "--format", "json"]);
+
+    expect(errorSpy).not.toHaveBeenCalled();
+
+    const logged = logSpy.mock.calls.map((c) => String(c[0])).join("\n");
+    const parsed = JSON.parse(logged) as any;
+
+    expect(parsed.version).toBe(1);
+    expect(parsed.count).toBe(2);
+    expect(Array.isArray(parsed.explanations)).toBe(true);
+    expect(parsed.explanations).toHaveLength(2);
+    expect(parsed.explanations[0].constraintId).toBe("rule-1");
+    expect(parsed.explanations[1].constraintId).toBe("rule-2");
+  });
 });
