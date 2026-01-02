@@ -15,6 +15,7 @@ import { Command } from "commander";
 import { registerPersonaCommands } from "./commands/persona.js";
 import { registerRulesCommands } from "./commands/rules.js";
 import { registerConstraintsCommands } from "./commands/constraints.js";
+import { registerConflictsCommands } from "./commands/conflicts.js";
 import { registerDbCommands } from "./commands/db.js";
 import { registerDoctorCommand } from "./commands/doctor.js";
 import { VERSION } from "../index.js";
@@ -32,6 +33,7 @@ program
 registerPersonaCommands(program);
 registerRulesCommands(program);
 registerConstraintsCommands(program);
+registerConflictsCommands(program);
 registerDbCommands(program);
 registerDoctorCommand(program);
 
