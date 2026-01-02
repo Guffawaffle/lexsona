@@ -247,8 +247,8 @@ describe("constraints CLI", () => {
 
     const output = logSpy.mock.calls.map((c) => String(c[0])).join("\n");
     expect(output).toContain("Constraint Explanation");
-    expect(output).toContain("ID: no_credential_logging");
-    expect(output).toContain("Source: learned");
+    expect(output).toContain("no_credential_logging (confidence:");
+    expect(output).toContain("learned");
   });
 
   it("derive --json includes provenance in output", async () => {
