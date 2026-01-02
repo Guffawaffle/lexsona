@@ -30,11 +30,14 @@ async function initLexSona(): Promise<LexSona | null> {
 /**
  * Format scope for display
  */
-function formatScope(scope: Record<string, string | undefined>): string {
+function formatScope(scope: Partial<import("../../rules/types.js").RuleScope>): string {
   const parts: string[] = [];
   if (scope.module_id) parts.push(`module: ${scope.module_id}`);
   if (scope.project) parts.push(`project: ${scope.project}`);
   if (scope.task_type) parts.push(`task: ${scope.task_type}`);
+  if (scope.context_tags && scope.context_tags.length > 0) {
+    parts.push(`tags: ${scope.context_tags.join(", ")}`);
+  }
   return parts.length > 0 ? parts.join(", ") : "*";
 }
 
