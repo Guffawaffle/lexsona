@@ -7,7 +7,7 @@
  * @module
  */
 
-import type { ConstraintSet, Constraint, ConstraintProvenance } from "./derive.js";
+import type { ConstraintSet, Constraint } from "./derive.js";
 
 /**
  * Type of explanation reason
