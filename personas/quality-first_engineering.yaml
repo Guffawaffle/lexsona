@@ -34,6 +34,7 @@ duties:
     - Skip type checking
     - Commit without running tests
     - Use shell commands to edit files
+    - Wait for remote CI (lex/lexsona/lexrunner have no remote CI; local gates are sufficient)
   shouldDo:
     - Prefer larger file reads over many small reads
     - Resolve conflicts with >75% confidence, else escalate
