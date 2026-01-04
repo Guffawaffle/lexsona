@@ -290,12 +290,24 @@ function calculateInputHash(
   const ruleIds = rules.map((r) => r.rule_id).sort();
   const principleIds = principles.map((p) => p.id).sort();
 
+  // Include constraint pack IDs in hash for cache invalidation
+  const constraintPackIds: string[] = [];
+  if (persona.constraints) {
+    for (const [packName, constraints] of Object.entries(persona.constraints)) {
+      for (const constraint of constraints) {
+        constraintPackIds.push(`${packName}:${constraint.id}`);
+      }
+    }
+    constraintPackIds.sort();
+  }
+
   // Create a stable representation of the input
   const input = {
     personaId: persona.id,
     personaVersion: persona.version,
     ruleIds,
     principleIds,
+    constraintPackIds,
     context: {
       domain: context.domain || "",
       module_id: context.module_id || "",
@@ -303,6 +315,7 @@ function calculateInputHash(
       environment: context.environment || "",
       agent_family: context.agent_family || "",
       context_tags: (context.context_tags || []).slice().sort(),
+      files: (context.files || []).slice().sort(),
     },
   };
 
