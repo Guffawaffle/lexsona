@@ -509,7 +509,8 @@ export function deriveConstraints(
         // Filter by file scope if files are provided in context
         let includeConstraint = true;
         if (context.files && context.files.length > 0) {
-          // Check if any of the context files matches the constraint's appliesTo patterns
+          // Check if any of the context files matches any of the constraint's appliesTo patterns
+          // micromatch.isMatch supports arrays of patterns
           includeConstraint = context.files.some((file) =>
             micromatch.isMatch(file, constraint.appliesTo)
           );
