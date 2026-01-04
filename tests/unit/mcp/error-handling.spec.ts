@@ -14,12 +14,16 @@ describe("MCP Error Handling Integration", () => {
   describe("handleActivate errors", () => {
     it("throws LexSonaError when persona not found", async () => {
       // Mock loadPersona to throw persona not found error
-      const mockLoadPersona = vi.spyOn(loader, "loadPersona").mockRejectedValue(
-        new LexSonaError(LexSonaErrorCode.PERSONA_NOT_FOUND, "Persona not found: invalid-persona", {
-          retryable: false,
-          suggestions: ["Check persona ID"],
-        })
-      );
+      const mockLoadPersona = vi
+        .spyOn(loader, "loadPersona")
+        .mockRejectedValue(
+          new LexSonaError(
+            LexSonaErrorCode.PERSONA_NOT_FOUND,
+            "Persona not found: invalid-persona",
+            ["Check persona ID"],
+            { retryable: false }
+          )
+        );
 
       const state = { activePersonaId: null };
 
@@ -36,16 +40,16 @@ describe("MCP Error Handling Integration", () => {
     });
 
     it("throws LexSonaError when persona manifest is invalid", async () => {
-      const mockLoadPersona = vi.spyOn(loader, "loadPersona").mockRejectedValue(
-        new LexSonaError(
-          LexSonaErrorCode.PERSONA_INVALID_MANIFEST,
-          "Invalid persona manifest: missing id field",
-          {
-            retryable: false,
-            suggestions: ["Check YAML frontmatter"],
-          }
-        )
-      );
+      const mockLoadPersona = vi
+        .spyOn(loader, "loadPersona")
+        .mockRejectedValue(
+          new LexSonaError(
+            LexSonaErrorCode.PERSONA_INVALID_MANIFEST,
+            "Invalid persona manifest: missing id field",
+            ["Check YAML frontmatter"],
+            { retryable: false }
+          )
+        );
 
       const state = { activePersonaId: null };
 
@@ -93,18 +97,18 @@ describe("MCP Error Handling Integration", () => {
     });
   });
 
-  describe("Error metadata and suggestions", () => {
-    it("LexSonaError includes suggestions in metadata", async () => {
-      const mockLoadPersona = vi.spyOn(loader, "loadPersona").mockRejectedValue(
-        new LexSonaError(LexSonaErrorCode.PERSONA_NOT_FOUND, "Persona not found: test-persona", {
-          retryable: false,
-          suggestions: [
-            "Check persona ID format",
-            "Run lexsona persona list",
-            "Verify search paths",
-          ],
-        })
-      );
+  describe("Error metadata and nextActions", () => {
+    it("LexSonaError includes nextActions (AX-compliant)", async () => {
+      const mockLoadPersona = vi
+        .spyOn(loader, "loadPersona")
+        .mockRejectedValue(
+          new LexSonaError(
+            LexSonaErrorCode.PERSONA_NOT_FOUND,
+            "Persona not found: test-persona",
+            ["Check persona ID format", "Run lexsona persona list", "Verify search paths"],
+            { retryable: false }
+          )
+        );
 
       const state = { activePersonaId: null };
 
@@ -122,16 +126,19 @@ describe("MCP Error Handling Integration", () => {
       mockLoadPersona.mockRestore();
     });
 
-    it("LexSonaError includes context in metadata", async () => {
+    it("LexSonaError includes context (AX-compliant)", async () => {
       const searchPaths = ["/path1", "/path2"];
       const mockLoadPersona = vi.spyOn(loader, "loadPersona").mockRejectedValue(
-        new LexSonaError(LexSonaErrorCode.PERSONA_NOT_FOUND, "Persona not found: test-persona", {
-          retryable: false,
-          context: {
+        new LexSonaError(
+          LexSonaErrorCode.PERSONA_NOT_FOUND,
+          "Persona not found: test-persona",
+          ["Check persona ID"],
+          {
             personaId: "test-persona",
             searchPaths,
-          },
-        })
+            retryable: false,
+          }
+        )
       );
 
       const state = { activePersonaId: null };
@@ -142,7 +149,7 @@ describe("MCP Error Handling Integration", () => {
       } catch (error) {
         expect(error).toBeInstanceOf(LexSonaError);
         if (error instanceof LexSonaError) {
-          expect(error.metadata?.context).toEqual({
+          expect(error.context).toMatchObject({
             personaId: "test-persona",
             searchPaths,
           });
@@ -155,11 +162,16 @@ describe("MCP Error Handling Integration", () => {
 
   describe("Error retryability", () => {
     it("persona not found errors are not retryable", async () => {
-      const mockLoadPersona = vi.spyOn(loader, "loadPersona").mockRejectedValue(
-        new LexSonaError(LexSonaErrorCode.PERSONA_NOT_FOUND, "Persona not found", {
-          retryable: false,
-        })
-      );
+      const mockLoadPersona = vi
+        .spyOn(loader, "loadPersona")
+        .mockRejectedValue(
+          new LexSonaError(
+            LexSonaErrorCode.PERSONA_NOT_FOUND,
+            "Persona not found",
+            ["Try a different persona"],
+            { retryable: false }
+          )
+        );
 
       const state = { activePersonaId: null };
 
@@ -177,9 +189,12 @@ describe("MCP Error Handling Integration", () => {
     });
 
     it("connection errors are retryable", () => {
-      const error = new LexSonaError(LexSonaErrorCode.LEX_CONNECTION_FAILED, "Connection failed", {
-        retryable: true,
-      });
+      const error = new LexSonaError(
+        LexSonaErrorCode.LEX_CONNECTION_FAILED,
+        "Connection failed",
+        ["Retry the connection"],
+        { retryable: true }
+      );
 
       expect(error.isRetryable()).toBe(true);
     });

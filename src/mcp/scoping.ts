@@ -58,11 +58,8 @@ export function normalizeScopingInputs(
     throw new LexSonaError(
       LexSonaErrorCode.VALIDATION_SCOPING_CONFLICT,
       `Deprecated fields used: ${deprecatedFields.join(", ")}. Use canonical fields: 'project' (not 'domain'), 'module_id' (not 'module').`,
-      {
-        retryable: false,
-        suggestions: [`Replace 'domain' with 'project'`, `Replace 'module' with 'module_id'`],
-        context: { deprecatedFields },
-      }
+      [`Replace 'domain' with 'project'`, `Replace 'module' with 'module_id'`],
+      { deprecatedFields, retryable: false }
     );
   }
 

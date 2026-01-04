@@ -254,11 +254,8 @@ export function loadPersonaFromFile(filePath: string): Persona {
     throw new LexSonaError(
       LexSonaErrorCode.PERSONA_NOT_FOUND,
       `Persona file not found: ${filePath}`,
-      {
-        retryable: false,
-        suggestions: ["Check that the file path is correct", "Verify file permissions"],
-        context: { filePath },
-      }
+      ["Check that the file path is correct", "Verify file permissions"],
+      { filePath, retryable: false }
     );
   }
 
@@ -287,11 +284,8 @@ export function loadPersonaFromFile(filePath: string): Persona {
       throw new LexSonaError(
         LexSonaErrorCode.PERSONA_PARSE_FAILED,
         `Failed to parse YAML in ${filePath}: ${error}`,
-        {
-          retryable: false,
-          suggestions: ["Check YAML syntax", "Validate file encoding"],
-          context: { filePath },
-        }
+        ["Check YAML syntax", "Validate file encoding"],
+        { filePath, retryable: false }
       );
     }
   } else {

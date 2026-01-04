@@ -110,7 +110,7 @@ describe("normalizeScopingInputs", () => {
         expect.fail("Should have thrown");
       } catch (error) {
         const lexError = error as LexSonaError;
-        expect(lexError.metadata?.context).toEqual({
+        expect(lexError.context).toMatchObject({
           deprecatedFields: ["domain", "module"],
         });
       }

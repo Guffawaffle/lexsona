@@ -12,6 +12,9 @@
  * ```
  */
 
+import type { AXError } from "./ax-error.js";
+import { AXErrorException } from "./ax-error.js";
+
 /**
  * Error codes for LexSona MCP operations
  *
@@ -95,66 +98,56 @@ export enum LexSonaErrorCode {
 }
 
 /**
- * Metadata for error codes
- * Provides context about error behavior and recovery
- */
-interface ErrorMetadata {
-  /** Whether the operation can be retried */
-  retryable: boolean;
-  /** Suggested actions to resolve the error */
-  suggestions?: string[];
-  /** Additional context-specific data */
-  context?: Record<string, unknown>;
-}
-
-/**
- * LexSona Error with structured code and metadata
+ * LexSona Error - AX-compliant structured error
  *
- * Extends standard Error with machine-readable code and metadata
- * that agents can use for branching logic and error recovery.
+ * Extends AXErrorException with LexSona-specific error codes.
+ * Implements AXError schema with:
+ * - code: LexSonaErrorCode (UPPER_SNAKE_CASE)
+ * - message: Human-readable error message
+ * - nextActions: Required array of recovery suggestions
+ * - context: Optional structured context
+ *
+ * @example
+ * ```typescript
+ * throw new LexSonaError(
+ *   LexSonaErrorCode.PERSONA_NOT_FOUND,
+ *   'Persona not found: unknown-persona',
+ *   ['Run "lexsona persona list" to see available personas'],
+ *   { personaId: 'unknown-persona', retryable: false }
+ * );
+ * ```
  */
-export class LexSonaError extends Error {
-  readonly code: LexSonaErrorCode;
-  readonly metadata?: ErrorMetadata;
-
-  constructor(code: LexSonaErrorCode, message: string, metadata?: ErrorMetadata) {
-    super(message);
+export class LexSonaError extends AXErrorException {
+  constructor(
+    code: LexSonaErrorCode,
+    message: string,
+    nextActions: string[],
+    context?: Record<string, unknown>
+  ) {
+    super(code, message, nextActions, context);
     this.name = "LexSonaError";
-    this.code = code;
-    this.metadata = metadata;
   }
 
   /**
-   * Check if this error is retryable
+   * Check if this error is retryable (from context)
    */
   isRetryable(): boolean {
-    return this.metadata?.retryable ?? false;
+    return (this.context?.["retryable"] as boolean) ?? false;
   }
 
   /**
    * Get suggestions for resolving this error
+   * @deprecated Use nextActions instead
    */
   getSuggestions(): string[] {
-    return this.metadata?.suggestions ?? [];
+    return this.nextActions;
   }
 
   /**
    * Convert to MCP response error format
    */
-  toResponse(): {
-    error: {
-      code: string;
-      message: string;
-      metadata?: ErrorMetadata;
-    };
-  } {
-    return {
-      error: {
-        code: this.code,
-        message: this.message,
-        ...(this.metadata && { metadata: this.metadata }),
-      },
-    };
+  toResponse(): { error: AXError } {
+    return { error: this.axError };
   }
 }
 
@@ -162,15 +155,16 @@ export class LexSonaError extends Error {
  * Helper to create persona not found error with search path suggestions
  */
 export function createPersonaNotFoundError(personaId: string, searchPaths: string[]): LexSonaError {
-  return new LexSonaError(LexSonaErrorCode.PERSONA_NOT_FOUND, `Persona not found: ${personaId}`, {
-    retryable: false,
-    suggestions: [
+  return new LexSonaError(
+    LexSonaErrorCode.PERSONA_NOT_FOUND,
+    `Persona not found: ${personaId}`,
+    [
       `Check persona ID format (should be: {behavioral-focus}_{domain})`,
       `Available search paths: ${searchPaths.join(", ")}`,
       "Run 'lexsona persona list' to see available personas",
     ],
-    context: { personaId, searchPaths },
-  });
+    { personaId, searchPaths, retryable: false }
+  );
 }
 
 /**
@@ -183,15 +177,12 @@ export function createPersonaManifestError(
   return new LexSonaError(
     LexSonaErrorCode.PERSONA_INVALID_MANIFEST,
     `Invalid persona manifest in ${filePath}: ${validationErrors}`,
-    {
-      retryable: false,
-      suggestions: [
-        "Check YAML frontmatter syntax",
-        "Ensure all required fields are present: id, version, behavior",
-        "Validate against PersonaManifest schema",
-      ],
-      context: { filePath, validationErrors },
-    }
+    [
+      "Check YAML frontmatter syntax",
+      "Ensure all required fields are present: id, version, behavior",
+      "Validate against PersonaManifest schema",
+    ],
+    { filePath, validationErrors, retryable: false }
   );
 }
 
@@ -199,15 +190,16 @@ export function createPersonaManifestError(
  * Helper to create Lex database not found error
  */
 export function createLexDbNotFoundError(dbPath: string): LexSonaError {
-  return new LexSonaError(LexSonaErrorCode.LEX_DB_NOT_FOUND, `Database not found at ${dbPath}`, {
-    retryable: false,
-    suggestions: [
+  return new LexSonaError(
+    LexSonaErrorCode.LEX_DB_NOT_FOUND,
+    `Database not found at ${dbPath}`,
+    [
       "Run 'lex init' to create the database",
       "Set LEX_DB_PATH environment variable to point to existing database",
       "Check that the database file exists and is readable",
     ],
-    context: { dbPath },
-  });
+    { dbPath, retryable: false }
+  );
 }
 
 /**
@@ -217,15 +209,12 @@ export function createLexConnectionError(dbPath: string, reason: string): LexSon
   return new LexSonaError(
     LexSonaErrorCode.LEX_CONNECTION_FAILED,
     `Failed to connect to Lex database at ${dbPath}: ${reason}`,
-    {
-      retryable: true,
-      suggestions: [
-        "Verify database file is not corrupted",
-        "Check file permissions",
-        "Ensure database is not locked by another process",
-      ],
-      context: { dbPath, reason },
-    }
+    [
+      "Verify database file is not corrupted",
+      "Check file permissions",
+      "Ensure database is not locked by another process",
+    ],
+    { dbPath, reason, retryable: true }
   );
 }
 
@@ -236,14 +225,12 @@ export function createLexNotConnectedError(): LexSonaError {
   return new LexSonaError(
     LexSonaErrorCode.LEX_NOT_CONNECTED,
     "Not connected to Lex database. Cannot perform this operation.",
-    {
-      retryable: false,
-      suggestions: [
-        "Ensure Lex database is initialized with 'lex init'",
-        "Check LEX_DB_PATH environment variable",
-        "Verify LexSona connection before calling this operation",
-      ],
-    }
+    [
+      "Ensure Lex database is initialized with 'lex init'",
+      "Check LEX_DB_PATH environment variable",
+      "Verify LexSona connection before calling this operation",
+    ],
+    { retryable: false }
   );
 }
 
@@ -254,11 +241,8 @@ export function createLexMissingTableError(dbPath: string): LexSonaError {
   return new LexSonaError(
     LexSonaErrorCode.LEX_DB_MISSING_TABLE,
     `Database at ${dbPath} is missing lexsona_behavior_rules table`,
-    {
-      retryable: false,
-      suggestions: ["Run 'lex migrate' to update database schema"],
-      context: { dbPath },
-    }
+    ["Run 'lex migrate' to update database schema"],
+    { dbPath, retryable: false }
   );
 }
 
@@ -269,28 +253,21 @@ export function createRuleValidationError(reason: string): LexSonaError {
   return new LexSonaError(
     LexSonaErrorCode.RULE_VALIDATION_FAILED,
     `Rule validation failed: ${reason}`,
-    {
-      retryable: false,
-      suggestions: [
-        "Check rule text is not empty",
-        "Verify severity is one of: must, should, style",
-      ],
-      context: { reason },
-    }
+    ["Check rule text is not empty", "Verify severity is one of: must, should, style"],
+    { reason, retryable: false }
   );
 }
 
 /**
- * Helper to create validation error with suggestions
+ * Helper to create validation error with nextActions
  */
 export function createValidationError(
   code: LexSonaErrorCode,
   message: string,
-  suggestions?: string[]
+  nextActions?: string[]
 ): LexSonaError {
-  return new LexSonaError(code, message, {
+  return new LexSonaError(code, message, nextActions ?? ["Check input parameters and try again"], {
     retryable: false,
-    suggestions,
   });
 }
 
@@ -311,13 +288,15 @@ export function isClientError(code: LexSonaErrorCode): boolean {
  * Helper to create no derivation error
  */
 export function createNoDerivationError(): LexSonaError {
-  return new LexSonaError(LexSonaErrorCode.NO_DERIVATION, "No constraints have been derived yet", {
-    retryable: false,
-    suggestions: [
+  return new LexSonaError(
+    LexSonaErrorCode.NO_DERIVATION,
+    "No constraints have been derived yet",
+    [
       "Call constraints_derive first to generate constraints",
       "Ensure a persona is activated before deriving constraints",
     ],
-  });
+    { retryable: false }
+  );
 }
 
 /**
@@ -330,26 +309,23 @@ export function createConstraintNotFoundError(
   return new LexSonaError(
     LexSonaErrorCode.CONSTRAINT_NOT_FOUND,
     `Constraint "${constraintId}" not found in last derivation`,
-    {
-      retryable: false,
-      suggestions: [
-        `Check constraint ID spelling`,
-        availableIds.length > 0
-          ? `Available constraint IDs: ${availableIds.slice(0, 10).join(", ")}${availableIds.length > 10 ? "..." : ""}`
-          : "No constraints in last derivation",
-      ],
-      context: { constraintId, availableCount: availableIds.length },
-    }
+    [
+      `Check constraint ID spelling`,
+      availableIds.length > 0
+        ? `Available constraint IDs: ${availableIds.slice(0, 10).join(", ")}${availableIds.length > 10 ? "..." : ""}`
+        : "No constraints in last derivation",
+    ],
+    { constraintId, availableCount: availableIds.length, retryable: false }
   );
 }
 
 /**
  * Format LexSonaError for MCP error message
- * Returns enhanced message with error code and suggestions
+ * Returns enhanced message with error code and nextActions
  */
 export function formatErrorForMcp(error: LexSonaError): string {
-  const suggestions = error.getSuggestions();
+  const nextActions = error.nextActions;
   return `[${error.code}] ${error.message}${
-    suggestions.length > 0 ? `\nSuggestions: ${suggestions.join("; ")}` : ""
+    nextActions.length > 0 ? `\nNext actions: ${nextActions.join("; ")}` : ""
   }`;
 }
