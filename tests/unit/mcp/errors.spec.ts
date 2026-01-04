@@ -59,101 +59,76 @@ describe("LexSonaErrorCode", () => {
   });
 
   describe("LexSonaError Class", () => {
-    it("creates error with code and message", () => {
+    it("creates error with code, message, and nextActions (AX-compliant)", () => {
       const error = new LexSonaError(
         LexSonaErrorCode.PERSONA_NOT_FOUND,
-        "Persona not found: test-persona"
+        "Persona not found: test-persona",
+        ["Check persona ID", "Run lexsona persona list"]
       );
 
       expect(error).toBeInstanceOf(Error);
       expect(error.name).toBe("LexSonaError");
       expect(error.code).toBe(LexSonaErrorCode.PERSONA_NOT_FOUND);
       expect(error.message).toBe("Persona not found: test-persona");
+      expect(error.nextActions).toEqual(["Check persona ID", "Run lexsona persona list"]);
     });
 
-    it("includes metadata when provided", () => {
+    it("includes context when provided (AX-compliant)", () => {
       const error = new LexSonaError(
         LexSonaErrorCode.PERSONA_NOT_FOUND,
         "Persona not found: test-persona",
-        {
-          retryable: false,
-          suggestions: ["Check persona ID", "Run lexsona persona list"],
-          context: { personaId: "test-persona" },
-        }
+        ["Check persona ID", "Run lexsona persona list"],
+        { personaId: "test-persona", retryable: false }
       );
 
-      expect(error.metadata?.retryable).toBe(false);
-      expect(error.metadata?.suggestions).toEqual(["Check persona ID", "Run lexsona persona list"]);
-      expect(error.metadata?.context).toEqual({ personaId: "test-persona" });
+      expect(error.context).toEqual({ personaId: "test-persona", retryable: false });
+      expect(error.isRetryable()).toBe(false);
     });
 
     it("isRetryable returns false by default", () => {
       const error = new LexSonaError(
         LexSonaErrorCode.PERSONA_NOT_FOUND,
-        "Persona not found: test-persona"
+        "Persona not found: test-persona",
+        ["Try a different persona"]
       );
 
       expect(error.isRetryable()).toBe(false);
     });
 
-    it("isRetryable returns metadata value when provided", () => {
-      const error = new LexSonaError(LexSonaErrorCode.LEX_CONNECTION_FAILED, "Connection failed", {
-        retryable: true,
-      });
+    it("isRetryable returns context value when provided", () => {
+      const error = new LexSonaError(
+        LexSonaErrorCode.LEX_CONNECTION_FAILED,
+        "Connection failed",
+        ["Retry the connection"],
+        { retryable: true }
+      );
 
       expect(error.isRetryable()).toBe(true);
     });
 
-    it("getSuggestions returns empty array by default", () => {
-      const error = new LexSonaError(LexSonaErrorCode.INTERNAL_ERROR, "Internal error");
-
-      expect(error.getSuggestions()).toEqual([]);
-    });
-
-    it("getSuggestions returns metadata suggestions when provided", () => {
-      const error = new LexSonaError(LexSonaErrorCode.PERSONA_NOT_FOUND, "Persona not found", {
-        retryable: false,
-        suggestions: ["Suggestion 1", "Suggestion 2"],
-      });
+    it("getSuggestions returns nextActions (deprecated alias)", () => {
+      const error = new LexSonaError(LexSonaErrorCode.PERSONA_NOT_FOUND, "Persona not found", [
+        "Suggestion 1",
+        "Suggestion 2",
+      ]);
 
       expect(error.getSuggestions()).toEqual(["Suggestion 1", "Suggestion 2"]);
     });
 
-    it("toResponse converts to MCP response format", () => {
+    it("toResponse converts to AXError response format", () => {
       const error = new LexSonaError(
         LexSonaErrorCode.PERSONA_NOT_FOUND,
         "Persona not found: test-persona",
-        {
-          retryable: false,
-          suggestions: ["Check persona ID"],
-        }
+        ["Check persona ID"],
+        { personaId: "test-persona", retryable: false }
       );
 
       const response = error.toResponse();
 
-      expect(response).toEqual({
-        error: {
-          code: "PERSONA_NOT_FOUND",
-          message: "Persona not found: test-persona",
-          metadata: {
-            retryable: false,
-            suggestions: ["Check persona ID"],
-          },
-        },
-      });
-    });
-
-    it("toResponse omits metadata when not provided", () => {
-      const error = new LexSonaError(LexSonaErrorCode.INTERNAL_ERROR, "Internal error");
-
-      const response = error.toResponse();
-
-      expect(response).toEqual({
-        error: {
-          code: "INTERNAL_ERROR",
-          message: "Internal error",
-        },
-      });
+      expect(response.error.code).toBe("PERSONA_NOT_FOUND");
+      expect(response.error.message).toBe("Persona not found: test-persona");
+      expect(response.error.nextActions).toEqual(["Check persona ID"]);
+      expect(response.error.context).toEqual({ personaId: "test-persona", retryable: false });
     });
   });
 
@@ -164,9 +139,9 @@ describe("LexSonaErrorCode", () => {
 
         expect(error.code).toBe(LexSonaErrorCode.PERSONA_NOT_FOUND);
         expect(error.message).toBe("Persona not found: test-persona");
-        expect(error.metadata?.retryable).toBe(false);
+        expect(error.isRetryable()).toBe(false);
         expect(error.getSuggestions().length).toBeGreaterThan(0);
-        expect(error.metadata?.context).toEqual({
+        expect(error.context).toMatchObject({
           personaId: "test-persona",
           searchPaths: ["/path1", "/path2"],
         });
@@ -188,7 +163,7 @@ describe("LexSonaErrorCode", () => {
         expect(error.code).toBe(LexSonaErrorCode.PERSONA_INVALID_MANIFEST);
         expect(error.message).toContain("/path/to/persona.yaml");
         expect(error.message).toContain("id: Required");
-        expect(error.metadata?.retryable).toBe(false);
+        expect(error.isRetryable()).toBe(false);
         expect(error.getSuggestions().length).toBeGreaterThan(0);
       });
 
@@ -206,8 +181,8 @@ describe("LexSonaErrorCode", () => {
 
         expect(error.code).toBe(LexSonaErrorCode.LEX_DB_NOT_FOUND);
         expect(error.message).toContain("/path/to/lex.db");
-        expect(error.metadata?.retryable).toBe(false);
-        expect(error.metadata?.context).toEqual({ dbPath: "/path/to/lex.db" });
+        expect(error.isRetryable()).toBe(false);
+        expect(error.context).toMatchObject({ dbPath: "/path/to/lex.db" });
       });
 
       it("includes lex init suggestion", () => {
@@ -225,8 +200,8 @@ describe("LexSonaErrorCode", () => {
         expect(error.code).toBe(LexSonaErrorCode.LEX_CONNECTION_FAILED);
         expect(error.message).toContain("/path/to/lex.db");
         expect(error.message).toContain("File is locked");
-        expect(error.metadata?.retryable).toBe(true);
-        expect(error.metadata?.context).toEqual({
+        expect(error.isRetryable()).toBe(true);
+        expect(error.context).toMatchObject({
           dbPath: "/path/to/lex.db",
           reason: "File is locked",
         });
@@ -245,7 +220,7 @@ describe("LexSonaErrorCode", () => {
 
         expect(error.code).toBe(LexSonaErrorCode.LEX_NOT_CONNECTED);
         expect(error.message).toContain("Not connected");
-        expect(error.metadata?.retryable).toBe(false);
+        expect(error.isRetryable()).toBe(false);
       });
 
       it("includes connection verification suggestions", () => {
@@ -264,7 +239,7 @@ describe("LexSonaErrorCode", () => {
         expect(error.code).toBe(LexSonaErrorCode.LEX_DB_MISSING_TABLE);
         expect(error.message).toContain("/path/to/lex.db");
         expect(error.message).toContain("lexsona_behavior_rules");
-        expect(error.metadata?.retryable).toBe(false);
+        expect(error.isRetryable()).toBe(false);
       });
 
       it("includes lex migrate suggestion", () => {
@@ -281,7 +256,7 @@ describe("LexSonaErrorCode", () => {
 
         expect(error.code).toBe(LexSonaErrorCode.RULE_VALIDATION_FAILED);
         expect(error.message).toContain("Rule text is empty");
-        expect(error.metadata?.retryable).toBe(false);
+        expect(error.isRetryable()).toBe(false);
       });
 
       it("includes validation suggestions", () => {
@@ -301,10 +276,10 @@ describe("LexSonaErrorCode", () => {
 
         expect(error.code).toBe(LexSonaErrorCode.VALIDATION_REQUIRED_FIELD);
         expect(error.message).toBe("Field is required");
-        expect(error.metadata?.retryable).toBe(false);
+        expect(error.isRetryable()).toBe(false);
       });
 
-      it("includes suggestions when provided", () => {
+      it("includes nextActions when provided", () => {
         const error = createValidationError(
           LexSonaErrorCode.VALIDATION_INVALID_FORMAT,
           "Invalid format",
@@ -314,13 +289,14 @@ describe("LexSonaErrorCode", () => {
         expect(error.getSuggestions()).toEqual(["Use correct format", "Check documentation"]);
       });
 
-      it("has no suggestions when not provided", () => {
+      it("has default nextActions when not provided", () => {
         const error = createValidationError(
           LexSonaErrorCode.VALIDATION_REQUIRED_FIELD,
           "Field is required"
         );
 
-        expect(error.getSuggestions()).toEqual([]);
+        // Default action provided by createValidationError
+        expect(error.getSuggestions().length).toBeGreaterThan(0);
       });
     });
   });
@@ -360,34 +336,26 @@ describe("LexSonaErrorCode", () => {
       it("formats error with code in brackets", () => {
         const error = new LexSonaError(
           LexSonaErrorCode.PERSONA_NOT_FOUND,
-          "Persona not found: test"
+          "Persona not found: test",
+          ["Try a different persona"]
         );
 
         const formatted = formatErrorForMcp(error);
-        expect(formatted).toBe("[PERSONA_NOT_FOUND] Persona not found: test");
+        expect(formatted).toContain("[PERSONA_NOT_FOUND]");
+        expect(formatted).toContain("Persona not found: test");
       });
 
-      it("includes suggestions when present", () => {
+      it("includes nextActions when present", () => {
         const error = new LexSonaError(
           LexSonaErrorCode.PERSONA_NOT_FOUND,
           "Persona not found: test",
-          {
-            retryable: false,
-            suggestions: ["Check ID", "Run list command"],
-          }
+          ["Check ID", "Run list command"]
         );
 
         const formatted = formatErrorForMcp(error);
         expect(formatted).toBe(
-          "[PERSONA_NOT_FOUND] Persona not found: test\nSuggestions: Check ID; Run list command"
+          "[PERSONA_NOT_FOUND] Persona not found: test\nNext actions: Check ID; Run list command"
         );
-      });
-
-      it("omits suggestions when not present", () => {
-        const error = new LexSonaError(LexSonaErrorCode.INTERNAL_ERROR, "Internal error");
-
-        const formatted = formatErrorForMcp(error);
-        expect(formatted).toBe("[INTERNAL_ERROR] Internal error");
       });
     });
   });

@@ -18,6 +18,7 @@ import { registerConstraintsCommands } from "./commands/constraints.js";
 import { registerConflictsCommands } from "./commands/conflicts.js";
 import { registerDbCommands } from "./commands/db.js";
 import { registerDoctorCommand } from "./commands/doctor.js";
+import { registerTrustCommands } from "./commands/trust.js";
 import { VERSION } from "../index.js";
 
 const program = new Command();
@@ -36,6 +37,7 @@ registerConstraintsCommands(program);
 registerConflictsCommands(program);
 registerDbCommands(program);
 registerDoctorCommand(program);
+registerTrustCommands(program);
 
 // Parse and run
 program.parseAsync(process.argv).catch((error) => {

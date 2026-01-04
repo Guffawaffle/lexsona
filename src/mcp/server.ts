@@ -45,7 +45,7 @@ import {
   handleConstraintsShow,
   handleConstraintsExplain,
 } from "./handlers.js";
-import { LexSonaError, isClientError, formatErrorForMcp } from "./errors.js";
+import { LexSonaError, LexSonaErrorCode, isClientError, formatErrorForMcp } from "./errors.js";
 import { RequestCache } from "./idempotency.js";
 
 // Server state
@@ -215,7 +215,7 @@ async function main(): Promise<void> {
       if (error instanceof LexSonaError) {
         // Map LexSonaError to McpError with metadata preserved
         // Use InvalidParams for client errors, InternalError for server errors
-        const mcpCode = isClientError(error.code)
+        const mcpCode = isClientError(error.code as LexSonaErrorCode)
           ? ErrorCode.InvalidParams
           : ErrorCode.InternalError;
 
