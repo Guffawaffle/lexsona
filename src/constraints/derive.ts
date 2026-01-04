@@ -49,6 +49,8 @@ export interface DeriveContext {
   context_tags?: string[];
   /** Procedure for scope constraint overrides */
   procedure?: string;
+  /** Files in scope for constraint filtering (optional) */
+  files?: string[];
 }
 
 export type ConstraintSource = "baseline" | "persona" | "learned";
@@ -288,12 +290,24 @@ function calculateInputHash(
   const ruleIds = rules.map((r) => r.rule_id).sort();
   const principleIds = principles.map((p) => p.id).sort();
 
+  // Include constraint pack IDs in hash for cache invalidation
+  const constraintPackIds: string[] = [];
+  if (persona.constraints) {
+    for (const [packName, constraints] of Object.entries(persona.constraints)) {
+      for (const constraint of constraints) {
+        constraintPackIds.push(`${packName}:${constraint.id}`);
+      }
+    }
+    constraintPackIds.sort();
+  }
+
   // Create a stable representation of the input
   const input = {
     personaId: persona.id,
     personaVersion: persona.version,
     ruleIds,
     principleIds,
+    constraintPackIds,
     context: {
       domain: context.domain || "",
       module_id: context.module_id || "",
@@ -301,6 +315,7 @@ function calculateInputHash(
       environment: context.environment || "",
       agent_family: context.agent_family || "",
       context_tags: (context.context_tags || []).slice().sort(),
+      files: (context.files || []).slice().sort(),
     },
   };
 
@@ -482,6 +497,49 @@ export function deriveConstraints(
           confidence: 1.0,
         },
       });
+    }
+  }
+
+  // === PERSONA CONSTRAINT PACKS → CONSTRAINTS ===
+  // Convert persona constraint packs to constraints
+  // Apply file scope filtering if context.files is provided
+  if (persona.constraints) {
+    for (const [packName, packConstraints] of Object.entries(persona.constraints)) {
+      for (const constraint of packConstraints) {
+        // Filter by file scope if files are provided in context
+        let includeConstraint = true;
+        if (context.files && context.files.length > 0) {
+          // Check if any of the context files matches any of the constraint's appliesTo patterns
+          // micromatch.isMatch supports arrays of patterns
+          includeConstraint = context.files.some((file) =>
+            micromatch.isMatch(file, constraint.appliesTo)
+          );
+        }
+
+        if (includeConstraint) {
+          // Map severity: error → must, warning → should, info → style
+          const severityMap: Record<string, "must" | "should" | "style"> = {
+            error: "must",
+            warning: "should",
+            info: "style",
+          };
+          const severity = severityMap[constraint.severity] || "should";
+
+          personaConstraints.push({
+            rule_id: `persona:${persona.id}:pack:${packName}:${constraint.id}`,
+            text: constraint.statement,
+            severity,
+            confidence: 1.0,
+            category: `constraint-pack:${packName}`,
+            source: "persona",
+            provenance: {
+              source: "persona",
+              rule_id: null,
+              confidence: 1.0,
+            },
+          });
+        }
+      }
     }
   }
 

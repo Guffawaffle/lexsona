@@ -49,6 +49,26 @@ export interface PersonaDuties {
 }
 
 /**
+ * Single constraint within a constraint pack
+ */
+export interface PersonaConstraint {
+  /** Unique identifier for the constraint */
+  id: string;
+  /** The constraint statement */
+  statement: string;
+  /** Severity level */
+  severity: "error" | "warning" | "info";
+  /** File patterns this constraint applies to */
+  appliesTo: string[];
+}
+
+/**
+ * Constraint packs defined in the persona
+ * Maps pack name to list of constraints
+ */
+export type ConstraintPacks = Record<string, PersonaConstraint[]>;
+
+/**
  * Activation triggers for a persona
  */
 export interface PersonaTriggers {
@@ -104,6 +124,12 @@ export interface Persona {
   ruleCategories: string[];
 
   /**
+   * Constraint packs defined in this persona
+   * Optional: persona-specific constraints organized by pack name
+   */
+  constraints?: ConstraintPacks;
+
+  /**
    * Whether this persona requires a Lex memory connection
    */
   requires_memory: boolean;
@@ -150,6 +176,11 @@ export interface PersonaManifest {
   triggers: PersonaTriggers;
   capability?: PersonaCapability;
   ruleCategories: string[];
+  /**
+   * Constraint packs defined in this persona
+   * Optional: persona-specific constraints organized by pack name
+   */
+  constraints?: ConstraintPacks;
   /**
    * Whether this persona requires a Lex memory connection
    * - true: expects getRules() / recordCorrection() to work
@@ -205,6 +236,21 @@ export const PersonaCapabilitySchema = z.object({
   optimizes: z.array(z.string()),
   deprioritizes: z.array(z.string()),
 });
+
+/**
+ * Schema for a single persona constraint
+ */
+export const PersonaConstraintSchema = z.object({
+  id: z.string().min(1),
+  statement: z.string().min(1),
+  severity: z.enum(["error", "warning", "info"]),
+  appliesTo: z.array(z.string()),
+});
+
+/**
+ * Schema for constraint packs (map of pack name to constraints)
+ */
+export const ConstraintPacksSchema = z.record(z.string(), z.array(PersonaConstraintSchema));
 
 /**
  * Scope constraints for task snapshots
@@ -270,6 +316,7 @@ export const PersonaManifestSchema = z
     }),
     capability: PersonaCapabilitySchema.optional(),
     ruleCategories: z.array(z.string()),
+    constraints: ConstraintPacksSchema.optional(),
     requires_memory: z.boolean(),
     offline_safe: OfflineSafeConfigSchema.optional(),
     /** Scope constraints for task snapshots (ADR-007) */

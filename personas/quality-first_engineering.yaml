@@ -44,6 +44,28 @@ ruleCategories:
   - testing
   - code_quality
 
+constraints:
+  agent-integration:
+    - id: interface-completeness
+      statement: "When adding properties to an interface, check all implementing types and test fixtures"
+      severity: error
+      appliesTo: ["**/*.ts"]
+
+    - id: fixture-schema-sync
+      statement: "Test fixtures must include all required and commonly-used optional fields"
+      severity: warning
+      appliesTo: ["tests/**/*.spec.ts", "tests/**/*.test.ts"]
+
+    - id: export-new-types
+      statement: "New public types must be exported from the nearest index.ts"
+      severity: error
+      appliesTo: ["src/**/*.ts"]
+
+    - id: mock-data-realism
+      statement: "Mock data should use realistic values that match production patterns"
+      severity: warning
+      appliesTo: ["tests/**/*"]
+
 requires_memory: false
 
 offline_safe:
