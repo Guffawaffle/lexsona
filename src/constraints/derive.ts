@@ -49,6 +49,8 @@ export interface DeriveContext {
   context_tags?: string[];
   /** Procedure for scope constraint overrides */
   procedure?: string;
+  /** Files in scope for constraint filtering (optional) */
+  files?: string[];
 }
 
 export type ConstraintSource = "baseline" | "persona" | "learned";
@@ -482,6 +484,48 @@ export function deriveConstraints(
           confidence: 1.0,
         },
       });
+    }
+  }
+
+  // === PERSONA CONSTRAINT PACKS → CONSTRAINTS ===
+  // Convert persona constraint packs to constraints
+  // Apply file scope filtering if context.files is provided
+  if (persona.constraints) {
+    for (const [packName, packConstraints] of Object.entries(persona.constraints)) {
+      for (const constraint of packConstraints) {
+        // Filter by file scope if files are provided in context
+        let includeConstraint = true;
+        if (context.files && context.files.length > 0) {
+          // Check if any of the context files matches the constraint's appliesTo patterns
+          includeConstraint = context.files.some((file) =>
+            micromatch.isMatch(file, constraint.appliesTo)
+          );
+        }
+
+        if (includeConstraint) {
+          // Map severity: error → must, warning → should, info → style
+          const severityMap: Record<string, "must" | "should" | "style"> = {
+            error: "must",
+            warning: "should",
+            info: "style",
+          };
+          const severity = severityMap[constraint.severity] || "should";
+
+          personaConstraints.push({
+            rule_id: `persona:${persona.id}:pack:${packName}:${constraint.id}`,
+            text: constraint.statement,
+            severity,
+            confidence: 1.0,
+            category: `constraint-pack:${packName}`,
+            source: "persona",
+            provenance: {
+              source: "persona",
+              rule_id: null,
+              confidence: 1.0,
+            },
+          });
+        }
+      }
     }
   }
 
