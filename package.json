@@ -53,6 +53,10 @@
     "type": "git",
     "url": "git+https://github.com/Guffawaffle/lexsona.git"
   },
+  "publishConfig": {
+    "access": "restricted",
+    "registry": "https://registry.npmjs.org/"
+  },
   "engines": {
     "node": ">=20.0.0"
   },
@@ -61,11 +65,11 @@
     "personas"
   ],
   "peerDependencies": {
-    "@smartergpt/lex": "file:../lex"
+    "@smartergpt/lex": ">=2.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
-    "@smartergpt/lex": "file:../lex",
+    "@smartergpt/lex": ">=2.1.0",
     "@types/micromatch": "^4.0.10",
     "@types/node": "^25.0.2",
     "eslint": "^9.39.2",
