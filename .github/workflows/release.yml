@@ -67,46 +67,50 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
-  publish-npm:
-    name: Publish to npm (Private)
-    needs: build-and-test
-    runs-on: ubuntu-latest
-    environment: production
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          registry-url: "https://registry.npmjs.org"
-
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: npm-package
-          path: .
-
-      - name: Verify npm authentication
-        run: |
-          echo "Verifying npm authentication..."
-          npm whoami
-          echo "✅ Successfully authenticated as $(npm whoami)"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish package (private)
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
-        run: |
-          set -e
-          echo "Publishing package to npm (private)..."
-          npm publish smartergpt-lexsona-*.tgz --access restricted
-          echo "✅ Package published successfully"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+  # NOTE: npm publish is done manually (2FA requires interactive auth).
+  # Run: cd /srv/lex-mcp/lexsona && npm publish --access restricted
+  # Uncomment when granular access token with publish scope is configured.
+  #
+  # publish-npm:
+  #   name: Publish to npm (Private)
+  #   needs: build-and-test
+  #   runs-on: ubuntu-latest
+  #   environment: production
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: "20"
+  #         registry-url: "https://registry.npmjs.org"
+  #
+  #     - name: Download artifacts
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: npm-package
+  #         path: .
+  #
+  #     - name: Verify npm authentication
+  #       run: |
+  #         echo "Verifying npm authentication..."
+  #         npm whoami
+  #         echo "✅ Successfully authenticated as $(npm whoami)"
+  #       env:
+  #         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+  #
+  #     - name: Publish package (private)
+  #       if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+  #       run: |
+  #         set -e
+  #         echo "Publishing package to npm (private)..."
+  #         npm publish smartergpt-lexsona-*.tgz --access restricted
+  #         echo "✅ Package published successfully"
+  #       env:
+  #         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   create-github-release:
     name: Create GitHub Release
-    needs: publish-npm
+    needs: build-and-test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
