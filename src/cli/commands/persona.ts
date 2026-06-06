@@ -68,7 +68,10 @@ export function registerPersonaCommands(program: Command): void {
   persona
     .command("activate <name>")
     .description("Activate a persona by ID or trigger phrase")
-    .option("--global", "Store activation in user-global config instead of project-local")
+    .option(
+      "--global",
+      "Store activation in user-global config instead of the current project config"
+    )
     .action(async function (this: Command, name: string, options: { global?: boolean }) {
       const jsonMode = isJsonMode(this);
 
@@ -286,7 +289,10 @@ export function registerPersonaCommands(program: Command): void {
   persona
     .command("deactivate")
     .description("Deactivate the current persona")
-    .option("--global", "Clear activation from user-global config instead of project-local")
+    .option(
+      "--global",
+      "Clear activation from user-global config instead of the current project config"
+    )
     .action(async function (this: Command, options: { global?: boolean }) {
       const jsonMode = isJsonMode(this);
 

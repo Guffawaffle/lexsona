@@ -72,14 +72,14 @@ export interface LexConnectionConfig {
 }
 
 /**
- * Result of database path discovery
+ * Result of database path discovery.
  */
 export interface DbDiscoveryResult {
   /** Path being checked */
   path: string;
   /** Whether the file exists */
   exists: boolean;
-  /** Source of the path (e.g., "LEX_DB_PATH", "project-local") */
+  /** Source of the path (e.g., "LEX_DB_PATH", "project-local" relative to the current project root) */
   source: string;
   /** File size in bytes if exists */
   size?: number;
@@ -113,7 +113,7 @@ function getCandidatePaths(): Array<{ path: string; source: string }> {
   return [
     // 1. Explicit override via environment variable
     ...(process.env.LEX_DB_PATH ? [{ path: process.env.LEX_DB_PATH, source: "LEX_DB_PATH" }] : []),
-    // 2. Project-local database
+    // 2. Database under the current project root
     { path: join(cwd, ".smartergpt", "lex", "lex.db"), source: "project-local" },
     // 3. Local override with alternate name
     { path: join(cwd, ".smartergpt.local", "lex", "memory.db"), source: "local-override" },

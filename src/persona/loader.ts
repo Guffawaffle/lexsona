@@ -201,12 +201,13 @@ function getBundledPersonasDir(): string {
 }
 
 /**
- * Search paths for personas (in precedence order)
+ * Search paths for personas (in precedence order).
+ * The project-local path is anchored to the current project root derived from caller context.
  */
 export function getPersonaSearchPaths(): string[] {
   const paths: string[] = [];
 
-  // 1. Project-local
+  // 1. Current project root
   const localPath = join(process.cwd(), ".smartergpt", "personas");
   if (existsSync(localPath)) {
     paths.push(localPath);
@@ -358,13 +359,13 @@ export function findPersonaPath(nameOrId: string): string | null {
  * Load a persona by name or ID
  *
  * Precedence order:
- * 1. Project-local filesystem (highest - developer overrides)
+ * 1. Project-root-local filesystem (highest - developer overrides)
  * 2. Lex database (shared team/project personas)
  * 3. User-global filesystem (personal preferences)
  * 4. Bundled (fallback defaults)
  */
 export async function loadPersona(nameOrId: string): Promise<Persona> {
-  // 1. Check project-local filesystem first
+  // 1. Check the current project root first
   const projectLocalPath = join(process.cwd(), ".smartergpt", "personas");
   if (existsSync(projectLocalPath)) {
     for (const ext of [".yaml", ".yml", ".md"]) {
@@ -411,7 +412,7 @@ export async function loadPersona(nameOrId: string): Promise<Persona> {
  * List all available personas with source information
  *
  * Precedence order for deduplication:
- * 1. Project-local filesystem
+ * 1. Project-root-local filesystem
  * 2. Lex database
  * 3. User-global filesystem
  * 4. Bundled
@@ -441,7 +442,7 @@ export async function listPersonasWithSource(): Promise<PersonaListEntry[]> {
     }
   };
 
-  // 1. Project-local
+  // 1. Current project root
   addFromPath(join(process.cwd(), ".smartergpt", "personas"), "project-local");
 
   // 2. Database

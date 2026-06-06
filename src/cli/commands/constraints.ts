@@ -37,7 +37,7 @@ function getConstraintsCachePath(): string {
     return envPath;
   }
 
-  // Prefer project-local cache when a .smartergpt directory exists
+  // Prefer a cache under the current project root when a .smartergpt directory exists
   const projectPath = getProjectConstraintsCachePath();
   const projectDir = dirname(projectPath);
   if (existsSync(projectDir)) {

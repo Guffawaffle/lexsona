@@ -2,7 +2,8 @@
  * Persona Configuration Management
  *
  * Handles persistent state for active persona across CLI invocations.
- * Stores in `.smartergpt/lexsona.yaml` (project-local by default, user-global with --global)
+ * Stores in `.smartergpt/lexsona.yaml` under the current project root by default,
+ * or in the user-global location when `--global` is used.
  *
  * @module
  */
@@ -25,7 +26,7 @@ export const PersonaConfigSchema = z.object({
 export type PersonaConfig = z.infer<typeof PersonaConfigSchema>;
 
 /**
- * Get the path to the project-local config file
+ * Get the path to the current project config file
  */
 export function getProjectConfigPath(): string {
   return join(process.cwd(), ".smartergpt", "lexsona.yaml");
@@ -92,15 +93,15 @@ export function writeConfig(configPath: string, config: PersonaConfig): void {
 }
 
 /**
- * Get the active persona from configuration
- * Checks project-local first, then user-global
+ * Get the active persona from configuration.
+ * Checks the current project config first, then the user-global config.
  * Returns null if no active persona is set
  */
 export function getActivePersona(): {
   personaId: string | null;
   scope: "project" | "global" | null;
 } {
-  // Check project-local first
+  // Check the current project config first
   const projectConfig = readConfig(getProjectConfigPath());
   if (projectConfig?.activePersona) {
     return {
@@ -127,7 +128,7 @@ export function getActivePersona(): {
 /**
  * Set the active persona in configuration
  * @param personaId - The persona ID to activate
- * @param global - If true, store in user-global config; otherwise project-local
+ * @param global - If true, store in user-global config; otherwise in the current project config
  */
 export function setActivePersona(personaId: string, global: boolean = false): void {
   const configPath = global ? getUserConfigPath() : getProjectConfigPath();
