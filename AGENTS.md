@@ -1,169 +1,115 @@
 # AGENTS.md — LexSona
 
-> **North Star**
-> **Provide behavioral constraints for AI agents. Return constraints, never execute.**
+> **North star:** Provide scoped behavioral constraints for AI agents. Return constraints; never
+> execute work.
 
-This document orients all agents (human and automated) toward the same purpose.
+Read [README.md](README.md) for the adoption story and
+[docs/ADR-001-architecture.md](docs/ADR-001-architecture.md) for the accepted boundary.
 
----
+## Core invariants
 
-## 0) Core Premise
+1. **Constraint engine, not executor.** LexSona does not call tools, run gates, orchestrate work, or
+   assemble prompts.
+2. **Lex owns behavioral storage.** LexSona consumes the `@smartergpt/lex/lexsona` socket for learned
+   rules and personas; it does not own Frame storage.
+3. **Deterministic selection.** The same validated persona, rules, context, and configuration select
+   the same constraints and input hash. Time metadata such as `derivedAt` may differ.
+4. **Scoped by design.** Project, module, task, environment, agent-family, procedure, file, and tag
+   inputs must not broaden a rule's intended scope.
+5. **Explicit failure.** A persona that requires memory fails when no Lex connection exists. Never
+   silently substitute another persona.
+6. **No network during derivation.** Persona and rule interpretation must remain local and
+   inspectable.
 
-1. **Constraint Engine, Not Executor.** LexSona derives constraint sets from rules and personas. It never executes tool calls or assembles prompts.
-2. **Lex is the Foundation.** LexSona consumes Lex's storage APIs (`recordCorrection`, `getRules`, `baseline.yaml`) and never duplicates that functionality.
-3. **Deterministic Outputs.** Same persona + rules + context → same constraint set. Always.
-4. **Scoped by Design.** Rules are namespaced by domain/module to prevent cross-contamination.
+## Ecosystem responsibilities
 
----
-
-## 1) Dependency Chain (Canonical)
-
-```
-Lex can run by itself.
-LexSona needs Lex.
-LexRunner needs both.
-```
-
-LexSona is a **peer** of Lex, not a fork. It imports Lex types and calls Lex APIs.
-
----
-
-## 2) The Socket Model
-
-Lex provides the **socket** — LexSona **plugs in**.
-
-```
-┌─────────────────────────────────────────┐
-│  Lex (OSS core)                         │
-│  ├─ recordCorrection()   ← socket       │
-│  ├─ getRules()           ← socket       │
-│  └─ baseline.yaml        ← constraints  │
-└─────────────────────────────────────────┘
-                    ↑
-                  plugs into
-                    │
-┌─────────────────────────────────────────┐
-│  LexSona (constraint engine)            │
-│  ├─ connect()            ← init         │
-│  ├─ activate()           ← persona      │
-│  ├─ deriveConstraints()  ← core output  │
-│  └─ learn()              ← feedback     │
-└─────────────────────────────────────────┘
+```text
+Lex       → work context, policy, and behavioral storage socket
+LexSona   → persona and rule interpretation; constraint derivation
+LexRunner → optional consumer that coordinates or executes work
 ```
 
-LexSona **never duplicates** storage or query logic.
+Lex can run without LexSona. LexSona requires the Lex package even when it uses an offline-safe
+persona. LexRunner may consume returned constraints; that does not give LexSona execution authority.
 
----
+## Current public surfaces
 
-## 3) Naming Convention
+The package exports:
 
-### Behavioral Classification
+- `@smartergpt/lexsona` — `LexSona`, constraint derivation, trust calibration, types, and errors;
+- `@smartergpt/lexsona/rules` — rule utilities;
+- `@smartergpt/lexsona/persona` — persona utilities.
 
-To maintain clear behavioral classification, LexSona uses **decision-style naming** for persona IDs. This convention describes _how_ an agent approaches decisions rather than _what_ it is.
+The `lexsona` binary uses noun-verb syntax:
 
-### Format
+| Noun or command | Current operations                            |
+| --------------- | --------------------------------------------- |
+| `persona`       | `list`, `activate`, `show`, `deactivate`      |
+| `rules`         | `list`, `learn`, `teach`, `promote`, `forget` |
+| `constraints`   | `derive`, `show`, `explain`                   |
+| `conflicts`     | `check`                                       |
+| `db`            | `status`                                      |
+| `trust`         | `profile`, `gap`                              |
+| `doctor`        | repository and connection diagnostics         |
 
-```
+The stdio MCP adapter under `src/mcp/` is present for source-level host integration but is not a
+package binary or public export. Keep [README.mcp.md](README.mcp.md) honest about that status.
+
+## Storage and authority
+
+The connected runtime currently opens a Lex SQLite file through an explicit `lexDb` path or
+compatibility discovery including `LEX_DB_PATH`. Paths and environment variables select storage;
+they do not prove tenant or workspace authority. The current connection does not accept Lex 3 trusted
+workspace scope or a PostgreSQL/RLS-scoped store.
+
+Do not represent LexSona as a multi-tenant authorization boundary. Do not add implicit environment
+authority. New connected storage work must preserve Lex ownership and introduce an explicit,
+reviewable scope binding.
+
+Mutations must remain obvious:
+
+- CLI persona activation writes project-local or user-global LexSona configuration;
+- CLI derivation writes a last-result cache;
+- learning, teaching, promotion, forgetting, and trust-gap recording mutate Lex storage;
+- in-process `activate()` changes only that instance's selection.
+
+## Persona naming
+
+Persona IDs describe how decisions are made:
+
+```text
 {behavioral-focus}_{domain}
 ```
 
-### Examples
+Examples include `quality-first_engineering`, `momentum-first_product`, and
+`risk-reducer_operations`. Prefer behavioral patterns such as `quality-first`, `momentum-first`,
+`risk-reducer`, `scope-warden`, `test-first`, `observability-first`, `minimal-diff`, and
+`user-advocate`.
 
-| Persona ID                  | Behavioral Focus                               |
-| --------------------------- | ---------------------------------------------- |
-| `quality-first_engineering` | Prioritizes thoroughness, testing, correctness |
-| `momentum-first_product`    | Prioritizes velocity, shipping, iteration      |
-| `risk-reducer_operations`   | Prioritizes safety, asks when uncertain        |
+Offline-safe personas must declare both `confidence_ceiling` and `no_memory_disclaimer`.
 
-### Approved Behavioral Patterns
+## Coding and verification
 
-```
-quality-first       momentum-first      risk-reducer
-scope-warden        test-first          observability-first
-minimal-diff        user-advocate       doc-first
-```
+- TypeScript, strict validated inputs, and Zod schemas.
+- Commander noun-verb CLI conventions.
+- Vitest tests; keep fixtures under `tests/fixtures/`.
+- Read before editing and keep one change inside its owning issue.
+- Never weaken the non-execution boundary to make an integration convenient.
+- Update user, agent, and protocol documentation when a public surface changes.
 
----
-
-## 4) Public API Contract
-
-```typescript
-// The minimal surface that matters
-interface LexSona {
-  connect(config): Promise<LexSona>;
-  activate(personaId: string): Promise<void>;
-  deriveConstraints(context): Promise<ConstraintSet>;
-  learn(correction): Promise<void>;
-}
-```
-
-Everything else is internal.
-
----
-
-## 5) CLI Syntax
-
-LexSona uses **noun-verb** command syntax:
+Run the checks proportionate to the change:
 
 ```bash
-lexsona <noun> <verb> [options]
+npm run lint
+npm run typecheck
+npm test
+npm run build
 ```
 
-| Noun        | Verbs                            | Description             |
-| ----------- | -------------------------------- | ----------------------- |
-| persona     | list, activate, show, deactivate | Manage personas         |
-| rules       | list, learn, forget              | Manage behavioral rules |
-| constraints | derive, show, explain            | View/derive constraints |
+## Related documents
 
----
-
-## 6) Definition of Done (v0.1.0)
-
-- [ ] Can load rules from Lex store
-- [ ] Can scope rules by domain/mode
-- [ ] Can resolve a deterministic "active constraints set"
-- [ ] Can record corrections and adjust weights/priority
-- [ ] Has at least one boring-but-real persona pack for dogfooding
-
----
-
-## 7) Non-Goals (Firm)
-
-LexSona does **NOT** do:
-
-| ❌ Non-Goal                        | Why                                   |
-| ---------------------------------- | ------------------------------------- |
-| Execution/orchestration            | That's LexRunner                      |
-| Tool calling                       | That's LexRunner                      |
-| Prompt assembly                    | That's the consuming agent            |
-| Gates/CI execution                 | That's LexRunner                      |
-| Frame storage                      | That's Lex                            |
-| Network requests during derivation | Constraints must be derivable offline |
-
----
-
-## 8) Coding Conventions
-
-- **Language:** TypeScript only
-- **Schemas:** Zod for validation
-- **CLI:** Commander with noun-verb syntax
-- **Tests:** Vitest
-- **Style:** Follow Lex patterns
-
----
-
-## 9) Invariants
-
-- LexSona requires `@smartergpt/lex` as peer dependency
-- Constraint derivation is pure (no side effects)
-- All personas are loadable without network access
-- Rule learning delegates to Lex's `recordCorrection` API
-- Persona IDs use behavioral classification naming
-
----
-
-## 10) Related Documents
-
-- [ADR-001: Architecture and Boundaries](docs/ADR-001-architecture.md)
-- Lex: `src/memory/store/lexsona-types.ts` (socket types)
-- Lex: `canon/constraints/baseline.yaml` (baseline constraints)
+- [README.md](README.md) — story, fit, surfaces, and trust boundary
+- [docs/agent-evaluation.md](docs/agent-evaluation.md) — bounded read-only adoption assessment
+- [docs/ADR-001-architecture.md](docs/ADR-001-architecture.md) — accepted layer decision
+- [CONTRIBUTING.md](CONTRIBUTING.md) — repository workflow
+- [README.mcp.md](README.mcp.md) — source-level MCP adapter

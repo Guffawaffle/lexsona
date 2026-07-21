@@ -1,127 +1,60 @@
-# Compact Format Mode (AX-009, AX-010)
+# Compact MCP output
 
-## Overview
+LexSona's source-level MCP adapter can keep routine agent context small while retaining an explicit
+path to explanation. Compact mode changes representation, not scope, authority, or constraint
+selection.
 
-LexSona MCP tools support a `format` parameter with two values:
+## Availability
 
-- `full` (default): Complete field names and all metadata
-- `compact`: Abbreviated field names for reduced payload size
+| Surface                  | Compact control                                                                                    |
+| ------------------------ | -------------------------------------------------------------------------------------------------- |
+| MCP `constraints_derive` | `format: "compact"` and optional `provenance: "compact"`                                           |
+| MCP `rules_list`         | `format: "compact"`                                                                                |
+| MCP `persona_activate`   | `format: "compact"`                                                                                |
+| CLI `constraints derive` | `--provenance compact` compacts nested provenance only; the CLI has no whole-response compact flag |
 
-LexSona also supports a `provenance` parameter for constraint explanations:
+The MCP adapter is currently a source-level integration surface; read [README.mcp.md](../README.mcp.md)
+before embedding it.
 
-- `full` (default): Complete provenance with full field names
-- `compact`: Lightweight provenance with single-char source codes (AX-010)
+## Constraint mapping
 
-## Field Mappings
+| Full field   | Compact field or behavior                                    |
+| ------------ | ------------------------------------------------------------ |
+| `rule_id`    | `id`                                                         |
+| `text`       | omitted; retrieve a selected item with `constraints_explain` |
+| `severity`   | `sev`: `m`, `s`, or `st`                                     |
+| `confidence` | `conf`, rounded to two decimals                              |
+| `category`   | `cat`                                                        |
+| `source`     | `src` when present                                           |
+| `provenance` | `prov`                                                       |
 
-### Constraints
+Compact provenance maps:
 
-| Full Format  | Compact Format                                    |
-| ------------ | ------------------------------------------------- |
-| `rule_id`    | `id`                                              |
-| `text`       | _omitted_ (use `constraints_explain` for details) |
-| `severity`   | `sev` (`m`/`s`/`st` for must/should/style)        |
-| `confidence` | `conf` (rounded to 2 decimals)                    |
-| `category`   | `cat`                                             |
-| `source`     | `src` (optional)                                  |
-| `provenance` | `prov` (see Provenance section)                   |
+| Full field   | Compact field                                                  |
+| ------------ | -------------------------------------------------------------- |
+| `source`     | `src`: `p` for persona, `r` for learned rule, `b` for baseline |
+| `rule_id`    | `rId`, present for a learned rule                              |
+| `confidence` | `w`, rounded to two decimals                                   |
 
-### Provenance (AX-010)
+Other top-level mappings include `context` → `ctx`, `metadata` → `meta`, `ruleVersion` →
+`ruleVer`, `confidenceThreshold` → `confThreshold`, `offlineMode` → `offline`, and
+`confidenceCeiling` → `confCeiling`. Compact responses include `_compact: true`.
 
-| Full Format  | Compact Format                                |
-| ------------ | --------------------------------------------- |
-| `source`     | `src` (`p`/`r`/`b` for persona/rule/baseline) |
-| `rule_id`    | `rId` (only when source is `r`)               |
-| `confidence` | `w` (weight, rounded to 2 decimals)           |
+## Example
 
-**Source Codes:**
-
-- `p` = persona duty
-- `r` = learned rule (includes `rId`)
-- `b` = baseline principle
-
-### Principles
-
-| Full Format   | Compact Format |
-| ------------- | -------------- |
-| `description` | `desc`         |
-
-### Metadata
-
-| Full Format           | Compact Format  |
-| --------------------- | --------------- |
-| `ruleVersion`         | `ruleVer`       |
-| `context`             | `ctx`           |
-| `metadata`            | `meta`          |
-| `confidenceThreshold` | `confThreshold` |
-| `offlineMode`         | `offline`       |
-| `confidenceCeiling`   | `confCeiling`   |
-
-### Persona (activate)
-
-| Full Format      | Compact Format             |
-| ---------------- | -------------------------- |
-| `version`        | `ver`                      |
-| `behavior`       | `bhv` (primary focus only) |
-| `ruleCategories` | `cats`                     |
-
-## Usage Examples
-
-### constraints_derive with provenance
-
-#### Full format with full provenance (default)
+Input to `constraints_derive`:
 
 ```json
 {
-  "personaId": "quality-first_engineering",
-  "constraints": [
-    {
-      "rule_id": "rule_123",
-      "text": "Always validate inputs",
-      "severity": "must",
-      "confidence": 0.95,
-      "category": "validation",
-      "provenance": {
-        "source": "learned",
-        "rule_id": "rule_123",
-        "confidence": 0.95
-      }
-    }
-  ],
-  "metadata": {
-    "confidenceThreshold": 0.3,
-    "offlineMode": false
-  }
+  "project": "lexsona",
+  "module_id": "mcp/server",
+  "task": "review",
+  "format": "compact",
+  "provenance": "compact"
 }
 ```
 
-#### Full format with compact provenance
-
-```json
-{
-  "personaId": "quality-first_engineering",
-  "constraints": [
-    {
-      "rule_id": "rule_123",
-      "text": "Always validate inputs",
-      "severity": "must",
-      "confidence": 0.95,
-      "category": "validation",
-      "provenance": {
-        "src": "r",
-        "w": 0.95,
-        "rId": "rule_123"
-      }
-    }
-  ],
-  "metadata": {
-    "confidenceThreshold": 0.3,
-    "offlineMode": false
-  }
-}
-```
-
-#### Compact format with compact provenance (maximum efficiency)
+Representative result shape:
 
 ```json
 {
@@ -132,11 +65,7 @@ LexSona also supports a `provenance` parameter for constraint explanations:
       "sev": "m",
       "conf": 0.95,
       "cat": "validation",
-      "prov": {
-        "src": "r",
-        "w": 0.95,
-        "rId": "rule_123"
-      }
+      "prov": { "src": "r", "rId": "rule_123", "w": 0.95 }
     }
   ],
   "meta": {
@@ -147,98 +76,13 @@ LexSona also supports a `provenance` parameter for constraint explanations:
 }
 ```
 
-### constraints_derive (legacy)
+## Agent workflow
 
-```json
-// Full format (default)
-{
-  "personaId": "quality-first_engineering",
-  "constraints": [{
-    "rule_id": "rule_123",
-    "text": "Always validate inputs",
-    "severity": "must",
-    "confidence": 0.95,
-    "category": "validation"
-  }],
-  "metadata": {
-    "confidenceThreshold": 0.3,
-    "offlineMode": false
-  }
-}
+1. Request a compact constraint set on the normal path.
+2. Use IDs and severity to select only constraints relevant to the current decision.
+3. Call `constraints_explain` for a specific selected ID when its text or provenance is needed.
+4. Request full output only for debugging, review, or a decision that cannot be made from the compact
+   result.
 
-// Compact format (text omitted - use constraints_explain to get details)
-{
-  "personaId": "quality-first_engineering",
-  "constraints": [{
-    "id": "rule_123",
-    "sev": "m",
-    "conf": 0.95,
-    "cat": "validation"
-  }],
-  "meta": {
-    "confThreshold": 0.3,
-    "offline": false
-  },
-  "_compact": true
-}
-```
-
-### rules_list
-
-```json
-// Compact format (text omitted - IDs only for efficient lookup)
-{
-  "count": 2,
-  "ruleVer": 42,
-  "rules": [
-    { "id": "r1", "sev": "m", "conf": 0.95, "cat": "validation" },
-    { "id": "r2", "sev": "s", "conf": 0.85, "cat": "testing" }
-  ],
-  "_compact": true
-}
-```
-
-## Key Features
-
-- **Text omitted in compact mode**: Use `constraints_explain` tool to get full constraint details
-- **IDs preserved**: All IDs maintained for follow-up lookups
-- **Compact indicator**: `_compact: true` flag signals the format
-- **Confidence rounding**: Rounded to 2 decimals to reduce size
-- **Severity codes**: Abbreviated to 1-2 characters (m/s/st)
-- **Provenance modes**: Independent from format - can mix full format with compact provenance (AX-010)
-- **Single-char source codes**: Provenance sources use `p`/`r`/`b` for persona/rule/baseline
-
-## Workflow Pattern
-
-1. **Get list**: Use `constraints_derive` or `rules_list` with `format=compact` for efficient overview
-2. **Get details**: Use `constraints_explain` with specific constraint IDs to retrieve full text and reasoning
-3. **Provenance efficiency**: Use `provenance=compact` for token-constrained agents while maintaining explainability
-4. **Stay in context**: Compact responses use less tokens, preserving context window for agents
-
-## Payload Size Reduction
-
-Compact mode achieves:
-
-- **50-70%** size reduction for typical constraint lists
-- **60%+** reduction for large rule sets (100+ rules)
-- **25-35%** additional reduction with compact provenance (AX-010)
-- Preserves all IDs for follow-up lookups
-
-## Supported Tools
-
-- `persona_activate` (format parameter)
-- `constraints_derive` (format and provenance parameters)
-- `rules_list` (format parameter)
-
-## CLI Usage
-
-```bash
-# Full format with full provenance (default)
-lexsona constraints derive --json
-
-# Full format with compact provenance
-lexsona constraints derive --json --provenance compact
-
-# Use constraints_explain for detailed provenance on specific constraints
-lexsona constraints explain rule_123
-```
+Never interpret compactness as permission to omit safety-relevant constraints. A host must preserve
+the complete set internally when it attenuates what is shown to an agent.
