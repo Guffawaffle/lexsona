@@ -1,134 +1,111 @@
-# ADR-001: LexSona Architecture and Boundaries
+# ADR-001: LexSona architecture and boundaries
 
 **Status:** Accepted  
 **Date:** 2025-12-05  
-**Decision Makers:** Guff, Lex
+**Decision makers:** Guff, Lex
 
 ## Context
 
-LexSona was extracted from Lex to maintain clear separation of concerns. During the extraction, we identified the need to lock in firm architectural boundaries to prevent scope creep.
+LexSona was extracted from Lex so that remembering work, interpreting behavioral rules, and executing
+agent workflows would not collapse into one authority surface. The separation matters most when a
+persona or learned correction influences an agent: behavioral input must remain inspectable, scoped,
+and distinct from permission to act.
 
 ## Decision
 
-### Dependency Chain
+LexSona is a deterministic constraint engine. It combines a validated persona, applicable Lex-owned
+rules, baseline principles, and caller-supplied context into a constraint set. It returns that set to
+a consumer and does nothing with it.
 
-```
-Lex can run by itself.
-LexSona needs Lex.
-LexRunner needs both.
-```
-
-This is the **canonical layering** and is non-negotiable.
-
-### Layer Responsibilities
-
-| Layer                           | Responsibility                                                           | Does NOT Do                                   |
-| ------------------------------- | ------------------------------------------------------------------------ | --------------------------------------------- |
-| **Lex** (OSS core)              | Frames/memory, policy/contracts, behavioral rules storage + retrieval    | Interpret or enforce rules                    |
-| **LexSona** (constraint engine) | Interpret stored rules, manage persona/mode mechanics, run learning loop | Execute, tool-call, gate, or assemble prompts |
-| **LexRunner**                   | Execution layer, gates that apply constraints in real workflows          | Store memory, define personas                 |
-
-### The Socket Model
-
-Lex provides the **socket** for LexSona:
-
-```typescript
-// Lex exposes (socket)
-interface LexBehavioralSocket {
-  recordCorrection(correction: Correction): Promise<void>;
-  getRules(scope: RuleScope): Promise<BehaviorRule[]>;
-  // baseline.yaml constraints are read from canon/
-}
-
-// LexSona consumes (plug)
-interface LexSona {
-  connect(config: { lexDb: string }): Promise<LexSona>;
-  activate(personaId: string): Promise<void>;
-  deriveConstraints(context: DeriveContext): Promise<ConstraintSet>;
-  learn(correction: CorrectionInput): Promise<void>;
-}
+```text
+Lex storage socket ─┐
+persona + baseline ─┼─→ LexSona derivation ─→ constraint set ─→ consumer
+caller context ─────┘
 ```
 
-LexSona **plugs into** Lex's socket. It never duplicates storage or query logic.
+The consumer may be a human, an agent host, or LexRunner. Consumption does not transfer execution,
+authorization, prompt assembly, or gate ownership into LexSona.
 
-### Naming Convention
+### Layer responsibilities
 
-To maintain clear behavioral classification, LexSona uses **decision-style naming** for persona IDs. This convention describes _how_ an agent approaches decisions rather than _what_ it is.
+| Layer         | Responsibility                                                               | Does not do                                                            |
+| ------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| **Lex**       | Frames, work context, policy contracts, and the behavioral storage socket    | Interpret personas or execute derived constraints                      |
+| **LexSona**   | Load personas, interpret stored rules, derive and explain scoped constraints | Execute work, call tools, run gates, assemble prompts, or store Frames |
+| **LexRunner** | Optionally coordinate work and consume constraints in an execution workflow  | Define LexSona personas or own Lex memory                              |
 
-**Format:** `{behavioral-focus}_{domain}`
+Lex is independently useful. LexSona requires the Lex package. LexRunner is an optional consumer, not
+a prerequisite for derivation.
 
-| Persona ID                  | Behavioral Focus                               |
-| --------------------------- | ---------------------------------------------- |
-| `quality-first_engineering` | Prioritizes thoroughness, testing, correctness |
-| `momentum-first_product`    | Prioritizes velocity, shipping, iteration      |
-| `risk-reducer_operations`   | Prioritizes safety, asks when uncertain        |
+### Storage socket
 
-**Approved Behavioral Patterns:**
+LexSona imports behavioral APIs through `@smartergpt/lex/lexsona`, including correction recording,
+rule retrieval, persona persistence, and their types. LexSona may wrap those APIs but must not fork
+their durable semantics.
 
-- `quality-first`
-- `momentum-first`
-- `risk-reducer`
-- `scope-warden`
-- `test-first`
-- `observability-first`
-- `minimal-diff`
-- `user-advocate`
+The current connected adapter opens a Lex SQLite file. Its path may be supplied to `LexSona.connect()`
+or selected by compatibility discovery. A path and `LEX_DB_PATH` are storage selectors, not tenant or
+workspace authority. This adapter does not currently consume Lex 3 trusted workspace scope or a
+PostgreSQL/RLS-scoped store.
 
-## Non-Goals (Firm)
+Any future shared or multi-tenant connection must add an explicit trusted-scope binding without
+making environment variables authoritative and without weakening Lex's ownership of storage.
 
-LexSona does **NOT** do:
+### Determinism
 
-| ❌ Non-Goal                            | Why                                   |
-| -------------------------------------- | ------------------------------------- |
-| **Execution**                          | That's LexRunner                      |
-| **Tool calling**                       | That's LexRunner                      |
-| **Prompt assembly**                    | That's the consuming agent            |
-| **Gates/CI execution**                 | That's LexRunner                      |
-| **Frame storage**                      | That's Lex                            |
-| **Network requests during derivation** | Constraints must be derivable offline |
-| **Universal export format**            | No "constraint packs for any runtime" |
-| **Runtime auto-detection**             | Caller declares connection state      |
-| **Silent fallback**                    | Connected personas fail explicitly    |
+For the same validated persona, rules, baseline, context, and derivation configuration, LexSona must
+select and order the same constraints and produce the same input hash. Operational metadata such as
+`derivedAt` may vary, so the complete result object is not required to be byte-identical.
 
-## Developer Notes: Local Testing and Disconnected Mode
+Derivation performs no network requests. Offline-safe personas declare a confidence ceiling and a
+no-memory disclaimer. A persona with `requires_memory: true` fails explicitly when no Lex connection
+is available; LexSona never silently substitutes a persona.
 
-Key principles for local testing and disconnected operation:
+### Naming
 
-1. **Disconnected mode is first-class** — Constraint derivation without a Lex DB is valid behavior, not a fallback.
+Persona IDs use decision-style names in the form `{behavioral-focus}_{domain}`. The name describes
+how an agent approaches decisions rather than a job title or fictional identity. Examples include
+`quality-first_engineering` and `momentum-first_product`.
 
-2. **Offline-safe personas must declare safety parameters** — `confidence_ceiling` and `no_memory_disclaimer` are required when `requires_memory: false`.
+### Public and integration surfaces
 
-3. **No export/adapter commitments** — LexSona does not provide serialization for "any runtime." Personas are `.yaml` files; runtimes read them directly.
+The supported package entry points are the root export plus `/rules` and `/persona`. The `lexsona`
+CLI is public and uses noun-verb commands.
 
-4. **Local testing is a separate initiative** — See `lex/docs/stash/local-testing/` for the stashed local testing plan. It is explicitly deferred and does not affect LexSona's core design.
+The stdio MCP adapter is maintained in source for trusted-host development, but the current package
+does not expose it as a binary or public subpath. Hosts using it own launch, tool authorization,
+database selection, and result consumption.
 
-5. **Hard selection rule** — If `requires_memory: true` and no Lex connection, `deriveConstraints()` throws `PersonaRequiresMemoryError`. No silent substitution.
+## Non-goals
+
+LexSona does not own:
+
+- execution or orchestration;
+- tool calls, CI, or gates;
+- prompt assembly;
+- Frame storage;
+- tenant or workspace authorization;
+- network access during derivation;
+- automatic persona activation or fallback;
+- universal runtime adapters.
 
 ## Consequences
 
-1. **LexSona remains small and focused** - it's a constraint derivation engine, nothing more
-2. **Clean separation enables independent versioning** - Lex, LexSona, LexRunner can evolve at different paces
-3. **Behavioral naming provides clarity** - users and agents understand what decision-making style to expect
+- Consumers can review constraints independently of the mechanism that may apply them.
+- Lex remains useful without persona interpretation.
+- Connected derivation inherits the trust boundary of its explicitly selected Lex SQLite database.
+- Multi-tenant connected use remains deferred until a trusted scoped adapter exists.
+- Offline-safe derivation can be evaluated without storage, but it has a declared confidence ceiling
+  and cannot learn from prior corrections.
+- New CLI, MCP, or LexRunner features must preserve the distinction between behavioral guidance and
+  authority.
 
-## Implementation Notes
+## Review triggers
 
-### Files in Lex (Socket)
+Review this decision if:
 
-- `src/memory/store/lexsona-types.ts` - Type definitions
-- `src/memory/store/lexsona-queries.ts` - CRUD operations
-- `canon/constraints/baseline.yaml` - Neutral baseline constraints
-
-### Files in LexSona (Plug)
-
-- `src/core/lexsona.ts` - Main class
-- `src/persona/types.ts` - Persona definitions
-- `src/constraints/derive.ts` - Constraint derivation engine
-- `src/rules/types.ts` - Rule types (mirrors Lex's)
-
-## Review
-
-This ADR should be reviewed if:
-
-- The dependency chain needs to change
-- New non-goals emerge
-- The naming convention proves inadequate
+- LexSona accepts a trusted Lex 3 runtime scope or PostgreSQL backend;
+- a public MCP package surface is introduced;
+- constraint consumption moves into this package;
+- deterministic-selection requirements change;
+- persona naming or offline safety proves inadequate.

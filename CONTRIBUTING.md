@@ -59,7 +59,7 @@ When multiple PRs are in flight and need coordinated integration:
 3. **Run all gates on umbrella:**
 
    ```bash
-   npm run lint && npm run typecheck && npm test
+   npm run ci
    ```
 
 4. **Push umbrella and create PR to main:**
@@ -127,8 +127,8 @@ npm test
 # Specific test file
 npm test -- tests/unit/core/lexsona.spec.ts
 
-# With coverage
-npm run test:coverage
+# Full local gate (lint, typecheck, tests, and build)
+npm run ci
 ```
 
 ### Test Fixtures
@@ -153,12 +153,13 @@ See [tests/README.md](./tests/README.md) for detailed fixture documentation.
 From [AGENTS.md](./AGENTS.md):
 
 1. **Constraint Engine, Not Executor** - LexSona returns constraints, never executes
-2. **Lex is the Foundation** - LexSona uses Lex's storage APIs
-3. **Deterministic Outputs** - Same inputs = same constraint sets
-4. **Scoped by Design** - Rules are namespaced by domain/module
+2. **Lex owns behavioral storage** - LexSona consumes Lex's storage socket
+3. **Deterministic Selection** - Same validated inputs select the same constraints and input hash
+4. **Scoped by Design** - Rules remain bounded by their declared context
+5. **Guidance Is Not Authority** - A constraint never grants permission to act
 
 ## Questions?
 
 - Check [AGENTS.md](./AGENTS.md) for architecture questions
-- Check [README.mcp.md](./README.mcp.md) for MCP server usage
+- Check [README.mcp.md](./README.mcp.md) for the source-level MCP adapter boundary
 - Open an issue for bugs or feature requests
