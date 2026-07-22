@@ -1,0 +1,31 @@
+{
+  "schema": "lexsona-rack-profile/v1",
+  "campaign": "runtime-neutral-static",
+  "profileMode": "static",
+  "persona": "quality-first_engineering",
+  "personaVersion": "1.2.0",
+  "memory": "off",
+  "learningDuringRun": false,
+  "cases": [
+    {
+      "id": "unknown-runtime",
+      "context": {
+        "agent_family": "unknown-agent",
+        "runtime_family": "unknown-runtime",
+        "runtime_capabilities": []
+      },
+      "expectedIncluded": ["gather-context", "proportional-verification"],
+      "expectedOmitted": ["structured-edits"]
+    },
+    {
+      "id": "declared-structured-edit",
+      "context": {
+        "agent_family": "coding-agent",
+        "runtime_family": "generic-host",
+        "runtime_capabilities": ["structured-edit"]
+      },
+      "expectedIncluded": ["gather-context", "structured-edits"],
+      "expectedOmitted": []
+    }
+  ]
+}

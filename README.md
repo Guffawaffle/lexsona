@@ -121,6 +121,8 @@ lexsona rules list
 lexsona rules learn "Always run repository validation before committing"
 
 lexsona constraints derive --project my-repo --task implementation
+lexsona constraints derive --agent-family coding-agent --runtime-family generic-host \
+  --runtime-capability structured-edit
 lexsona constraints derive --project my-repo --task implementation --snapshot
 lexsona constraints show
 lexsona constraints explain
@@ -210,6 +212,10 @@ Offline-safe personas declare a `confidence_ceiling` and a `no_memory_disclaimer
 `requires_memory: true` fails explicitly when Lex storage is unavailable; LexSona does not silently
 substitute a different persona.
 
+Structured persona duties and constraint-pack entries may declare agent, runtime, or capability
+applicability. Missing or mismatched procedural prerequisites omit that item and produce bounded
+diagnostics. Capability names describe host observations only; they do not grant authority.
+
 Constraint conflicts, staleness, and excess are product risks, not reasons to hide provenance. Keep
 sets bounded, review high-impact rules, and use the explanation surface when a constraint affects a
 decision.
@@ -224,7 +230,8 @@ Start with the path that matches your role:
   [canonical constraint snapshots](docs/constraint-snapshot-v1.md),
   [error codes](docs/error-codes.md), and [auto-scope](docs/auto-scope.md).
 - **Designing personas:** the bundled [`personas/`](personas/) examples and
-  [constraint packs](docs/constraint-packs.md).
+  [constraint packs](docs/constraint-packs.md), plus the
+  [persona content governance and inventory](docs/persona-content-governance.md).
 - **Contributing:** [AGENTS.md](AGENTS.md), [CONTRIBUTING.md](CONTRIBUTING.md), and the accepted ADR.
 - **Developing an MCP host:** [README.mcp.md](README.mcp.md), with its current source-surface warning.
 

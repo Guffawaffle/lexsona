@@ -25,6 +25,13 @@ export const ConstraintsInputSchema = z.object({
   project: z.string().optional().describe("Project context filter"),
   module_id: z.string().optional().describe("Module ID filter"),
   task: z.string().optional().describe("Task type (e.g., 'implementation', 'review')"),
+  agent_family: z.string().optional().describe("Agent-family applicability context"),
+  runtime_family: z.string().optional().describe("Runtime-family applicability context"),
+  runtime_capabilities: z
+    .array(z.string().min(1))
+    .max(256)
+    .optional()
+    .describe("Host-declared capability observations; these never grant authority"),
   persona: z.string().optional().describe("Override active persona"),
   format: z
     .enum(["full", "compact"])
@@ -34,7 +41,7 @@ export const ConstraintsInputSchema = z.object({
   provenance: z
     .enum(["full", "compact"])
     .optional()
-    .describe("Provenance mode: 'full' (default) or 'compact' for lightweight explanations"),
+    .describe("Opt-in provenance mode: 'full' or 'compact' for lightweight explanations"),
   contract: z
     .enum(["constraint-set-v1", "snapshot-v1"])
     .optional()
@@ -175,6 +182,14 @@ export const LEXSONA_TOOLS: Tool[] = [
         project: { type: "string", description: "Project context filter" },
         module_id: { type: "string", description: "Module ID filter" },
         task: { type: "string", description: "Task type" },
+        agent_family: { type: "string", description: "Agent-family applicability context" },
+        runtime_family: { type: "string", description: "Runtime-family applicability context" },
+        runtime_capabilities: {
+          type: "array",
+          items: { type: "string" },
+          maxItems: 256,
+          description: "Host-declared capability observations; these never grant authority",
+        },
         persona: { type: "string", description: "Override persona" },
         format: {
           type: "string",
@@ -184,8 +199,7 @@ export const LEXSONA_TOOLS: Tool[] = [
         provenance: {
           type: "string",
           enum: ["full", "compact"],
-          description:
-            "Provenance mode: 'full' (default) or 'compact' for lightweight explanations",
+          description: "Opt-in provenance mode: 'full' or 'compact' for explanations",
         },
         contract: {
           type: "string",

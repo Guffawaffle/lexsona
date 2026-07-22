@@ -16,7 +16,12 @@
 import { createHash } from "crypto";
 import micromatch from "micromatch";
 import type { BehaviorRuleWithConfidence, RuleScope } from "../rules/types.js";
-import type { Persona } from "../persona/types.js";
+import type {
+  BehaviorApplicability,
+  BehaviorContentClassification,
+  Persona,
+  PersonaDuty,
+} from "../persona/types.js";
 
 /**
  * Error thrown when a persona requires memory but none is available
@@ -45,6 +50,10 @@ export interface DeriveContext {
   environment?: string;
   /** Agent family */
   agent_family?: string;
+  /** Host/runtime family (for example codex, copilot, or a custom runner) */
+  runtime_family?: string;
+  /** Capabilities declared by the host. These are observations, never grants. */
+  runtime_capabilities?: string[];
   /** Additional context tags */
   context_tags?: string[];
   /** Procedure for scope constraint overrides */
@@ -128,7 +137,30 @@ export interface ConstraintSet {
     offlineMode: boolean;
     /** Confidence ceiling applied (if offline-safe persona) */
     confidenceCeiling?: number;
+    /** Bounded diagnostics for behavior omitted by applicability filtering. */
+    applicability?: ApplicabilityDiagnostics;
   };
+}
+
+export type ApplicabilityOmissionReason =
+  | "classification-not-actionable"
+  | "agent-family-unknown"
+  | "agent-family-not-supported"
+  | "runtime-family-unknown"
+  | "runtime-family-not-supported"
+  | "capabilities-unknown"
+  | "capability-missing";
+
+export interface ApplicabilityOmission {
+  id: string;
+  classification: BehaviorContentClassification;
+  reason: ApplicabilityOmissionReason;
+  missing?: string[];
+}
+
+export interface ApplicabilityDiagnostics {
+  omitted: number;
+  samples: ApplicabilityOmission[];
 }
 
 /**
@@ -153,6 +185,7 @@ export interface DeriveConfig {
  * Used to ensure deterministic sorting when confidences are effectively equal
  */
 const CONFIDENCE_EPSILON = 0.0001;
+const MAX_APPLICABILITY_DIAGNOSTIC_SAMPLES = 12;
 
 const DEFAULT_CONFIG: Required<Omit<DeriveConfig, "hasLexConnection">> & {
   hasLexConnection: boolean;
@@ -197,17 +230,18 @@ export function scopeMatches(scope: RuleScope, context: DeriveContext): boolean 
   }
 
   // Environment - exact match if specified
-  if (scope.environment && context.environment && scope.environment !== context.environment) {
-    return false;
+  if (scope.environment) {
+    if (!context.environment || scope.environment !== context.environment) return false;
   }
 
   // Agent family - exact match if specified
-  if (scope.agent_family && context.agent_family && scope.agent_family !== context.agent_family) {
-    return false;
+  if (scope.agent_family) {
+    if (!context.agent_family || scope.agent_family !== context.agent_family) return false;
   }
 
   // Context tags - all specified tags must be present
-  if (scope.context_tags && scope.context_tags.length > 0 && context.context_tags) {
+  if (scope.context_tags && scope.context_tags.length > 0) {
+    if (!context.context_tags) return false;
     const contextTagSet = new Set(context.context_tags);
     for (const tag of scope.context_tags) {
       if (!contextTagSet.has(tag)) {
@@ -286,42 +320,105 @@ function calculateInputHash(
   principles: Principle[],
   context: DeriveContext
 ): string {
-  // Sort rule IDs for determinism
-  const ruleIds = rules.map((r) => r.rule_id).sort();
-  const principleIds = principles.map((p) => p.id).sort();
-
-  // Include constraint pack IDs in hash for cache invalidation
-  const constraintPackIds: string[] = [];
-  if (persona.constraints) {
-    for (const [packName, constraints] of Object.entries(persona.constraints)) {
-      for (const constraint of constraints) {
-        constraintPackIds.push(`${packName}:${constraint.id}`);
-      }
-    }
-    constraintPackIds.sort();
-  }
-
   // Create a stable representation of the input
   const input = {
-    personaId: persona.id,
-    personaVersion: persona.version,
-    ruleIds,
-    principleIds,
-    constraintPackIds,
+    persona,
+    rules: [...rules].sort((a, b) => a.rule_id.localeCompare(b.rule_id)),
+    principles: [...principles].sort((a, b) => a.id.localeCompare(b.id)),
     context: {
       domain: context.domain || "",
       module_id: context.module_id || "",
       taskType: context.taskType || "",
       environment: context.environment || "",
       agent_family: context.agent_family || "",
+      runtime_family: context.runtime_family || "",
+      runtime_capabilities: [...new Set(context.runtime_capabilities || [])].sort(),
       context_tags: (context.context_tags || []).slice().sort(),
       files: (context.files || []).slice().sort(),
     },
   };
 
   const hash = createHash("sha256");
-  hash.update(JSON.stringify(input));
+  hash.update(canonicalJson(input));
   return hash.digest("hex");
+}
+
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.entries(value as Record<string, unknown>)
+      .filter(([, entry]) => entry !== undefined)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, entry]) => `${JSON.stringify(key)}:${canonicalJson(entry)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
+}
+
+function dutyFields(
+  duty: PersonaDuty,
+  fallbackId: string
+): {
+  id: string;
+  statement: string;
+  classification: BehaviorContentClassification;
+  applicability?: BehaviorApplicability;
+} {
+  if (typeof duty === "string") {
+    return {
+      id: fallbackId,
+      statement: duty,
+      classification: "behavioral-invariant",
+    };
+  }
+  return duty;
+}
+
+function legacyDutyId(duty: PersonaDuty, fallback: string): string {
+  return typeof duty === "string" ? duty.slice(0, 20).replace(/\s+/g, "-") : fallback;
+}
+
+function applicabilityOmission(
+  id: string,
+  classification: BehaviorContentClassification,
+  applicability: BehaviorApplicability | undefined,
+  context: DeriveContext
+): ApplicabilityOmission | undefined {
+  if (
+    classification === "repository-policy" ||
+    classification === "historical-guidance" ||
+    classification === "stale"
+  ) {
+    return { id, classification, reason: "classification-not-actionable" };
+  }
+  if (!applicability) return undefined;
+
+  if (applicability.agent_families) {
+    if (!context.agent_family) return { id, classification, reason: "agent-family-unknown" };
+    if (!applicability.agent_families.includes(context.agent_family)) {
+      return { id, classification, reason: "agent-family-not-supported" };
+    }
+  }
+  if (applicability.runtime_families) {
+    if (!context.runtime_family) return { id, classification, reason: "runtime-family-unknown" };
+    if (!applicability.runtime_families.includes(context.runtime_family)) {
+      return { id, classification, reason: "runtime-family-not-supported" };
+    }
+  }
+  if (applicability.requires_capabilities) {
+    if (!context.runtime_capabilities) {
+      return { id, classification, reason: "capabilities-unknown" };
+    }
+    const available = new Set(context.runtime_capabilities);
+    const missing = applicability.requires_capabilities.filter(
+      (capability) => !available.has(capability)
+    );
+    if (missing.length > 0) {
+      return { id, classification, reason: "capability-missing", missing: missing.sort() };
+    }
+  }
+
+  return undefined;
 }
 
 /**
@@ -435,14 +532,26 @@ export function deriveConstraints(
   // Convert persona duties (mustDo, shouldDo, mustNotDo) to constraints
   // Duties are optional - some test personas or minimal personas may not have them
   const personaConstraints: Constraint[] = [];
+  const applicabilityOmissions: ApplicabilityOmission[] = [];
   const duties = persona.duties ?? { mustDo: [], mustNotDo: [] };
 
-  // mustDo → severity: must, confidence: 1.0 (authoritative)
+  // mustDo → severity: must, confidence: 1.0 (static persona content)
   if (duties.mustDo && duties.mustDo.length > 0) {
-    for (const duty of duties.mustDo) {
+    for (const [index, duty] of duties.mustDo.entries()) {
+      const item = dutyFields(duty, legacyDutyId(duty, `must-${index + 1}`));
+      const omission = applicabilityOmission(
+        item.id,
+        item.classification,
+        item.applicability,
+        context
+      );
+      if (omission) {
+        applicabilityOmissions.push(omission);
+        continue;
+      }
       personaConstraints.push({
-        rule_id: `persona:${persona.id}:must:${duty.slice(0, 20).replace(/\s+/g, "-")}`,
-        text: duty,
+        rule_id: `persona:${persona.id}:must:${item.id}`,
+        text: item.statement,
         severity: "must",
         confidence: 1.0,
         category: "persona-duty",
@@ -456,12 +565,23 @@ export function deriveConstraints(
     }
   }
 
-  // shouldDo → severity: should, confidence: 1.0 (authoritative)
+  // shouldDo → severity: should, confidence: 1.0 (static persona content)
   if (duties.shouldDo && duties.shouldDo.length > 0) {
-    for (const duty of duties.shouldDo) {
+    for (const [index, duty] of duties.shouldDo.entries()) {
+      const item = dutyFields(duty, legacyDutyId(duty, `should-${index + 1}`));
+      const omission = applicabilityOmission(
+        item.id,
+        item.classification,
+        item.applicability,
+        context
+      );
+      if (omission) {
+        applicabilityOmissions.push(omission);
+        continue;
+      }
       personaConstraints.push({
-        rule_id: `persona:${persona.id}:should:${duty.slice(0, 20).replace(/\s+/g, "-")}`,
-        text: duty,
+        rule_id: `persona:${persona.id}:should:${item.id}`,
+        text: item.statement,
         severity: "should",
         confidence: 1.0,
         category: "persona-duty",
@@ -478,14 +598,26 @@ export function deriveConstraints(
   // mustNotDo → severity: must, confidence: 1.0 (inverted - "Do not X")
   // We prefix with "Do not" to make it clear this is a prohibition
   if (duties.mustNotDo && duties.mustNotDo.length > 0) {
-    for (const duty of duties.mustNotDo) {
+    for (const [index, duty] of duties.mustNotDo.entries()) {
+      const item = dutyFields(duty, legacyDutyId(duty, `must-not-${index + 1}`));
+      const omission = applicabilityOmission(
+        item.id,
+        item.classification,
+        item.applicability,
+        context
+      );
+      if (omission) {
+        applicabilityOmissions.push(omission);
+        continue;
+      }
       // If the duty already starts with "not" or "never", use as-is
       const text =
-        duty.toLowerCase().startsWith("not ") || duty.toLowerCase().startsWith("never ")
-          ? duty
-          : `Do not: ${duty}`;
+        item.statement.toLowerCase().startsWith("not ") ||
+        item.statement.toLowerCase().startsWith("never ")
+          ? item.statement
+          : `Do not: ${item.statement}`;
       personaConstraints.push({
-        rule_id: `persona:${persona.id}:must-not:${duty.slice(0, 20).replace(/\s+/g, "-")}`,
+        rule_id: `persona:${persona.id}:must-not:${item.id}`,
         text,
         severity: "must",
         confidence: 1.0,
@@ -506,6 +638,17 @@ export function deriveConstraints(
   if (persona.constraints) {
     for (const [packName, packConstraints] of Object.entries(persona.constraints)) {
       for (const constraint of packConstraints) {
+        const classification = constraint.classification ?? "behavioral-invariant";
+        const omission = applicabilityOmission(
+          `${packName}:${constraint.id}`,
+          classification,
+          constraint.applicability,
+          context
+        );
+        if (omission) {
+          applicabilityOmissions.push(omission);
+          continue;
+        }
         // Filter by file scope if files are provided in context
         let includeConstraint = true;
         if (context.files && context.files.length > 0) {
@@ -544,7 +687,7 @@ export function deriveConstraints(
   }
 
   // Merge: persona constraints come first (highest priority), then learned rules
-  const allConstraints = [...personaConstraints, ...constraints];
+  const allConstraints = [...personaConstraints, ...constraints].slice(0, cfg.maxConstraints);
 
   // Calculate stable input hash
   const inputHash = calculateInputHash(persona, rules, principles, context);
@@ -562,6 +705,10 @@ export function deriveConstraints(
       confidenceThreshold: cfg.confidenceThreshold,
       offlineMode: isOfflineMode,
       confidenceCeiling,
+      applicability: {
+        omitted: applicabilityOmissions.length,
+        samples: applicabilityOmissions.slice(0, MAX_APPLICABILITY_DIAGNOSTIC_SAMPLES),
+      },
     },
   };
 }

@@ -6,12 +6,12 @@ selection.
 
 ## Availability
 
-| Surface                  | Compact control                                                                                    |
-| ------------------------ | -------------------------------------------------------------------------------------------------- |
-| MCP `constraints_derive` | `format: "compact"` and optional `provenance: "compact"`                                           |
-| MCP `rules_list`         | `format: "compact"`                                                                                |
-| MCP `persona_activate`   | `format: "compact"`                                                                                |
-| CLI `constraints derive` | `--provenance compact` compacts nested provenance only; the CLI has no whole-response compact flag |
+| Surface                  | Compact control                                                                            |
+| ------------------------ | ------------------------------------------------------------------------------------------ |
+| MCP `constraints_derive` | `format: "compact"` and optional `provenance: "compact"`; provenance is omitted by default |
+| MCP `rules_list`         | `format: "compact"`                                                                        |
+| MCP `persona_activate`   | `format: "compact"`                                                                        |
+| CLI `constraints derive` | `--provenance compact` opts into compact nested provenance; default JSON omits it          |
 
 The MCP adapter is currently a source-level integration surface; read [README.mcp.md](../README.mcp.md)
 before embedding it.

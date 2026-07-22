@@ -135,6 +135,9 @@ export async function handleConstraints(
     domain: scoping.project,
     module_id: scoping.module_id,
     taskType: input.task,
+    agent_family: input.agent_family,
+    runtime_family: input.runtime_family,
+    runtime_capabilities: input.runtime_capabilities,
   };
 
   if (input.contract === "snapshot-v1") {
@@ -178,6 +181,9 @@ export async function handleConstraints(
         ...(result.metadata.confidenceCeiling !== undefined && {
           confCeiling: result.metadata.confidenceCeiling,
         }),
+        ...(result.metadata.applicability && {
+          applicability: result.metadata.applicability,
+        }),
       },
     };
     return addCompactFlag(compactResult, format);
@@ -188,6 +194,15 @@ export async function handleConstraints(
     return {
       ...result,
       constraints: formatConstraints(result.constraints, format, provenanceMode),
+    };
+  }
+
+  if (!provenanceMode) {
+    return {
+      ...result,
+      constraints: result.constraints.map(
+        ({ provenance: _provenance, ...constraint }) => constraint
+      ),
     };
   }
 

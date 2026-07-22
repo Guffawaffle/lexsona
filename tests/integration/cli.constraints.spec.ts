@@ -124,11 +124,24 @@ describe("constraints CLI", () => {
       "cli/commands",
       "--task",
       "implementation",
+      "--agent-family",
+      "openai",
+      "--runtime-family",
+      "codex",
+      "--runtime-capability",
+      "structured-edit",
       "--json",
     ]);
 
     expect(connectSpy).toHaveBeenCalledTimes(1);
     expect(stubInstance.deriveConstraints).toHaveBeenCalledTimes(1);
+    expect(stubInstance.deriveConstraints).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agent_family: "openai",
+        runtime_family: "codex",
+        runtime_capabilities: ["structured-edit"],
+      })
+    );
     expect(stubInstance.close).toHaveBeenCalledTimes(1);
     expect(errorSpy).not.toHaveBeenCalled();
 
@@ -144,6 +157,7 @@ describe("constraints CLI", () => {
     expect(parsed.constraints).toHaveLength(2);
     expect(parsed.constraints[0].severity).toBe("critical");
     expect(parsed.constraints[0].source).toBe("learned");
+    expect(parsed.constraints[0]).not.toHaveProperty("provenance");
 
     // Cache should be written (raw ConstraintSet)
     expect(existsSync(cachePath)).toBe(true);
@@ -398,6 +412,8 @@ describe("constraints CLI", () => {
       "--persona",
       "quality-first_engineering",
       "--json",
+      "--provenance",
+      "full",
     ]);
 
     expect(errorSpy).not.toHaveBeenCalled();

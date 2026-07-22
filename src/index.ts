@@ -41,7 +41,17 @@ export {
   type AgentFamily,
   type Procedure,
 } from "./constraints/token-budget.js";
-export { type Persona, type PersonaManifest } from "./persona/types.js";
+export {
+  BehaviorApplicabilitySchema,
+  BehaviorContentClassificationSchema,
+  PersonaDutyItemSchema,
+  type BehaviorApplicability,
+  type BehaviorContentClassification,
+  type Persona,
+  type PersonaDuty,
+  type PersonaDutyItem,
+  type PersonaManifest,
+} from "./persona/types.js";
 export {
   type BehaviorRule,
   type CorrectionInput,

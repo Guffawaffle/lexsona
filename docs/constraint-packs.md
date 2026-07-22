@@ -21,6 +21,11 @@ constraints:
       statement: "Description of the constraint"
       severity: error | warning | info
       appliesTo: ["file/pattern/**/*.ts"]
+      classification: behavioral-invariant
+      applicability: # optional; selects guidance and never grants capabilities
+        agent_families: [coding-agent]
+        runtime_families: [example-host]
+        requires_capabilities: [structured-edit]
 ```
 
 ### Fields
@@ -32,6 +37,10 @@ constraints:
   - `warning` → maps to `should` severity (medium priority)
   - `info` → maps to `style` severity (low priority)
 - **appliesTo**: Array of glob patterns for file matching
+- **classification**: Review class described in
+  [persona content governance](persona-content-governance.md). Bundled content declares this field.
+- **applicability**: Optional agent/runtime/capability preconditions. Unknown or mismatched
+  preconditions omit the item with bounded diagnostics. They never authorize the named capability.
 
 ## Example: Agent Integration Pack
 
@@ -49,11 +58,6 @@ constraints:
       statement: "Test fixtures must include all required and commonly-used optional fields"
       severity: warning
       appliesTo: ["tests/**/*.spec.ts", "tests/**/*.test.ts"]
-
-    - id: export-new-types
-      statement: "New public types must be exported from the nearest index.ts"
-      severity: error
-      appliesTo: ["src/**/*.ts"]
 
     - id: mock-data-realism
       statement: "Mock data should use realistic values that match production patterns"
@@ -91,10 +95,9 @@ lexsona constraints derive \
 
 # Output:
 # Active Constraints:
-#   📋 agent-integration pack (4 rules)
+#   📋 agent-integration pack (3 rules)
 #     • interface-completeness (error)
 #     • fixture-schema-sync (warning)
-#     • export-new-types (error)
 #     • mock-data-realism (warning)
 ```
 
@@ -113,11 +116,11 @@ const result = deriveConstraints(persona, [], [], {
 const result = deriveConstraints(persona, [], [], {
   files: ["src/core/types.ts"],
 });
-// Returns: interface-completeness, export-new-types
+// Returns: interface-completeness
 
 // No file filter = all constraints included
 const result = deriveConstraints(persona, [], [], {});
-// Returns: all 4 constraints
+// Returns: all 3 constraints
 ```
 
 ## Pattern Matching
@@ -145,15 +148,17 @@ All persona-defined constraints (duties + packs) have confidence = 1.0.
 2. **Scoped activation** - Only relevant constraints are active based on file patterns
 3. **Auditable** - All constraints have clear provenance and can be traced
 4. **Optional** - Personas can function without constraint packs
+5. **Non-authoritative** - Applicability observes host facts; it cannot grant tools or mutations
 
 ## Creating New Constraint Packs
 
 To add a new constraint pack:
 
 1. Add the pack definition to the persona YAML under `constraints:`
-2. Define each constraint with id, statement, severity, and appliesTo patterns
+2. Define each constraint with id, statement, severity, appliesTo patterns, and classification
 3. Ensure patterns use valid glob syntax
 4. Test with `deriveConstraints()` to verify filtering works correctly
+5. Bump the persona version and update the bundled inventory for behavior-bearing changes
 
 Example:
 

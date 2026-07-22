@@ -96,6 +96,7 @@ Offline-safe personas must declare both `confidence_ceiling` and `no_memory_disc
 - Read before editing and keep one change inside its owning issue.
 - Never weaken the non-execution boundary to make an integration convenient.
 - Update user, agent, and protocol documentation when a public surface changes.
+- Export new public types from the nearest owning `index.ts` surface.
 
 Run the checks proportionate to the change:
 

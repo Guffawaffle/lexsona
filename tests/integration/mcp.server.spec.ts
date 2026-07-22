@@ -127,6 +127,9 @@ describe("MCP Server Integration", () => {
       expect(tool?.inputSchema.properties).toHaveProperty("task");
       expect(tool?.inputSchema.properties).toHaveProperty("contract");
       expect(tool?.inputSchema.properties).toHaveProperty("bindings");
+      expect(tool?.inputSchema.properties).toHaveProperty("agent_family");
+      expect(tool?.inputSchema.properties).toHaveProperty("runtime_family");
+      expect(tool?.inputSchema.properties).toHaveProperty("runtime_capabilities");
     });
 
     it("has proper schema for rules_learn", () => {
@@ -240,6 +243,27 @@ describe("MCP Server Integration", () => {
       );
 
       expect((result as any).personaId).toBe("momentum-first_product");
+    });
+
+    it("projects declared agent and runtime facts without treating them as authority", async () => {
+      const state = { activePersonaId: "quality-first_engineering" };
+      const result = await handleConstraints(
+        {
+          agent_family: "openai",
+          runtime_family: "codex",
+          runtime_capabilities: ["structured-edit"],
+        },
+        state,
+        async () => mockLexSona
+      );
+
+      expect((result as any).context).toMatchObject({
+        agent_family: "openai",
+        runtime_family: "codex",
+        runtime_capabilities: ["structured-edit"],
+      });
+      expect(result).not.toHaveProperty("authority");
+      expect((result as any).metadata.applicability).toBeDefined();
     });
   });
 
