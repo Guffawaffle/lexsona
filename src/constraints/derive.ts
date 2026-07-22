@@ -332,7 +332,9 @@ function calculateInputHash(
       environment: context.environment || "",
       agent_family: context.agent_family || "",
       runtime_family: context.runtime_family || "",
-      runtime_capabilities: [...new Set(context.runtime_capabilities || [])].sort(),
+      ...(context.runtime_capabilities !== undefined && {
+        runtime_capabilities: [...new Set(context.runtime_capabilities)].sort(),
+      }),
       context_tags: (context.context_tags || []).slice().sort(),
       files: (context.files || []).slice().sort(),
     },

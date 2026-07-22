@@ -718,6 +718,14 @@ describe("deriveConstraints", () => {
       expect(result1.inputHash).not.toBe(result2.inputHash);
     });
 
+    it("distinguishes unknown from explicitly empty runtime capabilities", () => {
+      const persona = createTestPersona();
+      const unknown = deriveConstraints(persona, [], [], {});
+      const knownEmpty = deriveConstraints(persona, [], [], { runtime_capabilities: [] });
+
+      expect(unknown.inputHash).not.toBe(knownEmpty.inputHash);
+    });
+
     it("produces same inputHash regardless of rule order", () => {
       const persona = createTestPersona();
       const rules1 = [

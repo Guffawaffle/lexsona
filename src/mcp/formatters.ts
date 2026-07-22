@@ -90,8 +90,7 @@ export function formatConstraint(
   format: OutputFormat,
   provenanceMode?: ProvenanceMode
 ): Constraint | CompactConstraint {
-  // Use format as provenanceMode default if not specified
-  const provMode = provenanceMode ?? format;
+  const provMode = provenanceMode;
 
   if (format === "compact") {
     const compact: CompactConstraint = {
@@ -103,9 +102,9 @@ export function formatConstraint(
     };
 
     // Add provenance if available
-    const formattedProv = formatProvenance(c.provenance, provMode);
-    if (formattedProv) {
-      compact.prov = formattedProv as CompactProvenance;
+    if (provMode) {
+      const formattedProv = formatProvenance(c.provenance, provMode);
+      if (formattedProv) compact.prov = formattedProv as CompactProvenance;
     }
 
     return compact;
@@ -123,7 +122,9 @@ export function formatConstraint(
     return result as Constraint;
   }
 
-  return c;
+  if (provMode === "full") return c;
+  const { provenance: _provenance, ...withoutProvenance } = c;
+  return withoutProvenance;
 }
 
 /**
