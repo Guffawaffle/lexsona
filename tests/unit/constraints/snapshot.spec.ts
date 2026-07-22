@@ -217,6 +217,7 @@ describe("ConstraintSnapshot_v1", () => {
     expect(absent.canonicalTimestamp).toBeUndefined();
     expect(supplied.canonicalTimestamp).toBe("2026-07-21T12:00:00.000Z");
     expect(supplied.contentDigest).not.toBe(absent.contentDigest);
+    expect(() => build({ canonicalTimestamp: "2026-07-21T07:00:00" })).toThrow();
   });
 
   it("never grants authority and intersects requests with the authorized ceiling", () => {

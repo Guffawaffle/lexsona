@@ -32,6 +32,7 @@ const MAX_COMPACT_TEXT_LENGTH = 240;
 const DigestSchema = z.string().regex(/^sha256:[a-f0-9]{64}$/);
 const BoundedIdentifierSchema = z.string().min(1).max(256);
 const BoundedTextSchema = z.string().min(1).max(MAX_TEXT_LENGTH);
+const CanonicalTimestampInputSchema = z.string().datetime({ offset: true });
 
 export const SnapshotBindingsV1Schema = z
   .object({
@@ -335,8 +336,8 @@ function applyAuthorityCeiling(
 
 function canonicalTimestamp(value: string | undefined): string | undefined {
   if (value === undefined) return undefined;
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.valueOf())) throw new TypeError("canonicalTimestamp must be RFC 3339");
+  const validated = CanonicalTimestampInputSchema.parse(value);
+  const parsed = new Date(validated);
   return parsed.toISOString();
 }
 

@@ -234,6 +234,22 @@ describe("constraints CLI", () => {
     expect(logSpy).toHaveBeenCalledTimes(1);
     expect(JSON.parse(String(logSpy.mock.calls[0][0]))).toEqual(snapshot);
     expect(existsSync(cachePath)).toBe(false);
+
+    vi.mocked(stubInstance.deriveConstraintSnapshot).mockClear();
+    logSpy.mockClear();
+    await createProgram().parseAsync([
+      "node",
+      "lexsona",
+      "constraints",
+      "derive",
+      "--persona",
+      "quality-first_engineering",
+      "--snapshot",
+    ]);
+    expect(stubInstance.deriveConstraintSnapshot).toHaveBeenCalledWith(
+      { domain: undefined, module_id: undefined, taskType: undefined },
+      expect.not.objectContaining({ bindings: expect.anything() })
+    );
   });
 
   it("show --json reads cached derivation and does not reconnect", async () => {

@@ -137,8 +137,6 @@ export async function handleConstraints(
     taskType: input.task,
   };
 
-  const result = deriveConstraints(persona, sonaRules, [], context);
-
   if (input.contract === "snapshot-v1") {
     const baseline = getBaseline();
     const snapshotSet = deriveConstraints(persona, sonaRules, baseline.principles, context, {
@@ -157,6 +155,8 @@ export async function handleConstraints(
     });
     return input.format === "compact" ? snapshot.compact : snapshot;
   }
+
+  const result = deriveConstraints(persona, sonaRules, [], context);
 
   const format: OutputFormat = input.format ?? "full";
   const provenanceMode = input.provenance;

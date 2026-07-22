@@ -22,7 +22,10 @@ import {
 import { isJsonMode } from "../output.js";
 import { formatProvenance } from "../../mcp/formatters.js";
 import { inferScope } from "../../scope/index.js";
-import { serializeConstraintSnapshotV1 } from "../../constraints/snapshot.js";
+import {
+  serializeConstraintSnapshotV1,
+  type SnapshotBindingsV1,
+} from "../../constraints/snapshot.js";
 
 function getProjectConstraintsCachePath(): string {
   return join(process.cwd(), ".smartergpt", "lexsona-constraints.json");
@@ -339,21 +342,21 @@ export function registerConstraintsCommands(program: Command): void {
       try {
         instance = await LexSona.connect(config);
         if (options.snapshot) {
-          const bindings = {
-            tenant: options.tenant,
-            workspace: options.workspace,
-            repositoryInstance: options.repositoryInstance,
-            run: options.run,
-            attempt: options.attempt,
-            workerRole: options.workerRole,
-            modelFamily: options.modelFamily,
-            task: options.task,
-            phase: options.phase,
-          };
+          const bindings = Object.fromEntries(
+            Object.entries({
+              tenant: options.tenant,
+              workspace: options.workspace,
+              repositoryInstance: options.repositoryInstance,
+              run: options.run,
+              attempt: options.attempt,
+              workerRole: options.workerRole,
+              modelFamily: options.modelFamily,
+              task: options.task,
+              phase: options.phase,
+            }).filter(([, value]) => value !== undefined)
+          ) as SnapshotBindingsV1;
           const snapshot = await instance.deriveConstraintSnapshot(context, {
-            bindings: Object.fromEntries(
-              Object.entries(bindings).filter(([, value]) => value !== undefined)
-            ),
+            ...(Object.keys(bindings).length > 0 && { bindings }),
             canonicalTimestamp: options.canonicalTimestamp,
             provenanceRef: options.provenanceRef,
           });
