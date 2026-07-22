@@ -89,7 +89,9 @@ no-memory disclaimer that a consuming host should present when it applies the re
 
 Constraint selection and input hashing are deterministic for the same validated persona, rules,
 context, and configuration. Response metadata such as `derivedAt` is intentionally time-varying, so
-complete JSON responses are not byte-identical.
+complete compatibility `ConstraintSet` responses are not byte-identical. Use
+[`ConstraintSnapshot_v1`](docs/constraint-snapshot-v1.md) when a run needs canonical byte-stable
+identity, full behavior-bearing source digests, and a bounded projection.
 
 ## Let your agent evaluate the fit
 
@@ -119,6 +121,7 @@ lexsona rules list
 lexsona rules learn "Always run repository validation before committing"
 
 lexsona constraints derive --project my-repo --task implementation
+lexsona constraints derive --project my-repo --task implementation --snapshot
 lexsona constraints show
 lexsona constraints explain
 
@@ -147,6 +150,11 @@ const constraints = await sona.deriveConstraints({
   module_id: "api",
   taskType: "implementation",
 });
+
+const snapshot = await sona.deriveConstraintSnapshot(
+  { domain: "my-repository", module_id: "api", taskType: "implementation" },
+  { bindings: { workspace: "my-workspace", attempt: "attempt-1" } }
+);
 
 sona.close();
 ```
@@ -213,6 +221,7 @@ Start with the path that matches your role:
 - **Considering adoption:** [agent fit evaluation](docs/agent-evaluation.md), then
   [architecture and boundaries](docs/ADR-001-architecture.md).
 - **Integrating an agent:** [compact output](docs/COMPACT_FORMAT.md),
+  [canonical constraint snapshots](docs/constraint-snapshot-v1.md),
   [error codes](docs/error-codes.md), and [auto-scope](docs/auto-scope.md).
 - **Designing personas:** the bundled [`personas/`](personas/) examples and
   [constraint packs](docs/constraint-packs.md).

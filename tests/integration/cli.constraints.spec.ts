@@ -14,6 +14,7 @@ import { tmpdir } from "os";
 import { registerConstraintsCommands } from "../../src/cli/commands/constraints.js";
 import { LexSona } from "../../src/core/lexsona.js";
 import type { ConstraintSet } from "../../src/constraints/derive.js";
+import type { ConstraintSnapshotV1 } from "../../src/constraints/snapshot.js";
 
 function createProgram(): Command {
   const program = new Command();
@@ -149,6 +150,90 @@ describe("constraints CLI", () => {
     const cached = JSON.parse(readFileSync(cachePath, "utf-8")) as ConstraintSet;
     expect(cached.personaId).toBe("quality-first_engineering");
     expect(cached.context.domain).toBe("lexrunner");
+  });
+
+  it("derive --snapshot emits canonical v1 JSON and forwards identity bindings", async () => {
+    const digest = `sha256:${"a".repeat(64)}`;
+    const snapshot: ConstraintSnapshotV1 = {
+      contract: "ConstraintSnapshot_v1",
+      schemaVersion: 1,
+      engine: { name: "@smartergpt/lexsona", version: "1.1.0" },
+      bindings: { workspace: "lex-mcp", attempt: "attempt-1", task: "implementation" },
+      persona: { id: "quality-first_engineering", version: "1.0.0", digest },
+      sources: {
+        baseline: { revision: "1", digest },
+        ruleSet: { revision: "0", digest, count: 0 },
+        constraintPacks: [],
+      },
+      derivation: {
+        mode: "offline",
+        context: { contextTags: [], files: [] },
+        confidence: { threshold: 0.3, ceiling: 0.7 },
+      },
+      authority: {
+        grantsAuthority: false,
+        requestedScope: {
+          readGlobs: ["**/*"],
+          writeGlobs: [],
+          denyGlobs: [".git/**"],
+          crossRepoAllowed: false,
+        },
+      },
+      principles: [],
+      constraints: [],
+      resolutions: {
+        contradictions: { count: 0, samples: [] },
+        exclusions: { count: 0, reasonCounts: [], sampleRuleIds: [] },
+      },
+      contentDigest: digest,
+      compact: {
+        contract: "ConstraintSnapshot_v1",
+        schemaVersion: 1,
+        digest,
+        persona: "quality-first_engineering@1.0.0",
+        mode: "offline",
+        grantsAuthority: false,
+        principles: [],
+        constraints: [],
+        omitted: { principles: 0, constraints: 0 },
+      },
+    };
+    const stubInstance = {
+      deriveConstraintSnapshot: vi.fn(async () => snapshot),
+      close: vi.fn(),
+    } as unknown as LexSona;
+    vi.spyOn(LexSona, "connect").mockResolvedValue(stubInstance);
+
+    const program = createProgram();
+    await program.parseAsync([
+      "node",
+      "lexsona",
+      "constraints",
+      "derive",
+      "--persona",
+      "quality-first_engineering",
+      "--task",
+      "implementation",
+      "--snapshot",
+      "--workspace",
+      "lex-mcp",
+      "--attempt",
+      "attempt-1",
+    ]);
+
+    expect(stubInstance.deriveConstraintSnapshot).toHaveBeenCalledWith(
+      { domain: undefined, module_id: undefined, taskType: "implementation" },
+      expect.objectContaining({
+        bindings: expect.objectContaining({
+          workspace: "lex-mcp",
+          attempt: "attempt-1",
+          task: "implementation",
+        }),
+      })
+    );
+    expect(logSpy).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(String(logSpy.mock.calls[0][0]))).toEqual(snapshot);
+    expect(existsSync(cachePath)).toBe(false);
   });
 
   it("show --json reads cached derivation and does not reconnect", async () => {

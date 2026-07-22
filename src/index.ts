@@ -6,8 +6,30 @@
  * @module
  */
 
-export { LexSona, type LexSonaConfig } from "./core/lexsona.js";
+export {
+  LexSona,
+  type LexSonaConfig,
+  type DeriveConstraintSnapshotOptions,
+} from "./core/lexsona.js";
 export { deriveConstraints, type DeriveContext, type ConstraintSet } from "./constraints/derive.js";
+export {
+  CONSTRAINT_SNAPSHOT_V1_CONTRACT,
+  CONSTRAINT_SNAPSHOT_V1_SCHEMA_VERSION,
+  CONSTRAINT_SNAPSHOT_V1_JSON_SCHEMA,
+  ConstraintSnapshotV1Schema,
+  SnapshotBindingsV1Schema,
+  SnapshotScopeV1Schema,
+  canonicalizeConstraintSnapshotValue,
+  createConstraintSnapshotV1,
+  digestConstraintSnapshotValue,
+  parseConstraintSnapshotV1,
+  serializeConstraintSnapshotV1,
+  type ConstraintSnapshotAuthorityCeilingV1,
+  type ConstraintSnapshotV1,
+  type CreateConstraintSnapshotV1Input,
+  type SnapshotBindingsV1,
+  type SnapshotScopeV1,
+} from "./constraints/snapshot.js";
 export {
   deriveTokenBudget,
   getOptimalBudget,
