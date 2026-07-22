@@ -136,8 +136,16 @@ async function main(): Promise<void> {
         case "constraints_derive": {
           const input = ConstraintsInputSchema.parse(args);
           result = await handleConstraints(input, state, ensureConnected);
-          // Cache the derivation for show/explain
-          lastDerivation = result as ConstraintSet;
+          // Snapshot projections are separate immutable contracts. Preserve the
+          // compatibility cache only for full ConstraintSet responses.
+          if (
+            "personaId" in result &&
+            "constraints" in result &&
+            "metadata" in result &&
+            Array.isArray((result as { constraints?: unknown }).constraints)
+          ) {
+            lastDerivation = result as ConstraintSet;
+          }
           break;
         }
 

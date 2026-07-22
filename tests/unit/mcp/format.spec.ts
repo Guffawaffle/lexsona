@@ -51,6 +51,7 @@ const createMockLexSona = () => {
   ];
 
   return {
+    isConnected: vi.fn(() => false),
     getRuleVersion: vi.fn(() => 42),
     getRules: vi.fn(async () => mockRules),
   };
@@ -195,6 +196,46 @@ describe("handleConstraints format parameter (AX-009)", () => {
     // Should NOT have full field names
     expect(result.meta).not.toHaveProperty("confidenceThreshold");
     expect(result.meta).not.toHaveProperty("offlineMode");
+  });
+
+  it("returns the canonical snapshot contract when requested", async () => {
+    const mockLexSona = createMockLexSona();
+    const getLexSona = async () => mockLexSona as any;
+    const state = { activePersonaId: "quality-first_engineering" };
+
+    const result = (await handleConstraints(
+      {
+        contract: "snapshot-v1",
+        bindings: { workspace: "lex-mcp", attempt: "attempt-1" },
+      },
+      state,
+      getLexSona
+    )) as any;
+
+    expect(result.contract).toBe("ConstraintSnapshot_v1");
+    expect(result.schemaVersion).toBe(1);
+    expect(result.bindings).toEqual({ workspace: "lex-mcp", attempt: "attempt-1" });
+    expect(result.authority.grantsAuthority).toBe(false);
+    expect(result.contentDigest).toMatch(/^sha256:[a-f0-9]{64}$/);
+    expect(result.derivedAt).toBeUndefined();
+  });
+
+  it("returns the bounded embedded projection for compact snapshots", async () => {
+    const mockLexSona = createMockLexSona();
+    const getLexSona = async () => mockLexSona as any;
+    const state = { activePersonaId: "quality-first_engineering" };
+
+    const result = (await handleConstraints(
+      { contract: "snapshot-v1", format: "compact" },
+      state,
+      getLexSona
+    )) as any;
+
+    expect(result.contract).toBe("ConstraintSnapshot_v1");
+    expect(result.digest).toMatch(/^sha256:[a-f0-9]{64}$/);
+    expect(result.grantsAuthority).toBe(false);
+    expect(result.constraints.length).toBeLessThanOrEqual(20);
+    expect(result).not.toHaveProperty("sources");
   });
 });
 

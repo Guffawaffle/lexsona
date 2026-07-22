@@ -16,6 +16,8 @@ import {
   type ConstraintSource,
 } from "../constraints/derive.js";
 import type { BehaviorRuleWithConfidence } from "../rules/types.js";
+import { getBaseline } from "../baseline/index.js";
+import { createConstraintSnapshotV1 } from "../constraints/snapshot.js";
 import type {
   ActivateInput,
   ConstraintsInput,
@@ -134,6 +136,25 @@ export async function handleConstraints(
     module_id: scoping.module_id,
     taskType: input.task,
   };
+
+  if (input.contract === "snapshot-v1") {
+    const baseline = getBaseline();
+    const snapshotSet = deriveConstraints(persona, sonaRules, baseline.principles, context, {
+      hasLexConnection: instance.isConnected(),
+    });
+    snapshotSet.constraints = [...baseline.constraints, ...snapshotSet.constraints];
+    snapshotSet.ruleVersion = instance.getRuleVersion();
+    const snapshot = createConstraintSnapshotV1({
+      constraintSet: snapshotSet,
+      persona,
+      rules: sonaRules,
+      baseline,
+      bindings: input.bindings,
+      canonicalTimestamp: input.canonicalTimestamp,
+      provenanceRef: input.provenanceRef,
+    });
+    return input.format === "compact" ? snapshot.compact : snapshot;
+  }
 
   const result = deriveConstraints(persona, sonaRules, [], context);
 

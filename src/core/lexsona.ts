@@ -27,6 +27,12 @@ import { loadPersona } from "../persona/loader.js";
 import type { Persona } from "../persona/types.js";
 import { createLexNotConnectedError } from "../mcp/errors.js";
 import { getBaseline, type BaselineData } from "../baseline/index.js";
+import {
+  createConstraintSnapshotV1,
+  type ConstraintSnapshotAuthorityCeilingV1,
+  type ConstraintSnapshotV1,
+  type SnapshotBindingsV1,
+} from "../constraints/snapshot.js";
 
 // Import Lex APIs through the lexsona subpath
 import { getRules, recordCorrection } from "@smartergpt/lex/lexsona";
@@ -86,6 +92,15 @@ export interface LearnResult {
   previousObservationCount?: number;
   /** Previous confidence (for updates) */
   previousConfidence?: number;
+}
+
+/** Optional identity and authority bindings for a canonical v1 snapshot. */
+export interface DeriveConstraintSnapshotOptions {
+  bindings?: SnapshotBindingsV1;
+  authorityCeiling?: ConstraintSnapshotAuthorityCeilingV1;
+  engineVersion?: string;
+  canonicalTimestamp?: string;
+  provenanceRef?: string;
 }
 
 /**
@@ -228,6 +243,45 @@ export class LexSona {
     result.ruleVersion = this.ruleVersion;
 
     return result;
+  }
+
+  /**
+   * Derive a byte-stable ConstraintSnapshot_v1.
+   *
+   * Unlike the compatibility ConstraintSet, this contract excludes runtime
+   * observation time from identity unless the caller supplies a canonical
+   * timestamp. Scope requests in the snapshot never grant authority.
+   */
+  async deriveConstraintSnapshot(
+    context: DeriveContext,
+    options: DeriveConstraintSnapshotOptions = {}
+  ): Promise<ConstraintSnapshotV1> {
+    if (!this.activePersona) {
+      throw new Error("ConstraintSnapshot_v1 requires an active persona");
+    }
+
+    const persona = await loadPersona(this.activePersona);
+    const hasLexConnection = this.storageClient?.isConnected() ?? false;
+    let rules: BehaviorRuleWithConfidence[] = [];
+    if (hasLexConnection) {
+      const db = this.storageClient!.getDatabase();
+      rules = getRules(db, this.createRuleContext(context));
+    }
+
+    const baseline = getBaselineData();
+    const constraintSet = deriveConstraintsPure(persona, rules, baseline.principles, context, {
+      hasLexConnection,
+    });
+    constraintSet.constraints = [...baseline.constraints, ...constraintSet.constraints];
+    constraintSet.ruleVersion = this.ruleVersion;
+
+    return createConstraintSnapshotV1({
+      constraintSet,
+      persona,
+      rules,
+      baseline,
+      ...options,
+    });
   }
 
   /**

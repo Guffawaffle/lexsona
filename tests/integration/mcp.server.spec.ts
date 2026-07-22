@@ -125,6 +125,8 @@ describe("MCP Server Integration", () => {
       expect(tool?.inputSchema.properties).toHaveProperty("project");
       expect(tool?.inputSchema.properties).toHaveProperty("module_id");
       expect(tool?.inputSchema.properties).toHaveProperty("task");
+      expect(tool?.inputSchema.properties).toHaveProperty("contract");
+      expect(tool?.inputSchema.properties).toHaveProperty("bindings");
     });
 
     it("has proper schema for rules_learn", () => {

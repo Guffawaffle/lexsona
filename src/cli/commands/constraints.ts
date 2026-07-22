@@ -22,6 +22,10 @@ import {
 import { isJsonMode } from "../output.js";
 import { formatProvenance } from "../../mcp/formatters.js";
 import { inferScope } from "../../scope/index.js";
+import {
+  serializeConstraintSnapshotV1,
+  type SnapshotBindingsV1,
+} from "../../constraints/snapshot.js";
 
 function getProjectConstraintsCachePath(): string {
   return join(process.cwd(), ".smartergpt", "lexsona-constraints.json");
@@ -241,6 +245,17 @@ export function registerConstraintsCommands(program: Command): void {
     .option("--verbose", "Show detailed information including inferred scope")
     .option("--json", "Output as JSON")
     .option("--provenance <mode>", "Provenance mode: 'full' (default) or 'compact'")
+    .option("--snapshot", "Emit canonical ConstraintSnapshot_v1 JSON")
+    .option("--tenant <id>", "Bind a tenant identifier (descriptive, not authority)")
+    .option("--workspace <id>", "Bind a workspace identifier (descriptive, not authority)")
+    .option("--repository-instance <id>", "Bind a repository-instance identifier")
+    .option("--run <id>", "Bind a run identifier")
+    .option("--attempt <id>", "Bind an attempt identifier")
+    .option("--worker-role <id>", "Bind a worker-role identifier")
+    .option("--model-family <id>", "Bind a model-family identifier")
+    .option("--phase <id>", "Bind a phase identifier")
+    .option("--canonical-timestamp <timestamp>", "Caller-supplied canonical RFC 3339 timestamp")
+    .option("--provenance-ref <ref>", "Opt-in diagnostic provenance reference")
     .action(async function (this: Command, options) {
       // Check both local --json and global --json
       const jsonMode = options.json || isJsonMode(this);
@@ -326,6 +341,29 @@ export function registerConstraintsCommands(program: Command): void {
       let instance: LexSona | null = null;
       try {
         instance = await LexSona.connect(config);
+        if (options.snapshot) {
+          const bindings = Object.fromEntries(
+            Object.entries({
+              tenant: options.tenant,
+              workspace: options.workspace,
+              repositoryInstance: options.repositoryInstance,
+              run: options.run,
+              attempt: options.attempt,
+              workerRole: options.workerRole,
+              modelFamily: options.modelFamily,
+              task: options.task,
+              phase: options.phase,
+            }).filter(([, value]) => value !== undefined)
+          ) as SnapshotBindingsV1;
+          const snapshot = await instance.deriveConstraintSnapshot(context, {
+            ...(Object.keys(bindings).length > 0 && { bindings }),
+            canonicalTimestamp: options.canonicalTimestamp,
+            provenanceRef: options.provenanceRef,
+          });
+          console.log(serializeConstraintSnapshotV1(snapshot));
+          return;
+        }
+
         const result = await instance.deriveConstraints(context);
 
         // Cache result for show/explain across invocations

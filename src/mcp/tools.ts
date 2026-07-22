@@ -35,6 +35,35 @@ export const ConstraintsInputSchema = z.object({
     .enum(["full", "compact"])
     .optional()
     .describe("Provenance mode: 'full' (default) or 'compact' for lightweight explanations"),
+  contract: z
+    .enum(["constraint-set-v1", "snapshot-v1"])
+    .optional()
+    .default("constraint-set-v1")
+    .describe("Response contract; snapshot-v1 is canonical and deterministic"),
+  bindings: z
+    .object({
+      tenant: z.string().optional(),
+      workspace: z.string().optional(),
+      repositoryInstance: z.string().optional(),
+      run: z.string().optional(),
+      attempt: z.string().optional(),
+      workerRole: z.string().optional(),
+      modelFamily: z.string().optional(),
+      task: z.string().optional(),
+      phase: z.string().optional(),
+    })
+    .strict()
+    .optional()
+    .describe("Descriptive identity bindings; these never grant authority"),
+  canonicalTimestamp: z
+    .string()
+    .datetime({ offset: true })
+    .optional()
+    .describe("Caller-supplied canonical timestamp; omitted from identity by default"),
+  provenanceRef: z
+    .string()
+    .optional()
+    .describe("Opt-in out-of-band diagnostic provenance reference"),
 });
 
 export const LearnInputSchema = z.object({
@@ -157,6 +186,36 @@ export const LEXSONA_TOOLS: Tool[] = [
           enum: ["full", "compact"],
           description:
             "Provenance mode: 'full' (default) or 'compact' for lightweight explanations",
+        },
+        contract: {
+          type: "string",
+          enum: ["constraint-set-v1", "snapshot-v1"],
+          description: "Response contract; snapshot-v1 is canonical and deterministic",
+        },
+        bindings: {
+          type: "object",
+          description: "Descriptive identity bindings; these never grant authority",
+          properties: {
+            tenant: { type: "string" },
+            workspace: { type: "string" },
+            repositoryInstance: { type: "string" },
+            run: { type: "string" },
+            attempt: { type: "string" },
+            workerRole: { type: "string" },
+            modelFamily: { type: "string" },
+            task: { type: "string" },
+            phase: { type: "string" },
+          },
+          additionalProperties: false,
+        },
+        canonicalTimestamp: {
+          type: "string",
+          format: "date-time",
+          description: "Caller-supplied canonical timestamp; omitted from identity by default",
+        },
+        provenanceRef: {
+          type: "string",
+          description: "Opt-in out-of-band diagnostic provenance reference",
         },
       },
     },
