@@ -40,10 +40,11 @@ for execution or enforcement.
 
 ### 4. Storage and authority
 
-Decide whether an offline-safe persona is enough or whether learned rules are necessary. Current
-connected LexSona uses a Lex SQLite database path; it does not accept Lex 3 trusted workspace
-authority or a PostgreSQL/RLS-scoped store. Treat that as a blocker for a multi-tenant connected use
-case unless the trusted host supplies an independently reviewed binding.
+Decide whether an offline-safe persona is enough or whether learned rules are necessary. Canonical
+connected LexSona requires an explicit Lex behavioral-store binder, immutable runtime binding, and
+persona reference. It accepts Lex's SQLite or PostgreSQL implementation without receiving a raw
+database client. Treat missing authenticated binding or unsupported database enforcement as a
+blocker for multi-tenant connected use.
 
 ### 5. Constraint quality risks
 

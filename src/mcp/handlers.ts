@@ -413,7 +413,8 @@ export async function handleIntrospect(
   try {
     const instance = await getLexSona();
     lexConnected = instance.isConnected();
-    lexDbPath = instance.getConfig().lexDb;
+    const config = instance.getConfig();
+    lexDbPath = "lexDb" in config ? config.lexDb : undefined;
     ruleVersion = instance.getRuleVersion();
 
     if (lexConnected) {

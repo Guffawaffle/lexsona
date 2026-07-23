@@ -8,7 +8,7 @@ import { Command } from "commander";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { homedir } from "os";
 import { dirname, join } from "path";
-import { LexSona, type LexSonaConfig } from "../../core/lexsona.js";
+import { LexSona } from "../../core/lexsona.js";
 import { loadPersona } from "../../persona/loader.js";
 import { getActivePersona } from "../../persona/config.js";
 import { type DeriveContext, type ConstraintSet } from "../../constraints/derive.js";
@@ -26,6 +26,7 @@ import {
   serializeConstraintSnapshotV1,
   type SnapshotBindingsV1,
 } from "../../constraints/snapshot.js";
+import { bootstrapLegacyLexSona } from "../legacy-bootstrap.js";
 
 function getProjectConstraintsCachePath(): string {
   return join(process.cwd(), ".smartergpt", "lexsona-constraints.json");
@@ -356,11 +357,10 @@ export function registerConstraintsCommands(program: Command): void {
       };
 
       // Connect to Lex and get rules
-      const config: LexSonaConfig = {
-        lexDb: process.env.LEX_DB_PATH,
+      const { config } = bootstrapLegacyLexSona({
         persona: personaId,
         domain: projectOrDomain,
-      };
+      });
 
       let instance: LexSona | null = null;
       try {

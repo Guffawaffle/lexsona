@@ -66,11 +66,11 @@
     "personas"
   ],
   "peerDependencies": {
-    "@smartergpt/lex": ">=2.1.0"
+    "@smartergpt/lex": ">=4.0.0 <5"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
-    "@smartergpt/lex": "^2.2.0",
+    "@smartergpt/lex": "4.0.0",
     "@types/micromatch": "^4.0.10",
     "@types/node": "^25.0.2",
     "eslint": "^9.39.2",

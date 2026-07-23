@@ -33,6 +33,24 @@ import {
   type ConstraintSnapshotV1,
   type SnapshotBindingsV1,
 } from "../constraints/snapshot.js";
+import {
+  behaviorRuleFromRevision,
+  isScopedLexSonaConfig,
+  openScopedBehavioralConnection,
+  promoteScopedRule,
+  putScopedPersonaRevision,
+  putScopedRuleRevision,
+  readScopedBehavioralSnapshot,
+  recordScopedEvidence,
+  type BehavioralEvidenceInputV1,
+  type BehavioralPromotionInputV1,
+  type BehavioralRevisionWriteV1,
+  type BehavioralWriteReceiptV1,
+  type PersonaRevisionInputV1,
+  type RuleRevisionInputV1,
+  type ScopedBehavioralConnection,
+  type ScopedLexSonaConfig,
+} from "./scopedBehavior.js";
 
 // Import Lex APIs through the lexsona subpath
 import { getRules, recordCorrection } from "@smartergpt/lex/lexsona";
@@ -71,14 +89,25 @@ function getBaselineData(): BaselineData {
 /**
  * Configuration for LexSona connection
  */
-export interface LexSonaConfig {
-  /** Path to Lex database (uses default if not provided) */
+export interface LegacyLexSonaConfig {
+  /**
+   * Explicit path to a legacy Lex SQLite database.
+   *
+   * @deprecated Use ScopedLexSonaConfig. Environment, cwd, and home discovery
+   * are retained only by trusted CLI/bootstrap adapters.
+   */
   lexDb?: string;
-  /** Active persona ID (behavioral naming, e.g., 'quality-first_engineering') */
+  /**
+   * Persona selected through legacy filesystem/database discovery.
+   *
+   * @deprecated Use ScopedLexSonaConfig.personaRef.
+   */
   persona?: string;
   /** Domain/namespace for rule scoping */
   domain?: string;
 }
+
+export type LexSonaConfig = LegacyLexSonaConfig | ScopedLexSonaConfig;
 
 /**
  * Result of learning a correction
@@ -118,11 +147,14 @@ export class LexSona {
   private _config: LexSonaConfig;
   private activePersona: string | null = null;
   private storageClient: LexStorageClient | null = null;
+  private scopedConnection: ScopedBehavioralConnection | null = null;
   private ruleVersion: number = 0;
 
   private constructor(config: LexSonaConfig) {
     this._config = config;
-    this.activePersona = config.persona ?? null;
+    this.activePersona = isScopedLexSonaConfig(config)
+      ? config.personaRef.personaId
+      : (config.persona ?? null);
   }
 
   /**
@@ -131,21 +163,25 @@ export class LexSona {
   static async connect(config: LexSonaConfig = {}): Promise<LexSona> {
     const instance = new LexSona(config);
 
-    // Initialize Lex connection
-    const connectionConfig: LexConnectionConfig = {};
-    if (config.lexDb) {
-      connectionConfig.dbPath = config.lexDb;
+    if (isScopedLexSonaConfig(config)) {
+      instance.scopedConnection = await openScopedBehavioralConnection(config);
+      return instance;
     }
 
-    try {
-      instance.storageClient = LexStorageClient.connect(connectionConfig);
-      // Load persisted rule version
-      instance.loadRuleVersion();
-    } catch (error) {
-      // Log warning but allow LexSona to work in disconnected mode
-      console.warn(
-        `LexSona: Could not connect to Lex database: ${error instanceof Error ? error.message : error}`
-      );
+    // The library never discovers storage from environment, cwd, or home.
+    // Legacy callers must supply an explicit path; trusted CLI/bootstrap code
+    // may still perform visible compatibility discovery before this boundary.
+    if (config.lexDb) {
+      const connectionConfig: LexConnectionConfig = { dbPath: config.lexDb };
+      try {
+        instance.storageClient = LexStorageClient.connect(connectionConfig);
+        instance.loadRuleVersion();
+      } catch (error) {
+        // Preserve the bounded legacy disconnected behavior during migration.
+        console.warn(
+          `LexSona: Could not connect to explicit legacy database: ${error instanceof Error ? error.message : error}`
+        );
+      }
     }
 
     return instance;
@@ -155,7 +191,7 @@ export class LexSona {
    * Check if connected to Lex storage
    */
   isConnected(): boolean {
-    return this.storageClient?.isConnected() ?? false;
+    return this.scopedConnection !== null || (this.storageClient?.isConnected() ?? false);
   }
 
   /**
@@ -164,10 +200,49 @@ export class LexSona {
    * @param personaId - Persona identifier (behavioral naming, e.g., 'quality-first_engineering')
    */
   async activate(personaId: string): Promise<void> {
-    // TODO: Load persona manifest
-    // TODO: Validate persona exists
-    // TODO: Set as active
+    if (this.scopedConnection && personaId !== this.scopedConnection.personaRef.personaId) {
+      throw new Error(
+        "Scoped LexSona persona selection is immutable; create a separately bound instance for another persona"
+      );
+    }
     this.activePersona = personaId;
+  }
+
+  private async loadBehavior(context: DeriveContext): Promise<{
+    persona: Persona | null;
+    rules: BehaviorRuleWithConfidence[];
+    hasLexConnection: boolean;
+    provenanceRef?: string;
+  }> {
+    if (this.scopedConnection) {
+      const scoped = await readScopedBehavioralSnapshot(this.scopedConnection, context);
+      return {
+        persona: scoped.persona,
+        rules: [...scoped.rules],
+        hasLexConnection: true,
+        provenanceRef: scoped.snapshot.snapshotRevision,
+      };
+    }
+
+    const hasLexConnection = this.storageClient?.isConnected() ?? false;
+    let persona: Persona | null = null;
+    if (this.activePersona) {
+      try {
+        persona = await loadPersona(this.activePersona);
+      } catch (error) {
+        console.warn(
+          `LexSona: Could not load legacy persona "${this.activePersona}": ${error instanceof Error ? error.message : error}`
+        );
+      }
+    }
+
+    let rules: BehaviorRuleWithConfidence[] = [];
+    if (hasLexConnection) {
+      const db = this.storageClient!.getDatabase();
+      rules = getRules(db, this.createRuleContext(context));
+    }
+
+    return { persona, rules, hasLexConnection };
   }
 
   /**
@@ -181,20 +256,7 @@ export class LexSona {
    * @returns Deterministic constraint set
    */
   async deriveConstraints(context: DeriveContext): Promise<ConstraintSet> {
-    // Determine connection state
-    const hasLexConnection = this.storageClient?.isConnected() ?? false;
-
-    // Load persona (if active)
-    let persona: Persona | null = null;
-    if (this.activePersona) {
-      try {
-        persona = await loadPersona(this.activePersona);
-      } catch (error) {
-        console.warn(
-          `LexSona: Could not load persona "${this.activePersona}": ${error instanceof Error ? error.message : error}`
-        );
-      }
-    }
+    const { persona, rules, hasLexConnection } = await this.loadBehavior(context);
 
     // If no persona loaded, return empty constraint set with baseline
     // InputHash is empty since there are no inputs to hash
@@ -216,14 +278,6 @@ export class LexSona {
           confidenceCeiling: undefined,
         },
       };
-    }
-
-    // Load learned rules from Lex store if connected
-    let rules: BehaviorRuleWithConfidence[] = [];
-    if (hasLexConnection) {
-      const db = this.storageClient!.getDatabase();
-      const ruleContext = this.createRuleContext(context);
-      rules = getRules(db, ruleContext);
     }
 
     // Load baseline from bundled YAML
@@ -260,13 +314,11 @@ export class LexSona {
       throw new Error("ConstraintSnapshot_v1 requires an active persona");
     }
 
-    const persona = await loadPersona(this.activePersona);
-    const hasLexConnection = this.storageClient?.isConnected() ?? false;
-    let rules: BehaviorRuleWithConfidence[] = [];
-    if (hasLexConnection) {
-      const db = this.storageClient!.getDatabase();
-      rules = getRules(db, this.createRuleContext(context));
+    const behavior = await this.loadBehavior(context);
+    if (!behavior.persona) {
+      throw new Error(`Persona not found: ${this.activePersona}`);
     }
+    const { persona, rules, hasLexConnection, provenanceRef } = behavior;
 
     const baseline = getBaselineData();
     const constraintSet = deriveConstraintsPure(persona, rules, baseline.principles, context, {
@@ -281,6 +333,7 @@ export class LexSona {
       rules,
       baseline,
       ...options,
+      provenanceRef: options.provenanceRef ?? provenanceRef,
     });
   }
 
@@ -293,6 +346,11 @@ export class LexSona {
    * @returns The created/updated rule and metadata about the operation
    */
   async learn(correction: CorrectionInput): Promise<LearnResult> {
+    if (this.scopedConnection) {
+      throw new Error(
+        "learn() is a legacy mutable-row API and cannot invent revisions or idempotency keys for a scoped store; use putRuleRevision() and recordEvidence()"
+      );
+    }
     if (!this.storageClient?.isConnected()) {
       throw createLexNotConnectedError();
     }
@@ -338,6 +396,42 @@ export class LexSona {
     };
   }
 
+  /** Write an immutable persona revision through the Lex-owned scoped service. */
+  async putPersonaRevision(
+    input: BehavioralRevisionWriteV1<PersonaRevisionInputV1>
+  ): Promise<BehavioralWriteReceiptV1> {
+    if (!this.scopedConnection) {
+      throw new Error("putPersonaRevision() requires a scoped LexSona connection");
+    }
+    return await putScopedPersonaRevision(this.scopedConnection, input);
+  }
+
+  /** Write an immutable rule revision through the Lex-owned scoped service. */
+  async putRuleRevision(
+    input: BehavioralRevisionWriteV1<RuleRevisionInputV1>
+  ): Promise<BehavioralWriteReceiptV1> {
+    if (!this.scopedConnection) {
+      throw new Error("putRuleRevision() requires a scoped LexSona connection");
+    }
+    return await putScopedRuleRevision(this.scopedConnection, input);
+  }
+
+  /** Record explicit, idempotent learning evidence through the scoped service. */
+  async recordEvidence(input: BehavioralEvidenceInputV1): Promise<BehavioralWriteReceiptV1> {
+    if (!this.scopedConnection) {
+      throw new Error("recordEvidence() requires a scoped LexSona connection");
+    }
+    return await recordScopedEvidence(this.scopedConnection, input);
+  }
+
+  /** Promote a rule revision through the separately authorized promotion capability. */
+  async promoteRuleRevision(input: BehavioralPromotionInputV1): Promise<BehavioralWriteReceiptV1> {
+    if (!this.scopedConnection) {
+      throw new Error("promoteRuleRevision() requires a scoped LexSona connection");
+    }
+    return await promoteScopedRule(this.scopedConnection, input);
+  }
+
   /**
    * Teach a "core" rule that is immediately active
    *
@@ -351,6 +445,11 @@ export class LexSona {
   async teach(
     correction: CorrectionInput
   ): Promise<import("@smartergpt/lex/lexsona").BehaviorRuleWithConfidence> {
+    if (this.scopedConnection) {
+      throw new Error(
+        "teach() is a legacy mutable-row API; use putRuleRevision() and promoteRuleRevision() with explicit revisions and idempotency keys"
+      );
+    }
     if (!this.storageClient?.isConnected()) {
       throw createLexNotConnectedError();
     }
@@ -392,6 +491,11 @@ export class LexSona {
   async promoteRule(
     ruleId: string
   ): Promise<import("@smartergpt/lex/lexsona").BehaviorRuleWithConfidence | null> {
+    if (this.scopedConnection) {
+      throw new Error(
+        "promoteRule() is a legacy mutable-row API; use promoteRuleRevision() with an explicit revision and idempotency key"
+      );
+    }
     if (!this.storageClient?.isConnected()) {
       throw createLexNotConnectedError();
     }
@@ -408,6 +512,10 @@ export class LexSona {
   async getRuleById(
     ruleId: string
   ): Promise<import("@smartergpt/lex/lexsona").BehaviorRuleWithConfidence | null> {
+    if (this.scopedConnection) {
+      const rule = await this.scopedConnection.read.getRule(ruleId);
+      return rule ? behaviorRuleFromRevision(rule) : null;
+    }
     if (!this.storageClient?.isConnected()) {
       return null;
     }
@@ -422,6 +530,11 @@ export class LexSona {
    * @returns true if deleted, false if not found
    */
   async forgetRule(ruleId: string): Promise<boolean> {
+    if (this.scopedConnection) {
+      throw new Error(
+        "Scoped behavioral revisions are immutable; deletion requires a separate Lex lifecycle contract"
+      );
+    }
     if (!this.storageClient?.isConnected()) {
       throw createLexNotConnectedError();
     }
@@ -467,6 +580,14 @@ export class LexSona {
     /** Set to 1 to include all rules regardless of observation count */
     minN?: number;
   }): Promise<import("@smartergpt/lex/lexsona").BehaviorRuleWithConfidence[]> {
+    if (this.scopedConnection) {
+      const scoped = await readScopedBehavioralSnapshot(this.scopedConnection, {});
+      return scoped.rules.filter(
+        (rule) =>
+          rule.observation_count >= (filter?.minN ?? 0) &&
+          rule.effective_confidence >= (filter?.minConfidence ?? 0)
+      );
+    }
     if (!this.storageClient?.isConnected()) {
       return [];
     }
@@ -500,6 +621,11 @@ export class LexSona {
    * @param event - Trust gap event from LexRunner
    */
   async recordTrustGap(event: TrustGapEvent): Promise<void> {
+    if (this.scopedConnection) {
+      throw new Error(
+        "recordTrustGap() cannot infer scoped rule revision or idempotency; use recordEvidence()"
+      );
+    }
     if (!this.storageClient?.isConnected()) {
       throw createLexNotConnectedError();
     }
@@ -518,6 +644,11 @@ export class LexSona {
    * @returns Trust profile with gap rate and common failure types
    */
   async getAgentTrustProfile(agentFamily: string): Promise<AgentTrustProfile> {
+    if (this.scopedConnection) {
+      throw new Error(
+        "Agent trust aggregation is not part of the scoped behavioral-store read contract"
+      );
+    }
     if (!this.storageClient?.isConnected()) {
       throw createLexNotConnectedError();
     }
@@ -538,6 +669,11 @@ export class LexSona {
   async deriveWithTrustCalibration(
     context: DeriveContext & { agent_family: string }
   ): Promise<ConstraintSet> {
+    if (this.scopedConnection) {
+      throw new Error(
+        "Trust calibration requires an explicit scoped aggregation contract; ordinary scoped derivation remains available"
+      );
+    }
     // Get base constraint set
     const baseConstraints = await this.deriveConstraints(context);
 
@@ -605,6 +741,11 @@ export class LexSona {
    * @returns New version number
    */
   async incrementRuleVersion(): Promise<number> {
+    if (this.scopedConnection) {
+      throw new Error(
+        "Scoped rule revisions are owned by Lex and cannot be incremented by LexSona"
+      );
+    }
     this.ruleVersion++;
     await this.persistRuleVersion();
     return this.ruleVersion;
@@ -687,8 +828,12 @@ export class LexSona {
   /**
    * Close the connection
    */
-  close(): void {
+  async close(): Promise<void> {
     this.storageClient?.close();
     this.storageClient = null;
+    if (this.scopedConnection) {
+      await Promise.all([this.scopedConnection.read.close(), this.scopedConnection.write?.close()]);
+      this.scopedConnection = null;
+    }
   }
 }

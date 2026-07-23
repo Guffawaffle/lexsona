@@ -5,19 +5,17 @@
  */
 
 import { Command } from "commander";
-import { LexSona, type LexSonaConfig } from "../../core/lexsona.js";
+import { LexSona } from "../../core/lexsona.js";
 import { checkConflicts } from "../../conflicts/detector.js";
 import type { Conflict } from "../../conflicts/types.js";
+import { bootstrapLegacyLexSona } from "../legacy-bootstrap.js";
 import { isJsonMode } from "../output.js";
 
 /**
  * Initialize LexSona with connection to Lex
  */
 async function initLexSona(): Promise<LexSona | null> {
-  const config: LexSonaConfig = {
-    lexDb: process.env.LEX_DB_PATH,
-  };
-
+  const { config } = bootstrapLegacyLexSona();
   const instance = await LexSona.connect(config);
   if (!instance.isConnected()) {
     console.error("Error: Not connected to Lex database.");

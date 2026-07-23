@@ -2,6 +2,7 @@
 
 **Status:** Accepted  
 **Date:** 2025-12-05  
+**Scoped-storage amendment:** 2026-07-23
 **Decision makers:** Guff, Lex
 
 ## Context
@@ -39,17 +40,22 @@ a prerequisite for derivation.
 
 ### Storage socket
 
-LexSona imports behavioral APIs through `@smartergpt/lex/lexsona`, including correction recording,
-rule retrieval, persona persistence, and their types. LexSona may wrap those APIs but must not fork
-their durable semantics.
+The canonical library path consumes `BehavioralStoreBinder` and `BehavioralStoreBindingV1` through
+`@smartergpt/lex/store`. Lex owns binding validation, capability checks, immutable revision and
+evidence semantics, backend selection, and persistence. LexSona receives scoped read/write services,
+not raw database, pool, client, query, or filesystem surfaces.
 
-The current connected adapter opens a Lex SQLite file. Its path may be supplied to `LexSona.connect()`
-or selected by compatibility discovery. A path and `LEX_DB_PATH` are storage selectors, not tenant or
-workspace authority. This adapter does not currently consume Lex 3 trusted workspace scope or a
-PostgreSQL/RLS-scoped store.
+The binding makes tenant, workspace, repository, repository instance, principal, and capabilities
+explicit and immutable for one instance. Read and write services bind independently. LexSona never
+derives ownership from a path, cwd, environment variable, repository name, or legacy rule field.
+The same LexSona contract consumes Lex SQLite and PostgreSQL implementations. PostgreSQL roles and
+RLS remain enforcement points owned by Lex and the database.
 
-Any future shared or multi-tenant connection must add an explicit trusted-scope binding without
-making environment variables authoritative and without weakening Lex's ownership of storage.
+The older `@smartergpt/lex/lexsona` mutable-row APIs and direct SQLite adapter remain a bounded
+compatibility surface. Library callers must provide `lexDb` explicitly. Only trusted CLI/MCP
+bootstrap code may discover `LEX_DB_PATH`, cwd, or home candidates, and that bootstrap produces an
+observable compatibility receipt. The path-based library and discovery adapters are deprecated for
+removal in LexSona 3.0.
 
 ### Determinism
 
@@ -93,8 +99,11 @@ LexSona does not own:
 
 - Consumers can review constraints independently of the mechanism that may apply them.
 - Lex remains useful without persona interpretation.
-- Connected derivation inherits the trust boundary of its explicitly selected Lex SQLite database.
-- Multi-tenant connected use remains deferred until a trusted scoped adapter exists.
+- Canonical connected derivation cannot widen the immutable Lex scope it receives.
+- SQLite and PostgreSQL share one LexSona-facing contract while keeping enforcement in Lex.
+- PostgreSQL-backed tenant claims remain bounded to supported application identities and do not
+  survive compromise of privileged database or host credentials.
+- Legacy path-based SQLite behavior remains available only through a documented migration window.
 - Offline-safe derivation can be evaluated without storage, but it has a declared confidence ceiling
   and cannot learn from prior corrections.
 - New CLI, MCP, or LexRunner features must preserve the distinction between behavioral guidance and
@@ -104,7 +113,7 @@ LexSona does not own:
 
 Review this decision if:
 
-- LexSona accepts a trusted Lex 3 runtime scope or PostgreSQL backend;
+- the Lex behavioral-store or runtime-scope contracts change incompatibly;
 - a public MCP package surface is introduced;
 - constraint consumption moves into this package;
 - deterministic-selection requirements change;
