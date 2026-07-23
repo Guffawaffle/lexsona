@@ -57,14 +57,19 @@ package binary or public export. Keep [README.mcp.md](README.mcp.md) honest abou
 
 ## Storage and authority
 
-The connected runtime currently opens a Lex SQLite file through an explicit `lexDb` path or
-compatibility discovery including `LEX_DB_PATH`. Paths and environment variables select storage;
-they do not prove tenant or workspace authority. The current connection does not accept Lex 3 trusted
-workspace scope or a PostgreSQL/RLS-scoped store.
+The canonical connected runtime consumes Lex's `BehavioralStoreBinder` and immutable
+`BehavioralStoreBindingV1`. Lex owns capability enforcement, SQLite/PostgreSQL persistence, and
+PostgreSQL RLS. LexSona must receive scoped services rather than a driver, pool, client, query
+surface, or path. It never mints or widens authority.
 
-Do not represent LexSona as a multi-tenant authorization boundary. Do not add implicit environment
-authority. New connected storage work must preserve Lex ownership and introduce an explicit,
-reviewable scope binding.
+The explicit `lexDb` adapter and `LEX_DB_PATH`/cwd/home discovery remain deprecated compatibility
+surfaces at the trusted CLI/source-MCP bootstrap edge only. Paths and environment variables select
+legacy storage; they do not prove tenant or workspace authority. Never add local fallback after a
+scoped binding fails.
+
+Do not represent LexSona itself as a multi-tenant authorization boundary. It preserves the Lex
+binding and consumes the resulting filtered data; the host, Lex, database identities, and RLS remain
+independent enforcement points.
 
 Mutations must remain obvious:
 

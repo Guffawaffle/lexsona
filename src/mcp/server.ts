@@ -19,7 +19,8 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-import { LexSona, type LexSonaConfig } from "../core/lexsona.js";
+import { LexSona } from "../core/lexsona.js";
+import { bootstrapLegacyLexSona } from "../cli/legacy-bootstrap.js";
 import type { ConstraintSet } from "../constraints/derive.js";
 import {
   LEXSONA_TOOLS,
@@ -70,10 +71,9 @@ async function ensureConnected(): Promise<LexSona> {
     return lexSonaInstance;
   }
 
-  const config: LexSonaConfig = {
-    lexDb: process.env.LEX_DB_PATH,
+  const { config } = bootstrapLegacyLexSona({
     persona: activePersonaId ?? undefined,
-  };
+  });
 
   lexSonaInstance = await LexSona.connect(config);
   return lexSonaInstance;
