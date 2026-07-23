@@ -127,6 +127,8 @@ export const ConstraintSnapshotV1Schema = z
             taskType: BoundedIdentifierSchema.optional(),
             environment: BoundedIdentifierSchema.optional(),
             agentFamily: BoundedIdentifierSchema.optional(),
+            runtimeFamily: BoundedIdentifierSchema.optional(),
+            runtimeCapabilities: z.array(BoundedIdentifierSchema).max(256).optional(),
             contextTags: z.array(BoundedIdentifierSchema).max(256),
             procedure: BoundedIdentifierSchema.optional(),
             files: z.array(BoundedIdentifierSchema).max(1_024),
@@ -192,6 +194,39 @@ export const ConstraintSnapshotV1Schema = z
             sampleRuleIds: z.array(BoundedIdentifierSchema).max(MAX_EXCLUSION_SAMPLES),
           })
           .strict(),
+        applicability: z
+          .object({
+            omitted: z.number().int().min(0),
+            samples: z
+              .array(
+                z
+                  .object({
+                    id: BoundedIdentifierSchema,
+                    classification: z.enum([
+                      "behavioral-invariant",
+                      "repository-policy",
+                      "host-runtime-procedure",
+                      "capability-precondition",
+                      "historical-guidance",
+                      "stale",
+                    ]),
+                    reason: z.enum([
+                      "classification-not-actionable",
+                      "agent-family-unknown",
+                      "agent-family-not-supported",
+                      "runtime-family-unknown",
+                      "runtime-family-not-supported",
+                      "capabilities-unknown",
+                      "capability-missing",
+                    ]),
+                    missing: z.array(BoundedIdentifierSchema).max(32).optional(),
+                  })
+                  .strict()
+              )
+              .max(12),
+          })
+          .strict()
+          .optional(),
       })
       .strict(),
     canonicalTimestamp: z.string().datetime({ offset: true }).optional(),
@@ -464,6 +499,12 @@ export function createConstraintSnapshotV1(
         ...(constraintSet.context.agent_family && {
           agentFamily: constraintSet.context.agent_family,
         }),
+        ...(constraintSet.context.runtime_family && {
+          runtimeFamily: constraintSet.context.runtime_family,
+        }),
+        ...(constraintSet.context.runtime_capabilities && {
+          runtimeCapabilities: uniqueSorted(constraintSet.context.runtime_capabilities),
+        }),
         contextTags: uniqueSorted(constraintSet.context.context_tags ?? []),
         ...(constraintSet.context.procedure && { procedure: constraintSet.context.procedure }),
         files: uniqueSorted(constraintSet.context.files ?? []),
@@ -496,6 +537,9 @@ export function createConstraintSnapshotV1(
             : [],
         sampleRuleIds: excludedRuleIds.slice(0, MAX_EXCLUSION_SAMPLES),
       },
+      ...(constraintSet.metadata.applicability && {
+        applicability: constraintSet.metadata.applicability,
+      }),
     },
     ...(timestamp && { canonicalTimestamp: timestamp }),
     ...(input.provenanceRef && { diagnostics: { provenanceRef: input.provenanceRef } }),

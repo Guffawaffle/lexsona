@@ -178,6 +178,44 @@ describe("ConstraintSnapshot_v1", () => {
     expect(changedPersona.contentDigest).not.toBe(first.contentDigest);
   });
 
+  it("binds runtime applicability context and omission decisions into identity", () => {
+    const withoutCapability = build({
+      constraintSet: constraintSet({
+        context: { runtime_family: "generic-host", runtime_capabilities: [] },
+        metadata: {
+          ...constraintSet().metadata,
+          applicability: {
+            omitted: 1,
+            samples: [
+              {
+                id: "structured-edits",
+                classification: "capability-precondition",
+                reason: "capability-missing",
+                missing: ["structured-edit"],
+              },
+            ],
+          },
+        },
+      }),
+    });
+    const withCapability = build({
+      constraintSet: constraintSet({
+        context: {
+          runtime_family: "generic-host",
+          runtime_capabilities: ["structured-edit"],
+        },
+        metadata: {
+          ...constraintSet().metadata,
+          applicability: { omitted: 0, samples: [] },
+        },
+      }),
+    });
+
+    expect(withoutCapability.derivation.context.runtimeCapabilities).toEqual([]);
+    expect(withoutCapability.resolutions.applicability?.omitted).toBe(1);
+    expect(withCapability.contentDigest).not.toBe(withoutCapability.contentDigest);
+  });
+
   it("fails closed on unknown schema majors", () => {
     const unsupported = { ...build(), schemaVersion: 2 };
     expect(() => parseConstraintSnapshotV1(unsupported)).toThrow();

@@ -135,7 +135,7 @@ describe("formatConstraint with provenance mode (AX-010)", () => {
       },
     };
 
-    const result = formatConstraint(constraint, "compact");
+    const result = formatConstraint(constraint, "compact", "compact");
     expect(result).toHaveProperty("prov");
     expect((result as any).prov).toEqual({
       src: "r",
@@ -184,7 +184,7 @@ describe("formatConstraint with provenance mode (AX-010)", () => {
       },
     };
 
-    const result = formatConstraint(constraint, "compact");
+    const result = formatConstraint(constraint, "compact", "compact");
     expect((result as any).prov).toEqual({
       src: "p",
       w: 1.0,
@@ -204,7 +204,7 @@ describe("formatConstraint with provenance mode (AX-010)", () => {
     expect(result).not.toHaveProperty("prov");
   });
 
-  it("uses format as provenance mode default", () => {
+  it("omits provenance unless a provenance mode is explicitly requested", () => {
     const constraint: Constraint = {
       rule_id: "rule_123",
       text: "Test rule",
@@ -219,7 +219,7 @@ describe("formatConstraint with provenance mode (AX-010)", () => {
     };
 
     const result = formatConstraint(constraint, "compact");
-    expect((result as any).prov.src).toBe("r");
+    expect(result).not.toHaveProperty("prov");
   });
 });
 

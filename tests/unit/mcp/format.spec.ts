@@ -137,6 +137,7 @@ describe("handleConstraints format parameter (AX-009)", () => {
     expect(result).not.toHaveProperty("_compact");
     expect(result).not.toHaveProperty("ctx");
     expect(result).not.toHaveProperty("meta");
+    expect((result as any).constraints[0]).not.toHaveProperty("provenance");
   });
 
   it("returns compact format when requested", async () => {
@@ -153,6 +154,7 @@ describe("handleConstraints format parameter (AX-009)", () => {
     // Should NOT have full field names
     expect(result).not.toHaveProperty("metadata");
     expect(result).not.toHaveProperty("ruleVersion");
+    expect((result as any).constraints[0]).not.toHaveProperty("prov");
   });
 
   it("uses compact constraint format in compact mode", async () => {

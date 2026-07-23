@@ -97,6 +97,7 @@ function readCachedConstraintSet(): ConstraintSet | null {
           typeof metadataObj.confidenceCeiling === "number"
             ? metadataObj.confidenceCeiling
             : undefined,
+        applicability: metadataObj.applicability,
       },
     };
 
@@ -149,12 +150,13 @@ function formatConstraintsAsJson(result: ConstraintSet, provenanceMode?: string)
       source: c.source ?? "learned",
       confidence: c.confidence,
       // Include provenance for explainability (AX-004, AX-010)
-      provenance: formatProvenance(c.provenance, provMode),
+      ...(provenanceMode && { provenance: formatProvenance(c.provenance, provMode) }),
     })),
     principles: result.principles.map((p) => ({
       id: p.id,
       description: p.description,
     })),
+    applicability: result.metadata.applicability,
   };
 }
 
@@ -177,6 +179,17 @@ function writeConstraintsHumanReadable(result: ConstraintSet): void {
   console.log(`Persona: ${result.personaId}`);
   if (result.context.domain) console.log(`Domain: ${result.context.domain}`);
   console.log(`Derived: ${result.derivedAt}\n`);
+
+  if (result.metadata.applicability?.omitted) {
+    console.log(
+      `Applicability: omitted ${result.metadata.applicability.omitted} inapplicable behavior item(s)`
+    );
+    for (const omission of result.metadata.applicability.samples) {
+      const missing = omission.missing?.length ? ` (${omission.missing.join(", ")})` : "";
+      console.log(`  - ${omission.id}: ${omission.reason}${missing}`);
+    }
+    console.log("");
+  }
 
   // Group constraints by severity
   const criticalConstraints = result.constraints.filter((c) => c.severity === "must");
@@ -240,11 +253,17 @@ export function registerConstraintsCommands(program: Command): void {
     .option("--project <name>", "Project context")
     .option("--module <id>", "Module ID context")
     .option("--task <type>", "Task type context")
+    .option("--agent-family <name>", "Agent-family context for applicability filtering")
+    .option("--runtime-family <name>", "Runtime-family context for applicability filtering")
+    .option(
+      "--runtime-capability <name...>",
+      "Host-declared capabilities for applicability filtering (observations, not grants)"
+    )
     .option("--persona <name>", "Persona ID to use")
     .option("--auto-scope", "Automatically infer scope from git diff or touched files")
     .option("--verbose", "Show detailed information including inferred scope")
     .option("--json", "Output as JSON")
-    .option("--provenance <mode>", "Provenance mode: 'full' (default) or 'compact'")
+    .option("--provenance <mode>", "Opt-in provenance mode: 'full' or 'compact'")
     .option("--snapshot", "Emit canonical ConstraintSnapshot_v1 JSON")
     .option("--tenant <id>", "Bind a tenant identifier (descriptive, not authority)")
     .option("--workspace <id>", "Bind a workspace identifier (descriptive, not authority)")
@@ -329,6 +348,11 @@ export function registerConstraintsCommands(program: Command): void {
         domain: projectOrDomain,
         module_id: moduleId,
         taskType: options.task,
+        ...(options.agentFamily && { agent_family: options.agentFamily }),
+        ...(options.runtimeFamily && { runtime_family: options.runtimeFamily }),
+        ...(options.runtimeCapability && {
+          runtime_capabilities: options.runtimeCapability,
+        }),
       };
 
       // Connect to Lex and get rules

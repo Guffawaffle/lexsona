@@ -50,8 +50,12 @@ one process. That cache is not a durable cross-process idempotency guarantee.
 ## Output size and provenance
 
 The constraint and rule tools accept `format: "full" | "compact"`. Compact results omit descriptive
-text that an agent can request later with `constraints_explain`. Constraint derivation also accepts
-`provenance: "full" | "compact"`.
+text that an agent can request later with `constraints_explain`. Default full-format derivation
+omits repeated per-constraint provenance; opt into it with `provenance: "full" | "compact"`.
+
+`constraints_derive` also accepts `agent_family`, `runtime_family`, and a bounded
+`runtime_capabilities` array. These caller-supplied facts filter explicitly applicable persona
+content and produce omission diagnostics; they do not authorize the capability names they contain.
 
 See [docs/COMPACT_FORMAT.md](docs/COMPACT_FORMAT.md) for the field mapping. Keep compact output on the
 normal agent path; request full provenance when it can change a decision or when a human is auditing

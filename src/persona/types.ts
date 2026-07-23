@@ -36,16 +36,69 @@ export interface PersonaBehavior {
   description: string;
 }
 
+/** Review classification for behavior-bearing persona content. */
+export const BehaviorContentClassificationSchema = z.enum([
+  "behavioral-invariant",
+  "repository-policy",
+  "host-runtime-procedure",
+  "capability-precondition",
+  "historical-guidance",
+  "stale",
+]);
+
+export type BehaviorContentClassification = z.infer<typeof BehaviorContentClassificationSchema>;
+
+/**
+ * Declarative applicability only. These selectors filter guidance and never
+ * grant a capability, tool, mutation, network, or repository permission.
+ */
+export const BehaviorApplicabilitySchema = z
+  .object({
+    agent_families: z.array(z.string().min(1).max(256)).min(1).max(64).optional(),
+    runtime_families: z.array(z.string().min(1).max(256)).min(1).max(64).optional(),
+    requires_capabilities: z.array(z.string().min(1).max(256)).min(1).max(32).optional(),
+  })
+  .strict();
+
+export type BehaviorApplicability = z.infer<typeof BehaviorApplicabilitySchema>;
+
+export const PersonaDutyItemSchema = z
+  .object({
+    id: z.string().min(1),
+    statement: z.string().min(1),
+    classification: BehaviorContentClassificationSchema,
+    applicability: BehaviorApplicabilitySchema.optional(),
+  })
+  .strict()
+  .superRefine((item, ctx) => {
+    if (
+      (item.classification === "host-runtime-procedure" ||
+        item.classification === "capability-precondition") &&
+      !item.applicability
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["applicability"],
+        message: `${item.classification} content requires explicit applicability`,
+      });
+    }
+  });
+
+export type PersonaDutyItem = z.infer<typeof PersonaDutyItemSchema>;
+
+/** String duties remain accepted for existing user-authored personas. */
+export type PersonaDuty = string | PersonaDutyItem;
+
 /**
  * Persona duties (behavioral invariants)
  */
 export interface PersonaDuties {
   /** Actions the persona MUST always do */
-  mustDo: string[];
+  mustDo: PersonaDuty[];
   /** Actions the persona MUST NEVER do */
-  mustNotDo: string[];
+  mustNotDo: PersonaDuty[];
   /** Actions the persona SHOULD do (recommended practices) */
-  shouldDo?: string[];
+  shouldDo?: PersonaDuty[];
 }
 
 /**
@@ -60,6 +113,10 @@ export interface PersonaConstraint {
   severity: "error" | "warning" | "info";
   /** File patterns this constraint applies to */
   appliesTo: string[];
+  /** Review classification of this behavior-bearing content */
+  classification?: BehaviorContentClassification;
+  /** Runtime/agent selectors; these do not grant authority */
+  applicability?: BehaviorApplicability;
 }
 
 /**
@@ -240,12 +297,28 @@ export const PersonaCapabilitySchema = z.object({
 /**
  * Schema for a single persona constraint
  */
-export const PersonaConstraintSchema = z.object({
-  id: z.string().min(1),
-  statement: z.string().min(1),
-  severity: z.enum(["error", "warning", "info"]),
-  appliesTo: z.array(z.string()),
-});
+export const PersonaConstraintSchema = z
+  .object({
+    id: z.string().min(1),
+    statement: z.string().min(1),
+    severity: z.enum(["error", "warning", "info"]),
+    appliesTo: z.array(z.string()),
+    classification: BehaviorContentClassificationSchema.optional(),
+    applicability: BehaviorApplicabilitySchema.optional(),
+  })
+  .superRefine((item, ctx) => {
+    if (
+      (item.classification === "host-runtime-procedure" ||
+        item.classification === "capability-precondition") &&
+      !item.applicability
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["applicability"],
+        message: `${item.classification} content requires explicit applicability`,
+      });
+    }
+  });
 
 /**
  * Schema for constraint packs (map of pack name to constraints)
@@ -306,9 +379,9 @@ export const PersonaManifestSchema = z
       description: z.string(),
     }),
     duties: z.object({
-      mustDo: z.array(z.string()),
-      mustNotDo: z.array(z.string()),
-      shouldDo: z.array(z.string()).optional(),
+      mustDo: z.array(z.union([z.string(), PersonaDutyItemSchema])),
+      mustNotDo: z.array(z.union([z.string(), PersonaDutyItemSchema])),
+      shouldDo: z.array(z.union([z.string(), PersonaDutyItemSchema])).optional(),
     }),
     triggers: z.object({
       phrases: z.array(z.string()),

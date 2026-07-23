@@ -19,6 +19,11 @@ requested/effective scope, constraints, principles, and bounded resolution summa
 derived compact projection and optional diagnostic provenance reference do not change behavioral
 identity.
 
+Agent family, runtime family, and host-declared capability observations are applicability inputs,
+not authority. They are normalized into derivation context. Bounded applicability omissions are
+also identity-bearing so two workers cannot claim the same snapshot after selecting different
+procedural guidance.
+
 The public API exports:
 
 - `ConstraintSnapshotV1Schema` (Zod)
@@ -53,7 +58,8 @@ responsible for enforcing its own independently authorized ceiling.
 The canonical snapshot has hard collection and text limits and fails rather than silently losing
 behavioral content. Its embedded `compact` projection includes at most 20 constraints and 12
 principles and reports omitted counts. Contradictions and excluded rules use counts plus bounded
-samples. Full provenance remains opt-in and out of band through `diagnostics.provenanceRef`.
+samples. Applicability diagnostics report a count plus at most 12 reasons. Full provenance remains
+opt-in and out of band through `diagnostics.provenanceRef`.
 
 ## CLI and MCP
 
@@ -61,6 +67,8 @@ Emit canonical single-line JSON from the CLI:
 
 ```bash
 lexsona constraints derive --persona quality-first_engineering --snapshot \
+  --agent-family coding-agent --runtime-family generic-host \
+  --runtime-capability structured-edit \
   --workspace my-workspace --repository-instance my-repo --run run-42 --attempt attempt-1
 ```
 
@@ -72,9 +80,9 @@ projection. The default remains `constraint-set-v1` for compatibility.
 
 `ConstraintSet` remains the default return type of `deriveConstraints()`, the default CLI JSON
 shape, and the default MCP response. Its `derivedAt`, `inputHash`, cache shape, show command, and
-explain command are unchanged. It is an operational compatibility object, not a canonical run
-identity: `derivedAt` is intentionally time-varying and the historical `inputHash` does not bind
-every behavior-bearing source field.
+explain command are unchanged. The input hash now binds full behavior-bearing inputs and
+applicability context, but the compatibility object remains operational rather than canonical
+because `derivedAt` is intentionally time-varying.
 
 New run protocols should use `ConstraintSnapshot_v1`. Existing integrations can migrate
 explicitly without a flag day by choosing `--snapshot`, MCP `contract: "snapshot-v1"`, or the new
