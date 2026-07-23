@@ -131,6 +131,15 @@ npm test -- tests/unit/core/lexsona.spec.ts
 npm run ci
 ```
 
+`npm test`, `npm run ci`, and `npm run ci:full` remove `dist`, build the CLI from the current
+checkout, and then run Vitest. They are therefore safe to run in a fresh worktree and cannot satisfy
+CLI integration tests with stale build output.
+
+CLI subprocess tests must set a test-owned working directory, home/config directories, and explicit
+database path. Positive cases must create a temporary fixture; missing-database cases must use a
+temporary nonexistent path. Never allow a test to discover, open, query, or mutate a project-local
+or user-global Lex database from the host machine.
+
 ### Test Fixtures
 
 Test fixtures are located in `tests/fixtures/`:
