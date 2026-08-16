@@ -14,11 +14,12 @@ import type { BaselineData } from "../baseline/loader.js";
 import { checkConflicts } from "../conflicts/detector.js";
 import type { Persona } from "../persona/types.js";
 import type { BehaviorRuleWithConfidence } from "../rules/types.js";
+import { VERSION } from "../version.js";
 import { deriveScopeConstraints, type Constraint, type ConstraintSet } from "./derive.js";
 
 export const CONSTRAINT_SNAPSHOT_V1_CONTRACT = "ConstraintSnapshot_v1" as const;
 export const CONSTRAINT_SNAPSHOT_V1_SCHEMA_VERSION = 1 as const;
-export const DEFAULT_LEXSONA_ENGINE_VERSION = "1.1.0";
+export const DEFAULT_LEXSONA_ENGINE_VERSION = VERSION;
 
 const MAX_CONSTRAINTS = 128;
 const MAX_PRINCIPLES = 64;
