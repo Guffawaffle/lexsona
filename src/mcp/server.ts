@@ -47,6 +47,7 @@ import {
 } from "./handlers.js";
 import { LexSonaError, LexSonaErrorCode, isClientError, formatErrorForMcp } from "./errors.js";
 import { RequestCache } from "./idempotency.js";
+import { LEXSONA_MCP_SERVER_INFO } from "./server-info.js";
 
 // Server state
 let lexSonaInstance: LexSona | null = null;
@@ -83,17 +84,11 @@ async function ensureConnected(): Promise<LexSona> {
  * Start the MCP server
  */
 async function main(): Promise<void> {
-  const server = new Server(
-    {
-      name: "lexsona",
-      version: "0.1.0",
+  const server = new Server(LEXSONA_MCP_SERVER_INFO, {
+    capabilities: {
+      tools: {},
     },
-    {
-      capabilities: {
-        tools: {},
-      },
-    }
-  );
+  });
 
   // List available tools
   server.setRequestHandler(ListToolsRequestSchema, async () => ({

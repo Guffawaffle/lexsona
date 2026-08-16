@@ -15,6 +15,7 @@ import { registerConstraintsCommands } from "../../src/cli/commands/constraints.
 import { LexSona } from "../../src/core/lexsona.js";
 import type { ConstraintSet } from "../../src/constraints/derive.js";
 import type { ConstraintSnapshotV1 } from "../../src/constraints/snapshot.js";
+import { VERSION } from "../../src/version.js";
 
 function createProgram(): Command {
   const program = new Command();
@@ -171,7 +172,7 @@ describe("constraints CLI", () => {
     const snapshot: ConstraintSnapshotV1 = {
       contract: "ConstraintSnapshot_v1",
       schemaVersion: 1,
-      engine: { name: "@smartergpt/lexsona", version: "1.1.0" },
+      engine: { name: "@smartergpt/lexsona", version: VERSION },
       bindings: { workspace: "lex-mcp", attempt: "attempt-1", task: "implementation" },
       persona: { id: "quality-first_engineering", version: "1.0.0", digest },
       sources: {

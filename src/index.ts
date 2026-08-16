@@ -77,5 +77,4 @@ export {
   formatErrorForMcp,
 } from "./mcp/errors.js";
 
-// Re-export version
-export const VERSION = "0.1.0";
+export { VERSION } from "./version.js";
