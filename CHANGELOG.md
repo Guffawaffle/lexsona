@@ -25,6 +25,8 @@ explicit disconnected legacy-library behavior are intentionally release-breaking
 ### Changed
 
 - Raise the supported Node.js floor and CI/release runtime to Node 24.
+- Require public `@smartergpt/lex@4.0.1` or later in the Lex 4 line and consume its exported
+  PostgreSQL behavioral migration API without a private-module test fallback.
 
 ### Fixed
 

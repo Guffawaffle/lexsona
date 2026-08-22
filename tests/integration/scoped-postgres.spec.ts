@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { Pool, type PoolClient } from "pg";
+import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import * as lexStore from "@smartergpt/lex/store";
 import {
   BEHAVIORAL_STORE_CAPABILITIES,
   BEHAVIORAL_STORE_CONTRACT_VERSION,
+  migratePostgresBehavioralStore,
   openPostgresBehavioralStore,
   type BehavioralStoreBinder,
   type BehavioralStoreBindingV1,
@@ -25,32 +25,6 @@ const protectedRelations = [
 
 function quoteIdentifier(value: string): string {
   return `"${value.replaceAll('"', '""')}"`;
-}
-
-type MigratePostgresBehavioralStore = (client: PoolClient, schema: string) => Promise<void>;
-
-async function resolveBehavioralMigration(): Promise<MigratePostgresBehavioralStore> {
-  const publicMigration = (
-    lexStore as unknown as {
-      migratePostgresBehavioralStore?: MigratePostgresBehavioralStore;
-    }
-  ).migratePostgresBehavioralStore;
-  if (publicMigration) {
-    return publicMigration;
-  }
-
-  // Lex 4.0.0 shipped the migration implementation but omitted it from the
-  // public store entrypoint. Keep this compatibility path test-only while the
-  // coordinated Lex export correction reaches a published package.
-  const storeModuleUrl = import.meta.resolve("@smartergpt/lex/store");
-  const migrationModuleUrl = new URL("./postgres/behavioral-migrations.js", storeModuleUrl).href;
-  const internalModule = (await import(migrationModuleUrl)) as {
-    migratePostgresBehavioralStore?: MigratePostgresBehavioralStore;
-  };
-  if (!internalModule.migratePostgresBehavioralStore) {
-    throw new Error("Lex PostgreSQL behavioral migration API is unavailable");
-  }
-  return internalModule.migratePostgresBehavioralStore;
 }
 
 function binding(
@@ -92,8 +66,7 @@ integration("scoped PostgreSQL LexSona adapter", () => {
         throw new Error(`Unsafe PostgreSQL test schema: ${schema}`);
       }
       await client.query(`CREATE SCHEMA ${quoteIdentifier(schema!)}`);
-      const migrate = await resolveBehavioralMigration();
-      await migrate(client, schema!);
+      await migratePostgresBehavioralStore(client, schema!);
 
       const rls = await client.query<{
         relname: string;

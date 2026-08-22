@@ -2,6 +2,7 @@
 
 LexSona's canonical library contract consumes Lex's typed behavioral-store service. It does not open
 or receive a database driver and it does not discover authority from ambient process state.
+The LexSona 2.x scoped-binding line requires public `@smartergpt/lex@4.0.1` or later within Lex 4.
 
 ## Canonical host integration
 
