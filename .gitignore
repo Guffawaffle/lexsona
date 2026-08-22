@@ -38,4 +38,3 @@ demo-*.js
 *.tgz
 /pack.json
 /release-candidate.json
-/release-candidate.attestation.jsonl

@@ -43,6 +43,23 @@ describe("release workflow authority policy", () => {
     expect(commands.join("\n")).not.toMatch(/\bnpm\s+publish\b/);
     for (const job of Object.values(document.jobs)) {
       expect(job.permissions?.packages).not.toBe("write");
+      expect(job.permissions?.["id-token"]).not.toBe("write");
+      expect(job.permissions?.attestations).not.toBe("write");
     }
+  });
+
+  it("binds tag consumption to the exact immutable artifact service record", () => {
+    const releaseSteps = document.jobs["create-github-release"].steps ?? [];
+    const serviceCheck = releaseSteps.find(
+      (step) => step.name === "Verify immutable artifact service record"
+    )?.run;
+    const download = releaseSteps.find(
+      (step) => step.name === "Download exact candidate evidence by immutable ID"
+    );
+    expect(serviceCheck).toContain("actions/artifacts/$ARTIFACT_ID");
+    expect(serviceCheck).toContain('"sha256:$ARTIFACT_DIGEST"');
+    expect(serviceCheck).toContain('"$GITHUB_RUN_ID"');
+    expect(download?.uses).toMatch(/^actions\/download-artifact@[0-9a-f]{40}$/);
+    expect(workflow).toContain("artifact-ids: ${{ needs.build-candidate.outputs.artifact-id }}");
   });
 });

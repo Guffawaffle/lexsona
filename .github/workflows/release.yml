@@ -102,13 +102,15 @@ jobs:
           fi
 
   build-candidate:
-    name: Build, verify, and attest candidate
+    name: Build, verify, and retain candidate
     needs: validate-identity
     runs-on: ubuntu-latest
+    outputs:
+      artifact-id: ${{ steps.upload-candidate.outputs.artifact-id }}
+      artifact-url: ${{ steps.upload-candidate.outputs.artifact-url }}
+      artifact-digest: ${{ steps.upload-candidate.outputs.artifact-digest }}
     permissions:
-      attestations: write
       contents: read
-      id-token: write
     services:
       postgres:
         image: postgres:16
@@ -156,29 +158,30 @@ jobs:
       - name: Create and verify the commit-bound candidate
         run: npm run release:candidate
 
-      - name: Attest retained candidate and receipt
-        id: attest-candidate
-        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
-        with:
-          subject-path: |
-            smartergpt-lexsona-*.tgz
-            release-candidate.json
-
-      - name: Stage attestation bundle
-        env:
-          ATTESTATION_BUNDLE: ${{ steps.attest-candidate.outputs.bundle-path }}
-        run: cp "$ATTESTATION_BUNDLE" ./release-candidate.attestation.jsonl
-
       - name: Upload immutable candidate evidence
+        id: upload-candidate
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: npm-candidate-${{ github.sha }}
           path: |
             smartergpt-lexsona-*.tgz
             release-candidate.json
-            release-candidate.attestation.jsonl
           retention-days: 7
           if-no-files-found: error
+
+      - name: Record immutable artifact identity
+        env:
+          ARTIFACT_ID: ${{ steps.upload-candidate.outputs.artifact-id }}
+          ARTIFACT_URL: ${{ steps.upload-candidate.outputs.artifact-url }}
+          ARTIFACT_DIGEST: ${{ steps.upload-candidate.outputs.artifact-digest }}
+        run: |
+          {
+            echo "### Retained npm candidate"
+            echo "- Source commit: \`$GITHUB_SHA\`"
+            echo "- Artifact ID: \`$ARTIFACT_ID\`"
+            echo "- Artifact SHA-256: \`$ARTIFACT_DIGEST\`"
+            echo "- Artifact URL: $ARTIFACT_URL"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   create-github-release:
     name: Verify publication and create GitHub release
@@ -186,6 +189,7 @@ jobs:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: write
     steps:
       - name: Harden runner
@@ -203,21 +207,33 @@ jobs:
           node-version: "24.14.1"
           registry-url: "https://registry.npmjs.org"
 
-      - name: Download exact candidate evidence
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
-        with:
-          name: npm-candidate-${{ github.sha }}
-          path: .
-
-      - name: Verify candidate receipt and attestations
+      - name: Verify immutable artifact service record
         env:
+          ARTIFACT_ID: ${{ needs.build-candidate.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ needs.build-candidate.outputs.artifact-digest }}
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          if [[ ! "$ARTIFACT_ID" =~ ^[0-9]+$ ]] || [[ ! "$ARTIFACT_DIGEST" =~ ^[0-9a-f]{64}$ ]]; then
+            echo "Candidate artifact outputs are invalid"
+            exit 1
+          fi
+          readarray -t METADATA < <(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID" --jq '[.name, .digest, (.expired | tostring), (.workflow_run.id | tostring)] | .[]')
+          if [ "${METADATA[0]}" != "npm-candidate-$GITHUB_SHA" ] || [ "${METADATA[1]}" != "sha256:$ARTIFACT_DIGEST" ] || [ "${METADATA[2]}" != "false" ] || [ "${METADATA[3]}" != "$GITHUB_RUN_ID" ]; then
+            echo "Candidate artifact service record is not bound to this workflow run and commit"
+            exit 1
+          fi
+
+      - name: Download exact candidate evidence by immutable ID
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          artifact-ids: ${{ needs.build-candidate.outputs.artifact-id }}
+          path: .
+
+      - name: Verify candidate receipt and tarball
+        run: |
+          set -euo pipefail
           node scripts/verify-release-candidate.mjs --check-only
-          TARBALL=$(node -p "require('./release-candidate.json').artifact.filename")
-          gh attestation verify "$TARBALL" --repo "$GITHUB_REPOSITORY" --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" --source-digest "$GITHUB_SHA" --deny-self-hosted-runners --bundle release-candidate.attestation.jsonl
-          gh attestation verify release-candidate.json --repo "$GITHUB_REPOSITORY" --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml" --source-digest "$GITHUB_SHA" --deny-self-hosted-runners --bundle release-candidate.attestation.jsonl
 
       - name: Bind release to exact private npm bytes
         env:
