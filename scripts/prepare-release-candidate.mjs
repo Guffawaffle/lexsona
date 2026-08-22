@@ -19,7 +19,6 @@ const packageJson = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json
 const packageLock = JSON.parse(fs.readFileSync(path.join(repoRoot, "package-lock.json"), "utf8"));
 const packJsonPath = path.join(repoRoot, "pack.json");
 const receiptPath = path.join(repoRoot, candidateReceiptFilename);
-const attestationPath = path.join(repoRoot, "release-candidate.attestation.jsonl");
 
 function git(args) {
   return execFileSync("git", args, { cwd: repoRoot, encoding: "utf8" }).trim();
@@ -52,7 +51,7 @@ const expectedTarball = resolveExpectedPackTarball(
   },
   packageJson
 );
-for (const generated of [packJsonPath, receiptPath, attestationPath, expectedTarball]) {
+for (const generated of [packJsonPath, receiptPath, expectedTarball]) {
   fs.rmSync(generated, { force: true });
 }
 

@@ -7,8 +7,9 @@ LexSona refuses to publish through "npm run release".
 An agent may run:
   npm run release:dry-run
 
-After the reviewed release commit is merged and its workflow has retained and attested a candidate,
-the authenticated maintainer downloads that exact artifact, verifies its receipt and attestations,
+After the reviewed release commit is merged and its workflow has retained a candidate,
+the authenticated maintainer verifies the workflow's artifact ID and pinned-action-computed,
+service-recorded SHA-256, downloads that exact immutable artifact, and verifies its receipt,
 then publishes the receipt-named tarball with:
   npm whoami
   npm access list packages smartergpt --json
