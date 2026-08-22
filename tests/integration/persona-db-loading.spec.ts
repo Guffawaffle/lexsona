@@ -12,10 +12,11 @@ import { join } from "path";
 import { unlinkSync, existsSync, mkdirSync, writeFileSync, rmSync } from "fs";
 import Database from "better-sqlite3-multiple-ciphers";
 import {
+  closePersonaDatabaseConnection,
   listPersonasWithSource,
   loadPersona,
   type PersonaListEntry,
-} from "../../src/persona/index.js";
+} from "../../src/persona/loader.js";
 
 // Test database path
 const TEST_DB_PATH = join(tmpdir(), `test-lexsona-personas-${Date.now()}.db`);
@@ -107,6 +108,7 @@ describe("Persona Database Loading", () => {
 
     // Set environment to use test database
     process.env.LEX_DB_PATH = TEST_DB_PATH;
+    closePersonaDatabaseConnection();
 
     // Create test personas directory for file-based tests
     mkdirSync(TEST_PERSONAS_DIR, { recursive: true });
@@ -120,6 +122,8 @@ describe("Persona Database Loading", () => {
   });
 
   afterAll(() => {
+    closePersonaDatabaseConnection();
+
     // Restore original values
     process.chdir(originalCwd);
     if (originalEnv !== undefined) {

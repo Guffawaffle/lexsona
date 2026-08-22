@@ -32,6 +32,13 @@ The public API exports:
 - `parseConstraintSnapshotV1()` and `serializeConstraintSnapshotV1()`
 - canonicalization and digest helpers
 
+For an evidence-bearing scoped-store read, use `LexSona.deriveScopedConstraintReceipt()`. Its
+`ScopedConstraintReceipt_v1` wrapper binds the exact read-only Lex authority scope, selected store
+persona revision, behavioral snapshot revision/content digest, and the complete canonical snapshot.
+The wrapper's digest includes diagnostic provenance that `ConstraintSnapshot_v1.contentDigest`
+deliberately excludes. Legacy CLI/MCP snapshot fields remain descriptive and are not a substitute
+for this explicit scoped receipt.
+
 Consumers must reject unsupported schema versions. The v1 parser uses an exact major-version
 literal and therefore fails closed on unknown majors.
 

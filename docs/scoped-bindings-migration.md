@@ -22,6 +22,33 @@ or rule revisions and explicit evidence/promotion operations with caller-provide
 Legacy `learn()` and `teach()` cannot manufacture those fields and therefore fail with a migration
 message on scoped connections.
 
+## Immutable derivation receipt
+
+Use `deriveScopedConstraintReceipt(context)` when a consumer needs evidence that one exact scoped
+read produced one constraint snapshot. The method is available only for `read-only` instances whose
+binding contains exactly `behavior:read`; broader capability sets fail before snapshot access.
+
+The `ScopedConstraintReceipt_v1` result binds:
+
+- the complete non-secret tenant, workspace, repository-instance, principal, capability, and
+  authority identity plus a recomputable binding digest;
+- the requested persona reference, selected Lex persona revision/content digest, and parsed persona
+  manifest ID/version/digest as separate identities;
+- the Lex behavioral snapshot revision and content digest;
+- the complete `ConstraintSnapshot_v1`, including its behavioral digest and diagnostic provenance;
+- an outer digest over the complete receipt payload.
+
+Each invocation performs one normalized `getSnapshot()` read and derives persona/rule behavior only
+from that returned value. The reviewed baseline bundled with the selected LexSona provider is a
+separate derivation input; its revision and digest are bound inside the constraint snapshot. The
+returned object is deeply frozen. A later invocation may deliberately observe newer authorized
+state and return a different receipt; retaining the earlier receipt is the replay pin. The method
+accepts no caller-supplied bindings, engine version, provenance reference, or authority ceiling,
+and it never returns the binder or read/write store handles.
+
+Ordinary `deriveConstraints()` and `deriveConstraintSnapshot()` remain compatibility/current-state
+surfaces. Do not promote their descriptive fields to immutable store-binding evidence.
+
 ## Compatibility window
 
 | Surface                               | LexSona 2.x behavior                            | LexSona 3.0 target                                   |

@@ -31,9 +31,9 @@ interface HealthStatus {
 function checkNodeVersion(): { version: string; ok: boolean } {
   const version = process.version;
   // Minimum required version from package.json engines
-  const minVersion = "20.0.0";
-  const current = version.replace("v", "");
-  const ok = current >= minVersion;
+  const minimumMajor = 24;
+  const currentMajor = Number.parseInt(process.versions.node.split(".")[0] ?? "", 10);
+  const ok = Number.isInteger(currentMajor) && currentMajor >= minimumMajor;
   return { version, ok };
 }
 
@@ -176,7 +176,7 @@ async function performHealthCheck(): Promise<{
   const node = checkNodeVersion();
   if (!node.ok) {
     status.healthy = false;
-    status.issues.push(`Node.js version ${node.version} is below minimum required v20.0.0`);
+    status.issues.push(`Node.js version ${node.version} is below minimum required v24.0.0`);
   }
 
   // Check LexSona version
@@ -328,7 +328,7 @@ function formatHealthCheck(result: Awaited<ReturnType<typeof performHealthCheck>
         fixNumber++;
       }
       if (issue.includes("Node.js")) {
-        lines.push(`  ${fixNumber}. Upgrade Node.js to v20.0.0 or higher`);
+        lines.push(`  ${fixNumber}. Upgrade Node.js to v24.0.0 or higher`);
         fixNumber++;
       }
     }

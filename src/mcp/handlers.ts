@@ -41,6 +41,7 @@ import {
   addCompactFlag,
   type OutputFormat,
 } from "./formatters.js";
+import { VERSION } from "../version.js";
 
 // Constants
 const DEFAULT_CONSTRAINT_SOURCE: ConstraintSource = "learned";
@@ -429,7 +430,7 @@ export async function handleIntrospect(
   const errorCodes = Object.values(LexSonaErrorCode);
 
   return {
-    version: "0.3.0",
+    version: VERSION,
     ruleVersion,
     state: {
       activePersona: state.activePersonaId,

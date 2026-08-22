@@ -29,12 +29,16 @@ import { createLexNotConnectedError } from "../mcp/errors.js";
 import { getBaseline, type BaselineData } from "../baseline/index.js";
 import {
   createConstraintSnapshotV1,
+  digestConstraintSnapshotValue,
   type ConstraintSnapshotAuthorityCeilingV1,
   type ConstraintSnapshotV1,
   type SnapshotBindingsV1,
 } from "../constraints/snapshot.js";
 import {
   behaviorRuleFromRevision,
+  closeScopedBehavioralConnection,
+  getScopedBehavioralBindingReceipt,
+  getScopedRuleRevision,
   isScopedLexSonaConfig,
   openScopedBehavioralConnection,
   promoteScopedRule,
@@ -132,6 +136,64 @@ export interface DeriveConstraintSnapshotOptions {
   provenanceRef?: string;
 }
 
+export const SCOPED_CONSTRAINT_RECEIPT_V1 = "ScopedConstraintReceipt_v1" as const;
+export const SCOPED_CONSTRAINT_RECEIPT_SCHEMA_VERSION = 1 as const;
+
+/** Evidence that one read-only scoped snapshot produced one constraint snapshot. */
+export interface ScopedConstraintReceiptV1 {
+  readonly contract: typeof SCOPED_CONSTRAINT_RECEIPT_V1;
+  readonly schemaVersion: typeof SCOPED_CONSTRAINT_RECEIPT_SCHEMA_VERSION;
+  readonly mode: "read-only";
+  readonly binding: {
+    readonly schemaVersion: number;
+    readonly scopeSchemaVersion: number;
+    readonly grantId: string;
+    readonly tenantId: string;
+    readonly workspaceId: string;
+    readonly principalId: string;
+    readonly repositoryId: string;
+    readonly repositoryInstanceId: string;
+    readonly capabilities: readonly string[];
+    readonly authorityVersion: string;
+    readonly scopeVersion: string;
+    readonly authorityDigest: string;
+    readonly verifiedAt: string;
+    readonly expiresAt?: string;
+    readonly digest: string;
+  };
+  readonly requestedPersona: {
+    readonly personaId: string;
+    readonly revision?: string;
+  };
+  readonly selectedPersona: {
+    readonly personaId: string;
+    readonly revision: string;
+    readonly contentDigest: string;
+  };
+  readonly manifestPersona: {
+    readonly id: string;
+    readonly version: string;
+    readonly contentDigest: string;
+  };
+  readonly behavioralSnapshot: {
+    readonly schemaVersion: number;
+    readonly snapshotRevision: string;
+    readonly contentDigest: string;
+  };
+  readonly constraintSnapshot: ConstraintSnapshotV1;
+  readonly digest: string;
+}
+
+function deepFreeze<T>(value: T): T {
+  if (typeof value !== "object" || value === null || Object.isFrozen(value)) {
+    return value;
+  }
+  for (const nested of Object.values(value)) {
+    deepFreeze(nested);
+  }
+  return Object.freeze(value);
+}
+
 /**
  * LexSona Runtime Engine
  *
@@ -144,14 +206,23 @@ export interface DeriveConstraintSnapshotOptions {
  * It returns constraints for consumers to apply.
  */
 export class LexSona {
-  private _config: LexSonaConfig;
+  private readonly _config:
+    | Readonly<LegacyLexSonaConfig>
+    | Readonly<Pick<ScopedLexSonaConfig, "personaRef" | "mode" | "domain">>;
   private activePersona: string | null = null;
   private storageClient: LexStorageClient | null = null;
   private scopedConnection: ScopedBehavioralConnection | null = null;
+  private closePromise: Promise<void> | null = null;
   private ruleVersion: number = 0;
 
   private constructor(config: LexSonaConfig) {
-    this._config = config;
+    this._config = isScopedLexSonaConfig(config)
+      ? Object.freeze({
+          personaRef: Object.freeze({ ...config.personaRef }),
+          mode: config.mode,
+          ...(config.domain !== undefined ? { domain: config.domain } : {}),
+        })
+      : Object.freeze({ ...config });
     this.activePersona = isScopedLexSonaConfig(config)
       ? config.personaRef.personaId
       : (config.persona ?? null);
@@ -338,6 +409,87 @@ export class LexSona {
   }
 
   /**
+   * Derive an evidence-bound receipt from one exact scoped read-only snapshot.
+   *
+   * This surface intentionally accepts no provider, binding, authority,
+   * engine, or provenance overrides. Those identities are derived from the
+   * already-bound connection and the Lex-owned behavioral snapshot.
+   */
+  async deriveScopedConstraintReceipt(context: DeriveContext): Promise<ScopedConstraintReceiptV1> {
+    const connection = this.scopedConnection;
+    if (!connection || connection.mode !== "read-only") {
+      throw new Error(
+        'deriveScopedConstraintReceipt() requires a scoped LexSona connection in mode "read-only"'
+      );
+    }
+
+    const pinnedContext: DeriveContext = Object.freeze({
+      ...context,
+      ...(context.context_tags !== undefined
+        ? { context_tags: [...new Set(context.context_tags)].sort() }
+        : {}),
+      ...(context.runtime_capabilities !== undefined
+        ? { runtime_capabilities: [...new Set(context.runtime_capabilities)].sort() }
+        : {}),
+      ...(context.files !== undefined ? { files: [...new Set(context.files)].sort() } : {}),
+    });
+    const binding = getScopedBehavioralBindingReceipt(connection);
+    if (binding.capabilities.length !== 1 || binding.capabilities[0] !== "behavior:read") {
+      throw new Error(
+        'deriveScopedConstraintReceipt() requires exact capability set ["behavior:read"]'
+      );
+    }
+    const behavior = await readScopedBehavioralSnapshot(connection, pinnedContext);
+    const baseline = getBaselineData();
+    const constraintSet = deriveConstraintsPure(
+      behavior.persona,
+      [...behavior.rules],
+      baseline.principles,
+      pinnedContext,
+      { hasLexConnection: true }
+    );
+    constraintSet.constraints = [...baseline.constraints, ...constraintSet.constraints];
+    constraintSet.ruleVersion = this.ruleVersion;
+    const constraintSnapshot = deepFreeze(
+      createConstraintSnapshotV1({
+        constraintSet,
+        persona: behavior.persona,
+        rules: [...behavior.rules],
+        baseline,
+        provenanceRef: behavior.snapshot.snapshotRevision,
+      })
+    );
+
+    const payload = Object.freeze({
+      contract: SCOPED_CONSTRAINT_RECEIPT_V1,
+      schemaVersion: SCOPED_CONSTRAINT_RECEIPT_SCHEMA_VERSION,
+      mode: "read-only" as const,
+      binding,
+      requestedPersona: Object.freeze({ ...connection.personaRef }),
+      selectedPersona: Object.freeze({
+        personaId: behavior.personaRevision.personaId,
+        revision: behavior.personaRevision.revision,
+        contentDigest: behavior.personaRevision.contentDigest,
+      }),
+      manifestPersona: Object.freeze({
+        id: behavior.personaRevision.manifestId,
+        version: behavior.personaRevision.manifestVersion,
+        contentDigest: behavior.personaRevision.manifestDigest,
+      }),
+      behavioralSnapshot: Object.freeze({
+        schemaVersion: behavior.snapshot.schemaVersion,
+        snapshotRevision: behavior.snapshot.snapshotRevision,
+        contentDigest: behavior.snapshot.contentDigest,
+      }),
+      constraintSnapshot,
+    });
+    return Object.freeze({
+      ...payload,
+      digest: digestConstraintSnapshotValue(payload),
+    });
+  }
+
+  /**
    * Learn from a behavioral correction
    *
    * Records the correction to Lex's behavioral rules store
@@ -513,7 +665,7 @@ export class LexSona {
     ruleId: string
   ): Promise<import("@smartergpt/lex/lexsona").BehaviorRuleWithConfidence | null> {
     if (this.scopedConnection) {
-      const rule = await this.scopedConnection.read.getRule(ruleId);
+      const rule = await getScopedRuleRevision(this.scopedConnection, ruleId);
       return rule ? behaviorRuleFromRevision(rule) : null;
     }
     if (!this.storageClient?.isConnected()) {
@@ -552,7 +704,9 @@ export class LexSona {
   /**
    * Get the current configuration
    */
-  getConfig(): LexSonaConfig {
+  getConfig():
+    | Readonly<LegacyLexSonaConfig>
+    | Readonly<Pick<ScopedLexSonaConfig, "personaRef" | "mode" | "domain">> {
     return this._config;
   }
 
@@ -826,14 +980,36 @@ export class LexSona {
   }
 
   /**
-   * Close the connection
+   * Close the connection.
+   *
+   * This retains the legacy synchronous public signature. Scoped consumers
+   * should use closeAsync() when they need to await store teardown.
    */
-  async close(): Promise<void> {
+  close(): void {
+    void this.beginClose().catch((error: unknown) => {
+      console.warn(
+        `LexSona: Scoped close failed: ${error instanceof Error ? error.message : String(error)}`
+      );
+    });
+  }
+
+  /** Close the connection and await scoped store teardown. */
+  closeAsync(): Promise<void> {
+    return this.beginClose();
+  }
+
+  private beginClose(): Promise<void> {
+    if (this.closePromise) {
+      return this.closePromise;
+    }
+
     this.storageClient?.close();
     this.storageClient = null;
-    if (this.scopedConnection) {
-      await Promise.all([this.scopedConnection.read.close(), this.scopedConnection.write?.close()]);
-      this.scopedConnection = null;
-    }
+    const connection = this.scopedConnection;
+    this.scopedConnection = null;
+    this.closePromise = connection
+      ? closeScopedBehavioralConnection(connection)
+      : Promise.resolve();
+    return this.closePromise;
   }
 }

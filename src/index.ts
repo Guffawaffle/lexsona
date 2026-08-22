@@ -11,6 +11,9 @@ export {
   type LexSonaConfig,
   type LegacyLexSonaConfig,
   type DeriveConstraintSnapshotOptions,
+  SCOPED_CONSTRAINT_RECEIPT_V1,
+  SCOPED_CONSTRAINT_RECEIPT_SCHEMA_VERSION,
+  type ScopedConstraintReceiptV1,
 } from "./core/lexsona.js";
 export type {
   BehavioralEvidenceInputV1,

@@ -9,6 +9,7 @@ import { describe, it, expect, vi } from "vitest";
 import { handleIntrospect } from "../../../src/mcp/handlers.js";
 import { LexSona } from "../../../src/core/lexsona.js";
 import { LexSonaErrorCode } from "../../../src/mcp/errors.js";
+import { VERSION } from "../../../src/version.js";
 
 describe("handleIntrospect (AX-002)", () => {
   it("returns version, state, personas, capabilities, and error codes", async () => {
@@ -60,7 +61,7 @@ describe("handleIntrospect (AX-002)", () => {
     const result = await handleIntrospect({}, state, getLexSona);
 
     expect(result).toMatchObject({
-      version: "0.3.0",
+      version: VERSION,
       state: {
         activePersona: "quality-first_engineering",
         ruleCount: 2,
@@ -97,7 +98,7 @@ describe("handleIntrospect (AX-002)", () => {
     const result = await handleIntrospect({}, state, getLexSona);
 
     expect(result).toMatchObject({
-      version: "0.3.0",
+      version: VERSION,
       state: {
         activePersona: null,
         ruleCount: 0,
@@ -121,7 +122,7 @@ describe("handleIntrospect (AX-002)", () => {
 
     // Should still return introspection data, but with lexConnected: false
     expect(result).toMatchObject({
-      version: "0.3.0",
+      version: VERSION,
       state: {
         activePersona: "quality-first_engineering",
         ruleCount: 0,

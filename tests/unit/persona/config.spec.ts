@@ -23,7 +23,8 @@ describe("Persona Config", () => {
   let homeDir: string;
   let projectDir: string;
   let originalCwd: string;
-  let originalHome: string;
+  let originalHome: string | undefined;
+  let originalUserProfile: string | undefined;
 
   beforeEach(() => {
     // Create a temporary directory for testing
@@ -36,17 +37,22 @@ describe("Persona Config", () => {
 
     // Save original cwd and HOME
     originalCwd = process.cwd();
-    originalHome = process.env.HOME || "";
+    originalHome = process.env.HOME;
+    originalUserProfile = process.env.USERPROFILE;
 
     // Change to project directory for tests
     process.chdir(projectDir);
     process.env.HOME = homeDir;
+    process.env.USERPROFILE = homeDir;
   });
 
   afterEach(() => {
     // Restore original values
     process.chdir(originalCwd);
-    process.env.HOME = originalHome;
+    if (originalHome === undefined) delete process.env.HOME;
+    else process.env.HOME = originalHome;
+    if (originalUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = originalUserProfile;
 
     // Clean up test directory
     if (existsSync(testDir)) {

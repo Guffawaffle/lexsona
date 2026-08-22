@@ -157,13 +157,13 @@ async function deriveForAuthorizedRequest(
     mode: "read-only",
   });
 
-  const constraints = await sona.deriveConstraints({
+  const receipt = await sona.deriveScopedConstraintReceipt({
     module_id: "api",
     taskType: "implementation",
   });
 
-  await sona.close();
-  return constraints;
+  await sona.closeAsync();
+  return receipt;
 }
 ```
 
@@ -171,6 +171,21 @@ The trusted host obtains `store` and `binding` from Lex bootstrap and authority 
 does not mint, widen, or infer that binding. Lex validates it again when LexSona binds the read
 service. Select `mode: "read-write"` only when the binding separately carries the required mutation
 capability; writes require explicit immutable revisions, evidence, and idempotency keys.
+
+`deriveScopedConstraintReceipt()` is the evidence-bearing read-only surface. It accepts no caller
+overrides for provider, authority, provenance, or run binding. One exact Lex behavioral snapshot
+supplies the persona and learned rules; the versioned bundled baseline remains a separate input and
+is independently digested inside `ConstraintSnapshot_v1`. The receipt binds the authorized scope,
+requested and selected persona revisions, parsed manifest identity, both behavioral snapshot
+digests, and the complete constraint snapshot. A later call may observe a newer authorized snapshot;
+the earlier frozen receipt remains replayable and byte-stable. The Lex store revision and persona
+manifest version are intentionally distinct identities.
+
+The receipt requires a binding whose capability set is exactly `behavior:read`. A read-only mode
+wrapped around a broader write-capable binding is rejected before the store is read. Ordinary
+`deriveConstraints()` remains the compatibility surface for callers that want current-state results
+without an immutable receipt. `close()` retains its legacy synchronous signature; scoped consumers
+should use `closeAsync()` when teardown must complete before resources are removed.
 
 The same LexSona API consumes Lex's SQLite and PostgreSQL behavioral-store implementations without
 receiving either backend's database handle. PostgreSQL tenant isolation and RLS remain Lex/database
