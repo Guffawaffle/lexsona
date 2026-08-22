@@ -21,6 +21,9 @@ explicit disconnected legacy-library behavior are intentionally release-breaking
   granting execution authority.
 - Add `closeAsync()` for callers that must await scoped-store teardown while retaining the legacy
   synchronous `close()` signature.
+- Add a commit-bound, attested release candidate receipt and packed-consumer gate. Manual dispatch
+  can only retain evidence; signed-tag releases remain blocked until private npm reports the exact
+  candidate integrity.
 
 ### Changed
 

@@ -3,6 +3,7 @@
   "version": "2.0.0",
   "description": "Behavioral memory and persona engine for AI agents. Requires Lex for storage.",
   "type": "module",
+  "packageManager": "npm@11.11.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
@@ -38,6 +39,11 @@
     "ci": "npm run lint && npm run typecheck && npm test",
     "ci:full": "npm run lint && npm run typecheck && npm test",
     "local-ci": "npm run ci",
+    "release": "node scripts/manual-publish-boundary.mjs",
+    "release:dry-run": "npm run release:candidate",
+    "release:candidate": "node scripts/prepare-release-candidate.mjs && node scripts/verify-release-candidate.mjs",
+    "release:verify": "node scripts/verify-release-candidate.mjs --check-only",
+    "release:verify-published": "node scripts/verify-published-candidate.mjs",
     "prepare": "husky"
   },
   "keywords": [

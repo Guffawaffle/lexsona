@@ -33,3 +33,9 @@ coverage/
 # Demo/temporary files
 demo-*.mjs
 demo-*.js
+
+# Release candidate outputs
+*.tgz
+/pack.json
+/release-candidate.json
+/release-candidate.attestation.jsonl
