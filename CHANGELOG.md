@@ -7,9 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+_No unreleased changes._
+
+## [2.0.0] - 2026-08-22
+
+This is the LexSona 2.0 development line. Its Node 24 floor, Lex 4 scoped-store peer contract, and
+explicit disconnected legacy-library behavior are intentionally release-breaking changes.
+
+### Added
+
+- Add a read-only `ScopedConstraintReceipt_v1` that binds one exact Lex behavioral snapshot,
+  authority scope, persona revision, manifest identity, and canonical constraint snapshot without
+  granting execution authority.
+- Add `closeAsync()` for callers that must await scoped-store teardown while retaining the legacy
+  synchronous `close()` signature.
+- Add a commit-bound, attested release candidate receipt and packed-consumer gate. Manual dispatch
+  can only retain evidence; signed-tag releases remain blocked until private npm reports the exact
+  candidate integrity.
+
+### Changed
+
+- Raise the supported Node.js floor and CI/release runtime to Node 24.
+- Require public `@smartergpt/lex@4.0.1` or later in the Lex 4 line and consume its exported
+  PostgreSQL behavioral migration API without a private-module test fallback.
+
 ### Fixed
 
 - Source public, CLI, MCP, and constraint-snapshot version metadata from the package manifest.
+- Repair the CI workflow YAML so hosted gates can create jobs instead of failing during parsing.
+- Prevent scoped configuration inspection from exposing raw binders or write-capable handles.
+- Isolate Windows persona tests from the real user profile and close the loader's lazy SQLite
+  connection before fixture teardown.
 
 ## [1.1.0] - 2026-02-08
 

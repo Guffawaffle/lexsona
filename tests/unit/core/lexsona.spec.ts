@@ -7,6 +7,7 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { LexSona } from "../../../src/core/lexsona.js";
+import { createIsolatedTestDb } from "../../utils/db-fixtures.js";
 
 describe("LexSona", () => {
   let sona: LexSona;
@@ -38,6 +39,24 @@ describe("LexSona", () => {
     it("returns disconnected status when no database", async () => {
       // sona is already created with nonexistent path in beforeEach
       expect(sona.isConnected()).toBe(false);
+    });
+
+    it("does not inherit an ambient LEX_DB_PATH in the library path", async () => {
+      const testDb = createIsolatedTestDb({ closeAfterSetup: true });
+      const previous = process.env.LEX_DB_PATH;
+      process.env.LEX_DB_PATH = testDb.path;
+      try {
+        const instance = await LexSona.connect();
+        expect(instance.isConnected()).toBe(false);
+        await instance.close();
+      } finally {
+        if (previous === undefined) {
+          delete process.env.LEX_DB_PATH;
+        } else {
+          process.env.LEX_DB_PATH = previous;
+        }
+        testDb.cleanup();
+      }
     });
   });
 

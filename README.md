@@ -140,29 +140,70 @@ connected Lex SQLite database.
 ### TypeScript API
 
 ```typescript
-import { LexSona } from "@smartergpt/lexsona";
+import { LexSona, type BehavioralStoreBindingV1 } from "@smartergpt/lexsona";
+import type { BehavioralStoreBinder } from "@smartergpt/lex/store";
 
-const sona = await LexSona.connect({
+async function deriveForAuthorizedRequest(
+  store: BehavioralStoreBinder,
+  binding: BehavioralStoreBindingV1
+) {
+  const sona = await LexSona.connect({
+    store,
+    binding,
+    personaRef: {
+      personaId: "quality-first_engineering",
+      revision: "1",
+    },
+    mode: "read-only",
+  });
+
+  const receipt = await sona.deriveScopedConstraintReceipt({
+    module_id: "api",
+    taskType: "implementation",
+  });
+
+  await sona.closeAsync();
+  return receipt;
+}
+```
+
+The trusted host obtains `store` and `binding` from Lex bootstrap and authority resolution. LexSona
+does not mint, widen, or infer that binding. Lex validates it again when LexSona binds the read
+service. Select `mode: "read-write"` only when the binding separately carries the required mutation
+capability; writes require explicit immutable revisions, evidence, and idempotency keys.
+
+`deriveScopedConstraintReceipt()` is the evidence-bearing read-only surface. It accepts no caller
+overrides for provider, authority, provenance, or run binding. One exact Lex behavioral snapshot
+supplies the persona and learned rules; the versioned bundled baseline remains a separate input and
+is independently digested inside `ConstraintSnapshot_v1`. The receipt binds the authorized scope,
+requested and selected persona revisions, parsed manifest identity, both behavioral snapshot
+digests, and the complete constraint snapshot. A later call may observe a newer authorized snapshot;
+the earlier frozen receipt remains replayable and byte-stable. The Lex store revision and persona
+manifest version are intentionally distinct identities.
+
+The receipt requires a binding whose capability set is exactly `behavior:read`. A read-only mode
+wrapped around a broader write-capable binding is rejected before the store is read. Ordinary
+`deriveConstraints()` remains the compatibility surface for callers that want current-state results
+without an immutable receipt. `close()` retains its legacy synchronous signature; scoped consumers
+should use `closeAsync()` when teardown must complete before resources are removed.
+
+The same LexSona API consumes Lex's SQLite and PostgreSQL behavioral-store implementations without
+receiving either backend's database handle. PostgreSQL tenant isolation and RLS remain Lex/database
+responsibilities; LexSona cannot bypass them through this socket.
+
+The old path-based form remains temporarily available for compatibility:
+
+```typescript
+const legacy = await LexSona.connect({
   lexDb: "/absolute/path/to/lex.db",
   persona: "quality-first_engineering",
 });
-
-const constraints = await sona.deriveConstraints({
-  domain: "my-repository",
-  module_id: "api",
-  taskType: "implementation",
-});
-
-const snapshot = await sona.deriveConstraintSnapshot(
-  { domain: "my-repository", module_id: "api", taskType: "implementation" },
-  { bindings: { workspace: "my-workspace", attempt: "attempt-1" } }
-);
-
-sona.close();
 ```
 
-Use `activate()` for request-local in-process selection. The CLI's `persona activate` command is a
-different surface and persists project-local or user-global configuration.
+It is deprecated for removal in LexSona 3.0. Library construction never discovers `LEX_DB_PATH`,
+cwd, or home-directory storage. The compatibility CLI and source MCP bootstrap perform that
+discovery explicitly at their composition edge. See
+[the scoped-binding migration guide](docs/scoped-bindings-migration.md).
 
 Public package entry points are:
 
@@ -178,25 +219,30 @@ using that source-level surface.
 
 ## Trust and storage boundaries
 
-LexSona's current connected storage path is a Lex-owned **SQLite file** selected explicitly through
-the API or discovered by the compatibility CLI. `LEX_DB_PATH` is a compatibility selector, not an
-authorization grant.
+LexSona's canonical connected path receives a Lex-owned behavioral-store binder and an immutable
+authorized binding containing tenant, workspace, repository, repository instance, principal, and
+capability scope. `LEX_DB_PATH` remains a compatibility CLI selector, not an authorization grant.
 
 Important boundaries:
 
 - persona files and learned rules are inputs to agent behavior; review them as untrusted historical
   input before a consumer applies them;
 - derivation performs no network requests and returns data rather than executing it;
-- connected construction may create LexSona metadata in the selected SQLite database;
+- the canonical library path receives no raw database, pool, client, query, or filesystem path;
+- Lex owns binding validation, capability checks, SQLite/PostgreSQL persistence, and PostgreSQL RLS;
+- read-only derivation and mutation bind independently, and immutable writes require idempotency;
+- the library does not inspect `LEX_DB_PATH`, cwd, or home during canonical or disconnected
+  construction;
 - CLI derivation writes a last-result cache unless `LEXSONA_CONSTRAINTS_CACHE_PATH` redirects it;
 - activation and learning commands are explicit mutations;
-- the current LexSona connection does not accept Lex 3 trusted workspace authority or a
-  PostgreSQL/RLS-scoped store.
+- path-based SQLite and project/user persona discovery survive only in the deprecated compatibility
+  CLI/bootstrap path through the documented removal window.
 
 Do not treat a database path, environment variable, persona ID, or constraint set as proof that a
-caller is authorized for a tenant or workspace. A multi-tenant host should defer connected LexSona
-use until it can bind derivation to that host's authorized scope; offline-safe, storage-free
-derivation remains a separate option.
+caller is authorized for a tenant or workspace. A multi-tenant host must provide an authenticated
+Lex binding and use a Lex backend whose enforcement matches its claim. This boundary prevents
+LexSona from widening the supplied authority; it does not claim that RLS survives compromise of a
+privileged database or host identity.
 
 ## Personas and failure behavior
 

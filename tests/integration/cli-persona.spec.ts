@@ -60,7 +60,8 @@ describe("persona CLI integration", () => {
   let homeDir: string;
   let projectDir: string;
   let originalCwd: string;
-  let originalHome: string;
+  let originalHome: string | undefined;
+  let originalUserProfile: string | undefined;
 
   beforeEach(() => {
     // Create temporary directories
@@ -74,17 +75,22 @@ describe("persona CLI integration", () => {
 
     // Save original values
     originalCwd = process.cwd();
-    originalHome = process.env.HOME || "";
+    originalHome = process.env.HOME;
+    originalUserProfile = process.env.USERPROFILE;
 
     // Set test environment
     process.chdir(projectDir);
     process.env.HOME = homeDir;
+    process.env.USERPROFILE = homeDir;
   });
 
   afterEach(() => {
     // Restore original values
     process.chdir(originalCwd);
-    process.env.HOME = originalHome;
+    if (originalHome === undefined) delete process.env.HOME;
+    else process.env.HOME = originalHome;
+    if (originalUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = originalUserProfile;
 
     // Clean up
     if (existsSync(tempDir)) {

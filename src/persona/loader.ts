@@ -88,6 +88,13 @@ function getLexDb(): ReturnType<typeof connectToLex>["db"] | null {
   return lexDbConnection?.db ?? null;
 }
 
+/** Close and forget the lazily opened persona database connection. */
+export function closePersonaDatabaseConnection(): void {
+  lexDbConnection?.db?.close();
+  lexDbConnection = null;
+  lexDbInitialized = false;
+}
+
 /**
  * Load a persona from the Lex database by ID
  * Returns null if not found or database not available

@@ -9,8 +9,24 @@
 export {
   LexSona,
   type LexSonaConfig,
+  type LegacyLexSonaConfig,
   type DeriveConstraintSnapshotOptions,
+  SCOPED_CONSTRAINT_RECEIPT_V1,
+  SCOPED_CONSTRAINT_RECEIPT_SCHEMA_VERSION,
+  type ScopedConstraintReceiptV1,
 } from "./core/lexsona.js";
+export type {
+  BehavioralEvidenceInputV1,
+  BehavioralPromotionInputV1,
+  BehavioralRevisionWriteV1,
+  BehavioralStoreBindingV1,
+  BehavioralWriteReceiptV1,
+  PersonaRefV1,
+  PersonaRevisionInputV1,
+  RuleRevisionInputV1,
+  ScopedBehavioralAccessMode,
+  ScopedLexSonaConfig,
+} from "./core/scopedBehavior.js";
 export { deriveConstraints, type DeriveContext, type ConstraintSet } from "./constraints/derive.js";
 export {
   CONSTRAINT_SNAPSHOT_V1_CONTRACT,
