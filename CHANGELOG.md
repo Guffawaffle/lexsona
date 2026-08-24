@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No unreleased changes._
 
+## [2.0.1] - 2026-08-23
+
+### Fixed
+
+- Resolve the Lex peer from LexSona's installed ESM package graph so `lexsona doctor` works from
+  consumer workspaces and global installs instead of searching only the caller's current directory.
+- Exercise the packed CLI doctor from a dependency-free external directory during release-candidate
+  verification.
+
 ## [2.0.0] - 2026-08-22
 
 This is the LexSona 2.0 development line. Its Node 24 floor, Lex 4 scoped-store peer contract, and

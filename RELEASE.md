@@ -28,8 +28,9 @@ gh run download <run-id> --repo Guffawaffle/lexsona --name npm-candidate-<commit
 npm whoami
 npm access list packages smartergpt --json
 node .\scripts\verify-release-candidate.mjs --check-only
-npm publish .\smartergpt-lexsona-2.0.0.tgz --access restricted
-npm view @smartergpt/lexsona@2.0.0 version dist.integrity --json
+$version = (Get-Content -Raw .\package.json | ConvertFrom-Json).version
+npm publish ".\smartergpt-lexsona-$version.tgz" --access restricted
+npm view "@smartergpt/lexsona@$version" version dist.integrity --json
 ```
 
 Publication remains human-only and 2FA-protected. The workflow has no npm publish step or publish token.

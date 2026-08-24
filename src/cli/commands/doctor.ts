@@ -8,7 +8,8 @@
 
 import { Command } from "commander";
 import { existsSync, readFileSync } from "fs";
-import { join } from "path";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 import { discoverDbPath, connectToLex } from "../../core/lexConnection.js";
 import { listPersonas } from "../../persona/loader.js";
 import { getActivePersona } from "../../persona/config.js";
@@ -42,27 +43,38 @@ function checkNodeVersion(): { version: string; ok: boolean } {
  */
 function checkLexPeer(): { version: string | null; ok: boolean; error?: string } {
   try {
-    // Try to read Lex package.json
-    const lexPackageJsonPath = join(
-      process.cwd(),
-      "node_modules",
-      "@smartergpt",
-      "lex",
-      "package.json"
-    );
+    const lexModulePath = fileURLToPath(import.meta.resolve("@smartergpt/lex/lexsona"));
+    let packageDirectory = dirname(lexModulePath);
 
-    if (!existsSync(lexPackageJsonPath)) {
-      return {
-        version: null,
-        ok: false,
-        error: "Not found",
-      };
+    while (true) {
+      const lexPackageJsonPath = join(packageDirectory, "package.json");
+      if (existsSync(lexPackageJsonPath)) {
+        const lexPackageJson = JSON.parse(readFileSync(lexPackageJsonPath, "utf-8")) as {
+          name?: unknown;
+          version?: unknown;
+        };
+        if (
+          lexPackageJson.name === "@smartergpt/lex" &&
+          typeof lexPackageJson.version === "string"
+        ) {
+          return {
+            version: lexPackageJson.version,
+            ok: true,
+          };
+        }
+      }
+
+      const parentDirectory = dirname(packageDirectory);
+      if (parentDirectory === packageDirectory) {
+        break;
+      }
+      packageDirectory = parentDirectory;
     }
 
-    const lexPackageJson = JSON.parse(readFileSync(lexPackageJsonPath, "utf-8"));
     return {
-      version: lexPackageJson.version,
-      ok: true,
+      version: null,
+      ok: false,
+      error: "Not found",
     };
   } catch (error) {
     return {
