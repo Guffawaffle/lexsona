@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -34,9 +34,10 @@ if (
 }
 
 const consumer = fs.mkdtempSync(path.join(os.tmpdir(), "lexsona-consumer-"));
-function run(command, args, { capture = false, env = process.env } = {}) {
+const externalCwd = fs.mkdtempSync(path.join(os.tmpdir(), "lexsona-external-cwd-"));
+function run(command, args, { capture = false, cwd = consumer, env = process.env } = {}) {
   return execFileSync(command, args, {
-    cwd: consumer,
+    cwd,
     encoding: "utf8",
     env,
     stdio: capture ? ["ignore", "pipe", "pipe"] : "inherit",
@@ -141,6 +142,33 @@ try {
   if (!cliHelp.includes("Behavioral memory and persona engine")) {
     throw new Error("Packed CLI help failed");
   }
+  const externalDoctor = spawnSync(process.execPath, [cliPath, "--json", "doctor"], {
+    cwd: externalCwd,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      HOME: externalCwd,
+      USERPROFILE: externalCwd,
+      XDG_CONFIG_HOME: externalCwd,
+      APPDATA: externalCwd,
+      LOCALAPPDATA: externalCwd,
+      LEX_DB_PATH: path.join(externalCwd, "missing-lex.db"),
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  if (externalDoctor.status !== 1 || externalDoctor.stderr) {
+    throw new Error(
+      "Packed CLI external-cwd doctor did not return the expected database-only failure"
+    );
+  }
+  const externalReport = JSON.parse(externalDoctor.stdout);
+  if (
+    !externalReport.checks?.lex?.ok ||
+    externalReport.checks.lex.version !== expectedLex.version ||
+    externalReport.status?.issues?.some((issue) => issue.includes("Lex peer"))
+  ) {
+    throw new Error("Packed CLI external-cwd doctor did not resolve the reviewed Lex peer");
+  }
 
   const typePath = path.join(consumer, "consumer.ts");
   fs.writeFileSync(
@@ -169,4 +197,5 @@ try {
   console.log("Packed consumer passed: exact public Lex, runtime exports, CLI, and declarations");
 } finally {
   fs.rmSync(consumer, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  fs.rmSync(externalCwd, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
