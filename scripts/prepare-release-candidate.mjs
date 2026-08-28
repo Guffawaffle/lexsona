@@ -58,13 +58,13 @@ for (const generated of [packJsonPath, receiptPath, expectedTarball]) {
 const npm = resolveNpmInvocation();
 const lexDependency = packageLock.packages?.["node_modules/@smartergpt/lex"];
 if (
-  packageJson.devDependencies?.["@smartergpt/lex"] !== "4.0.1" ||
+  packageJson.devDependencies?.["@smartergpt/lex"] !== "4.0.3" ||
   packageJson.peerDependencies?.["@smartergpt/lex"] !== ">=4.0.1 <5" ||
-  lexDependency?.version !== "4.0.1" ||
+  lexDependency?.version !== "4.0.3" ||
   !lexDependency.resolved?.startsWith("https://registry.npmjs.org/") ||
   !lexDependency.integrity
 ) {
-  throw new Error("Release candidate requires exact public Lex 4.0.1 lock evidence");
+  throw new Error("Release candidate requires exact public Lex 4.0.3 lock evidence");
 }
 const npmVersion = execFileSync(npm.command, [...npm.prefixArgs, "--version"], {
   cwd: repoRoot,

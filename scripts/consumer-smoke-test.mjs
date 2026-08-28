@@ -19,11 +19,11 @@ const candidate = loadAndVerifyReleaseCandidate(repoRoot, receiptPath);
 const sourceLock = JSON.parse(fs.readFileSync(path.join(repoRoot, "package-lock.json"), "utf8"));
 const expectedLex = sourceLock.packages?.["node_modules/@smartergpt/lex"];
 if (
-  expectedLex?.version !== "4.0.1" ||
+  expectedLex?.version !== "4.0.3" ||
   !expectedLex.resolved?.startsWith("https://registry.npmjs.org/") ||
   !expectedLex.integrity
 ) {
-  throw new Error("Source lock does not bind exact public @smartergpt/lex@4.0.1 bytes");
+  throw new Error("Source lock does not bind exact public @smartergpt/lex@4.0.3 bytes");
 }
 if (
   candidate.receipt.dependency.lex.version !== expectedLex.version ||
@@ -60,7 +60,7 @@ try {
     [
       "install",
       candidate.tarballPath,
-      "@smartergpt/lex@4.0.1",
+      "@smartergpt/lex@4.0.3",
       "--registry=https://registry.npmjs.org/",
       "--no-audit",
       "--no-fund",
@@ -76,11 +76,11 @@ try {
   const installedLex = lock.packages?.["node_modules/@smartergpt/lex"];
   const installedLexSona = lock.packages?.["node_modules/@smartergpt/lexsona"];
   if (
-    installedLex?.version !== "4.0.1" ||
+    installedLex?.version !== "4.0.3" ||
     installedLex.resolved !== expectedLex.resolved ||
     installedLex.integrity !== expectedLex.integrity
   ) {
-    throw new Error("Consumer did not resolve the exact reviewed public Lex 4.0.1 bytes");
+    throw new Error("Consumer did not resolve the exact reviewed public Lex 4.0.3 bytes");
   }
   if (
     !installedLexSona?.resolved?.includes(candidate.receipt.artifact.filename) ||

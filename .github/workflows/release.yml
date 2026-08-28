@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Candidate version from package.json (for example, 2.0.1)"
+        description: "Candidate version from package.json (for example, 2.0.2)"
         required: true
         type: string
 
