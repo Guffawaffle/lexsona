@@ -13,7 +13,7 @@ publish or create a GitHub release.
 
 The receipt binds the package name/version, source commit, tarball SHA-256/SHA-1/SRI/size, each gate's
 command, working directory, duration, exit status, and bounded output. The packed-consumer gate installs
-the retained tarball with the exact public `@smartergpt/lex@4.0.1` bytes into a disposable consumer.
+the retained tarball with the exact public `@smartergpt/lex@4.0.3` bytes into a disposable consumer.
 
 ## Human publication
 

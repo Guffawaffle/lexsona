@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No unreleased changes._
 
+## [2.0.2] - 2026-08-27
+
+### Changed
+
+- Rebind development, package-lock, packed-consumer, and immutable release-candidate evidence to
+  exact public `@smartergpt/lex@4.0.3` while preserving the compatible Lex 4 peer range
+  `>=4.0.1 <5` and LexSona's private, scoped, non-executing package boundary.
+- Refresh dependencies within existing semver ranges to remove all reported production and
+  development audit findings, including current MCP SDK, YAML, and Vitest/Vite lines.
+
 ## [2.0.1] - 2026-08-23
 
 ### Fixed

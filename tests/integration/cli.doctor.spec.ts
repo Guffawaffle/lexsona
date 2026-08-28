@@ -100,6 +100,6 @@ describe("lexsona doctor", () => {
     };
     expect(result.code, result.stdout).toBe(0);
     expect(report.status.healthy).toBe(true);
-    expect(report.checks.lex).toEqual({ version: "4.0.1", ok: true });
+    expect(report.checks.lex).toEqual({ version: "4.0.3", ok: true });
   });
 });
