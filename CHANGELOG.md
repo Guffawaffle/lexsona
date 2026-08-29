@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No unreleased changes._
 
+## [2.0.3] - 2026-08-29
+
+### Fixed
+
+- Distinguish the deprecated SQLite compatibility adapter from host-bound scoped storage in
+  `lexsona doctor`, so an unconfigured optional legacy database no longer makes the package appear
+  globally unhealthy or implies that scoped PostgreSQL was assessed.
+- Preserve an explicit `LEX_DB_PATH` selection in both `doctor` and `db status` instead of silently
+  falling through to another discovered SQLite database when the selected path is unavailable.
+- Label persona, application, outcome, authority, and source-MCP inventory states independently in
+  doctor evidence rather than presenting configured inputs as applied runtime outcomes.
+
 ## [2.0.2] - 2026-08-27
 
 ### Changed

@@ -5,9 +5,9 @@
  */
 
 import { Command } from "commander";
-import { discoverDbPath, connectToLex } from "../../core/lexConnection.js";
-import type { DbDiscoveryResult } from "../../core/lexConnection.js";
+import { discoverDbPath, connectToLex, selectLegacyDbDiscovery } from "../../core/lexConnection.js";
 import { isJsonMode } from "../output.js";
+import { LEGACY_DISCOVERY_REMOVAL_TARGET } from "../legacy-bootstrap.js";
 
 /**
  * Format file size in human-readable format
@@ -22,6 +22,8 @@ function formatSize(bytes: number): string {
  * Database status result for JSON output
  */
 interface DbStatusResult {
+  mode: "legacy-path-discovery";
+  removalTarget: typeof LEGACY_DISCOVERY_REMOVAL_TARGET;
   active: boolean;
   path: string | null;
   size: number | null;
@@ -49,7 +51,7 @@ interface DbStatusResult {
  */
 function getDatabaseStatus(): DbStatusResult {
   const discoveries = discoverDbPath();
-  let activeDb: DbDiscoveryResult | undefined;
+  const selectedDb = selectLegacyDbDiscovery(discoveries);
 
   const discoveryResults = discoveries.map((discovery) => {
     const result = {
@@ -59,23 +61,24 @@ function getDatabaseStatus(): DbStatusResult {
       size: discovery.size,
       error: discovery.error,
     };
-    if (discovery.exists && !activeDb) {
-      activeDb = discovery;
-    }
     return result;
   });
 
   const statusResult: DbStatusResult = {
-    active: !!activeDb,
-    path: activeDb?.path ?? null,
-    size: activeDb?.size ?? null,
-    source: activeDb?.source ?? null,
+    mode: "legacy-path-discovery",
+    removalTarget: LEGACY_DISCOVERY_REMOVAL_TARGET,
+    active: selectedDb?.exists ?? false,
+    path: selectedDb?.path ?? null,
+    size: selectedDb?.size ?? null,
+    source: selectedDb?.source ?? null,
     discoveries: discoveryResults,
     connection: { success: false },
   };
 
-  if (activeDb) {
-    const result = connectToLex({ dbPath: activeDb.path });
+  if (selectedDb && !selectedDb.exists) {
+    statusResult.connection.error = selectedDb.error ?? "Not found";
+  } else if (selectedDb) {
+    const result = connectToLex({ dbPath: selectedDb.path });
 
     if (result.success && result.db) {
       statusResult.connection.success = true;
@@ -177,8 +180,16 @@ function displayDatabaseStatusText(status: DbStatusResult): void {
     } else {
       console.log(`  ✗ Failed: ${status.connection.error ?? "Unknown error"}`);
     }
+  } else if (status.source === "LEX_DB_PATH" && status.path) {
+    console.log("No database found.\n");
+    console.log(`Selected compatibility database: ${status.path}`);
+    console.log(`  ✗ ${status.connection.error ?? "Not found"}\n`);
+    console.log("To fix:");
+    console.log("  1. Repair or unset LEX_DB_PATH");
+    console.log("  2. Or run 'lex init' for a deliberately selected legacy compatibility database");
   } else {
     console.log("No database found.\n");
+    console.log("The legacy path-discovery adapter is optional; scoped health is host-bound.");
     console.log("To fix:");
     console.log("  1. Run 'lex init' in your project to create a database");
     console.log("  2. Or set LEX_DB_PATH to an existing database");

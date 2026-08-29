@@ -166,6 +166,19 @@ export function discoverDbPath(): DbDiscoveryResult[] {
 }
 
 /**
+ * Select the one legacy compatibility database candidate without weakening an
+ * explicit LEX_DB_PATH into ambient path discovery.
+ */
+export function selectLegacyDbDiscovery(
+  discoveries: readonly DbDiscoveryResult[] = discoverDbPath()
+): DbDiscoveryResult | undefined {
+  return (
+    discoveries.find((candidate) => candidate.source === "LEX_DB_PATH") ??
+    discoveries.find((candidate) => candidate.exists)
+  );
+}
+
+/**
  * Default database path for Lex
  *
  * Uses auto-discovery to find the first existing database from candidates.
@@ -181,7 +194,7 @@ export function getDefaultDbPath(): string {
   const discoveries = discoverDbPath();
 
   // Return the first existing path (excluding LEX_DB_PATH which is handled above)
-  const found = discoveries.find((d) => d.exists && d.source !== "LEX_DB_PATH");
+  const found = selectLegacyDbDiscovery(discoveries);
   if (found) {
     return found.path;
   }

@@ -6,7 +6,11 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { getDefaultDbPath, discoverDbPath } from "../../../src/core/lexConnection.js";
+import {
+  getDefaultDbPath,
+  discoverDbPath,
+  selectLegacyDbDiscovery,
+} from "../../../src/core/lexConnection.js";
 import { join } from "path";
 import { homedir } from "os";
 
@@ -93,6 +97,21 @@ describe("lexConnection", () => {
 
       expect(results[3].source).toBe("user-global-alt");
       expect(results[3].path).toBe(join(home, ".smartergpt", "lex", "memory.db"));
+    });
+  });
+
+  describe("selectLegacyDbDiscovery", () => {
+    it("does not fall through when an explicit database is missing", () => {
+      const selected = selectLegacyDbDiscovery([
+        { path: "/explicit/missing.db", source: "LEX_DB_PATH", exists: false },
+        { path: "/project/present.db", source: "project-local", exists: true },
+      ]);
+
+      expect(selected).toEqual({
+        path: "/explicit/missing.db",
+        source: "LEX_DB_PATH",
+        exists: false,
+      });
     });
   });
 });
