@@ -67,6 +67,12 @@ The compatibility bootstrap returns a receipt containing its selected path, sele
 existence result, and removal target. `lexsona db status` and `lexsona doctor` remain the
 operator-facing diagnostics during the window.
 
+The storage portion of bare `lexsona doctor` diagnoses that compatibility adapter only. When no
+compatibility database is selected, it reports the adapter as optional and does not claim that a
+scoped store is healthy or unhealthy; scoped connectivity and authority can only be verified by the
+trusted host that owns the binding. An explicit but unavailable `LEX_DB_PATH`, or an existing
+discovered database that cannot be opened, remains a failed doctor check.
+
 ## Failure and recovery
 
 If scoped construction fails:
