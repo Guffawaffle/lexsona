@@ -22,7 +22,7 @@ then publishes the receipt-named tarball with:
   npm whoami
   npm access list packages smartergpt --json
   node scripts/verify-release-candidate.mjs --check-only
-  npm publish ./${tarball} --access restricted
+  npm publish ./${tarball} --access public
   npm view @smartergpt/lexsona@${version} version dist.integrity --json
 
 Only after npm integrity matches may a signed v${version} tag create the GitHub release. Nothing was published.`);

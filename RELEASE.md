@@ -29,20 +29,20 @@ npm whoami
 npm access list packages smartergpt --json
 node .\scripts\verify-release-candidate.mjs --check-only
 $version = (Get-Content -Raw .\package.json | ConvertFrom-Json).version
-npm publish ".\smartergpt-lexsona-$version.tgz" --access restricted
+npm publish ".\smartergpt-lexsona-$version.tgz" --access public
 npm view "@smartergpt/lexsona@$version" version dist.integrity --json
 ```
 
 Publication remains human-only and 2FA-protected. The workflow has no npm publish step or publish token.
-Candidate artifacts rely on this repository remaining private; changing repository visibility requires a
-fresh review of private-package artifact exposure.
+Public release candidates must contain only redistributable material. Before changing repository
+visibility, review retained artifacts, workflow logs and repository history; prior private access
+is no longer a confidentiality boundary after that change.
 
-GitHub artifact attestations are not available for user-owned private repositories without Enterprise
-Cloud. This repository therefore uses the immutable Actions artifact service record as its transport
-boundary. The pinned upload action returns the unique artifact ID and SHA-256; tag workflows query that
-exact ID, require its name/digest/run identity to match, download by ID with digest mismatch configured
-to fail, and then verify the receipt's commit and tarball hashes. Moving the repository to an eligible
-GitHub plan may justify adding attestations later, but attestation availability is not represented today.
+The candidate transport uses the immutable Actions artifact service record. The pinned upload
+action returns the unique artifact ID and SHA-256; tag workflows query that exact ID, require
+its name/digest/run identity to match, download by ID with digest verification, and then verify
+the receipt's commit and tarball hashes. Public visibility does not replace these integrity checks
+and this workflow does not currently produce artifact attestations.
 
 ## Signed tag and GitHub release
 
@@ -55,7 +55,8 @@ the same commit. The tag workflow fails closed unless all of these are true:
 - the tag target is the workflow commit and is contained in `origin/main`;
 - the rebuilt candidate's immutable artifact ID, service-recorded SHA-256, workflow run, receipt, and
   tarball all bind to that commit;
-- private npm, read with `NPM_READ_TOKEN`, reports the exact retained candidate integrity.
+- the public npm registry reports the exact retained candidate integrity.
 
-Only then may the workflow create the non-draft GitHub release. `NPM_READ_TOKEN` needs read access only;
-publish authority does not belong in GitHub Actions.
+Only then may the workflow create the non-draft GitHub release. Public verification requires no
+npm read credential; publish authority does not belong in GitHub Actions. Earlier package versions
+retain their published license terms even after registry access becomes public.

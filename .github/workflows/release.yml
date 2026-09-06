@@ -235,16 +235,8 @@ jobs:
           set -euo pipefail
           node scripts/verify-release-candidate.mjs --check-only
 
-      - name: Bind release to exact private npm bytes
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [ -z "$NODE_AUTH_TOKEN" ]; then
-            echo "NPM_READ_TOKEN is required for private publication verification"
-            exit 1
-          fi
-          node scripts/verify-published-candidate.mjs
+      - name: Bind release to exact public npm bytes
+        run: node scripts/verify-published-candidate.mjs
 
       - name: Generate changelog
         env:
