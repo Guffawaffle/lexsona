@@ -156,7 +156,15 @@ jobs:
         run: npm run ci:full
 
       - name: Create and verify the commit-bound candidate
-        run: npm run release:candidate
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" = "push" ]; then
+            node scripts/prepare-release-candidate.mjs
+            node scripts/verify-release-candidate.mjs --published
+          else
+            npm run release:candidate
+          fi
 
       - name: Upload immutable candidate evidence
         id: upload-candidate

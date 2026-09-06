@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   assertPublishedArtifact,
+  assertPublishedIdentity,
   candidateReceiptFilename,
   loadAndVerifyReleaseCandidate,
 } from "./release-candidate.mjs";
@@ -38,7 +39,12 @@ const published = JSON.parse(
     capture: true,
   })
 );
-assertPublishedArtifact(candidate.receipt, published);
+if (process.argv.includes("--identity-only")) {
+  // This check does not certify the other artifact gates or mark a receipt verified.
+  assertPublishedIdentity(candidate.receipt, published);
+} else {
+  assertPublishedArtifact(candidate.receipt, published);
+}
 console.log(
   JSON.stringify(
     { package: spec, integrity: published["dist.integrity"], candidateCommit: head },
