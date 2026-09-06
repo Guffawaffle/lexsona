@@ -295,9 +295,11 @@ LexSona does not:
 
 ## License
 
-This repository is **source-available**, not open source.
+LexSona is licensed under the [Apache License, Version 2.0](./LICENSE.md), including
+commercial and organizational use under its terms. Preserve the applicable
+[notices](./NOTICE.md). Earlier npm releases retain their published terms; public
+package access is a separate registry setting and does not relicense old releases.
 
-You may view, fork, modify, and run it for personal, non-commercial use under the
-[SmarterGPT Source-Available Personal Use License](./LICENSE.md). Commercial, organizational,
-production, hosted-service, redistribution, sublicensing, or embedding use requires a separate
-written license from Joseph Gustavson / Guffawaffle / SmarterGPT.
+SmarterGPT was founded by Joseph Gustavson (Guffawaffle). See [stewardship](./GOVERNANCE.md),
+[contributing](./CONTRIBUTING.md), and [project identity](./BRAND.md).
+Code licensing does not grant tenant access or runtime execution authority.

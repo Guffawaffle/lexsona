@@ -55,13 +55,13 @@
     "constraints"
   ],
   "author": "Guff",
-  "license": "SEE LICENSE IN LICENSE.md",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Guffawaffle/lexsona.git"
   },
   "publishConfig": {
-    "access": "restricted",
+    "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
   "engines": {
@@ -69,7 +69,10 @@
   },
   "files": [
     "dist",
-    "personas"
+    "personas",
+    "NOTICE.md",
+    "GOVERNANCE.md",
+    "BRAND.md"
   ],
   "peerDependencies": {
     "@smartergpt/lex": ">=4.0.1 <5"

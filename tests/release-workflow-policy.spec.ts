@@ -62,4 +62,12 @@ describe("release workflow authority policy", () => {
     expect(download?.uses).toMatch(/^actions\/download-artifact@[0-9a-f]{40}$/);
     expect(workflow).toContain("artifact-ids: ${{ needs.build-candidate.outputs.artifact-id }}");
   });
+
+  it("verifies public registry bytes without a private read credential", () => {
+    const verification = document.jobs["create-github-release"].steps?.find(
+      (step) => step.name === "Bind release to exact public npm bytes"
+    );
+    expect(verification?.run).toBe("node scripts/verify-published-candidate.mjs");
+    expect(workflow).not.toContain("NPM_READ_TOKEN");
+  });
 });
