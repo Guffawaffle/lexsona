@@ -56,6 +56,7 @@ assertPreparedCandidate(candidate.receipt);
 assertPackMetadata(candidate);
 
 const npm = resolveNpmInvocation();
+const publishedMode = process.argv.includes("--published");
 const definitions = [
   {
     name: "pack-guard",
@@ -86,7 +87,18 @@ const definitions = [
   },
 ];
 
+if (publishedMode) {
+  definitions[definitions.length - 1] = {
+    name: "npm-published-integrity",
+    command: process.execPath,
+    args: [path.join(repoRoot, "scripts", "verify-published-candidate.mjs"), "--identity-only"],
+    evidence:
+      "Public npm version and integrity exactly match the retained tarball; no publish attempted",
+  };
+}
+
 const receipt = candidate.receipt;
+if (publishedMode) receipt.publicationMode = "published";
 for (let index = 0; index < definitions.length; index++) {
   const definition = definitions[index];
   const execution = executeReleaseGate({

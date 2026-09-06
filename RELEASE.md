@@ -60,3 +60,21 @@ the same commit. The tag workflow fails closed unless all of these are true:
 Only then may the workflow create the non-draft GitHub release. Public verification requires no
 npm read credential; publish authority does not belong in GitHub Actions. Earlier package versions
 retain their published license terms even after registry access becomes public.
+
+## Already-published verification and release recovery
+
+Candidate dispatch retains the npm publication dry-run gate. A tag rebuild instead records the
+distinct `npm-published-integrity` gate: the existing public version and integrity must match the
+rebuilt tarball. npm may reject even a dry-run publication of an existing version, so a successful
+public integrity check must not be represented as a dry-run publish result. All preceding package
+and consumer gates remain required.
+
+For an immutable tag whose historical workflow failed after npm publication, dispatch
+`complete-published-release.yml` from current `main` with the existing tag, the successful original
+Release candidate dispatch run ID, and its immutable artifact ID. Recovery verifies the authorized
+tag signature and main containment, the successful candidate run/source identity, the artifact
+service SHA-256 against downloaded archive bytes, the commit-bound receipt and tarball, and the
+public npm integrity. A separate write job rechecks the exact remote tag object before creating
+GitHub release metadata. Recovery neither republishes npm bytes nor moves the existing tag. It
+requires the retained original candidate to remain available; expiry is a blocker, not permission
+to substitute another artifact.

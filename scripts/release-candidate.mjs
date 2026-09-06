@@ -168,10 +168,17 @@ export function assertArtifactVerified(receipt) {
     throw new Error("Release candidate has not completed artifact verification");
   }
   const names = receipt.gates.map((gate) => gate.name);
+  if (receipt.publicationMode !== undefined && receipt.publicationMode !== "published") {
+    throw new Error("Unknown candidate publication verification mode");
+  }
+  const requiredGates =
+    receipt.publicationMode === "published"
+      ? [...requiredCandidateGates.slice(0, -1), "npm-published-integrity"]
+      : requiredCandidateGates;
   if (
-    names.length !== requiredCandidateGates.length ||
+    names.length !== requiredGates.length ||
     new Set(names).size !== names.length ||
-    !requiredCandidateGates.every((name, index) => names[index] === name)
+    !requiredGates.every((name, index) => names[index] === name)
   ) {
     throw new Error("Release candidate lacks the exact required artifact gates");
   }
@@ -192,6 +199,10 @@ export function assertArtifactVerified(receipt) {
 
 export function assertPublishedArtifact(receipt, published) {
   assertArtifactVerified(receipt);
+  assertPublishedIdentity(receipt, published);
+}
+
+export function assertPublishedIdentity(receipt, published) {
   if (
     published?.version !== receipt.package.version ||
     published?.["dist.integrity"] !== receipt.artifact.integrity

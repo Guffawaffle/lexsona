@@ -1,0 +1,124 @@
+name: Complete published release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing authorized signed release tag
+        required: true
+        type: string
+      candidate_run_id:
+        description: Successful Release candidate dispatch run
+        required: true
+        type: string
+      artifact_id:
+        description: Immutable candidate artifact from that run
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      tag-object: ${{ steps.verify.outputs.tag_object }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24.14.1"
+      - name: Verify signed tag, retained artifact and public publication
+        id: verify
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          CANDIDATE_RUN_ID: ${{ inputs.candidate_run_id }}
+          ARTIFACT_ID: ${{ inputs.artifact_id }}
+          GH_TOKEN: ${{ github.token }}
+          TRUSTED_GPG_KEYS: ${{ secrets.TRUSTED_GPG_KEYS }}
+          TRUSTED_RELEASE_FINGERPRINTS: ${{ secrets.TRUSTED_RELEASE_FINGERPRINTS }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/main
+          git fetch --no-tags origin main
+          test "$GITHUB_SHA" = "$(git rev-parse origin/main)"
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$CANDIDATE_RUN_ID" =~ ^[0-9]+$ && "$ARTIFACT_ID" =~ ^[0-9]+$ ]]
+          git fetch origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+          test "$(git cat-file -t "refs/tags/$RELEASE_TAG")" = tag
+          test "$(git cat-file -p "refs/tags/$RELEASE_TAG" | awk '$1 == "tag" {print $2; exit}')" = "$RELEASE_TAG"
+          TAG_OBJECT=$(git rev-parse "refs/tags/$RELEASE_TAG")
+          TARGET=$(git rev-parse "refs/tags/$RELEASE_TAG^{}")
+          git merge-base --is-ancestor "$TARGET" origin/main
+          export GNUPGHOME=$(mktemp -d)
+          printf '%s' "$TRUSTED_GPG_KEYS" | base64 -d | gpg --import
+          SIGNATURE=$(git verify-tag --raw "$RELEASE_TAG" 2>&1)
+          test "$(printf '%s\n' "$SIGNATURE" | grep -c '^\[GNUPG:\] VALIDSIG ')" = 1
+          SIGNER=$(printf '%s\n' "$SIGNATURE" | awk '$2 == "VALIDSIG" {print toupper($3)}')
+          [[ "$SIGNER" =~ ^[0-9A-F]{40}$ ]]
+          ALLOWED=$(printf '%s' "$TRUSTED_RELEASE_FINGERPRINTS" | tr ',;\r\n' '    ' | tr '[:lower:]' '[:upper:]')
+          case " $ALLOWED " in *" $SIGNER "*) ;; *) exit 1 ;; esac
+          RUN=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CANDIDATE_RUN_ID")
+          echo "$RUN" | jq -e --arg target "$TARGET" --arg repo "$GITHUB_REPOSITORY" '
+            .head_sha == $target and .repository.full_name == $repo and
+            .path == ".github/workflows/release.yml" and .event == "workflow_dispatch" and
+            .status == "completed" and .conclusion == "success"' > /dev/null
+          ARTIFACT=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID")
+          echo "$ARTIFACT" | jq -e --arg name "npm-candidate-$TARGET" --arg target "$TARGET" --argjson run "$CANDIDATE_RUN_ID" '
+            .name == $name and .expired == false and .workflow_run.id == $run and
+            .workflow_run.head_sha == $target' > /dev/null
+          DIGEST=$(echo "$ARTIFACT" | jq -r .digest)
+          [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID/zip" > "$RUNNER_TEMP/candidate.zip"
+          test "sha256:$(sha256sum "$RUNNER_TEMP/candidate.zip" | cut -d' ' -f1)" = "$DIGEST"
+          git checkout --detach "$TARGET"
+          test "v$(node -p "require('./package.json').version")" = "$RELEASE_TAG"
+          test "$(node -p "require('./package.json').name")" = '@smartergpt/lexsona'
+          python3 - <<'PY'
+          import os, pathlib, zipfile
+          version = os.environ['RELEASE_TAG'][1:]
+          expected = {'release-candidate.json', f'smartergpt-lexsona-{version}.tgz'}
+          with zipfile.ZipFile(pathlib.Path(os.environ['RUNNER_TEMP']) / 'candidate.zip') as archive:
+              names = archive.namelist()
+              if len(names) != 2 or set(names) != expected:
+                  raise ValueError('Unexpected candidate archive contents')
+              for name in names:
+                  with pathlib.Path(name).open('xb') as target_file:
+                      target_file.write(archive.read(name))
+          PY
+          node scripts/verify-release-candidate.mjs --check-only
+          node scripts/verify-published-candidate.mjs
+          printf 'tag_object=%s\n' "$TAG_OBJECT" >> "$GITHUB_OUTPUT"
+
+  release:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Recheck immutable tag and create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          EXPECTED_OBJECT: ${{ needs.verify.outputs.tag-object }}
+          CANDIDATE_RUN_ID: ${{ inputs.candidate_run_id }}
+          ARTIFACT_ID: ${{ inputs.artifact_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ACTUAL_OBJECT=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq .object.sha)
+          test "$ACTUAL_OBJECT" = "$EXPECTED_OBJECT"
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease > "$RUNNER_TEMP/existing-release.json" 2>/dev/null; then
+            jq -e '.isDraft == false and .isPrerelease == false' "$RUNNER_TEMP/existing-release.json"
+            exit 0
+          fi
+          printf 'Verified the authorized signed tag and public npm integrity against candidate run %s, immutable artifact %s. This workflow completes GitHub release metadata; it does not publish npm bytes.\n' "$CANDIDATE_RUN_ID" "$ARTIFACT_ID" > "$RUNNER_TEMP/release-notes.md"
+          gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --title "Release $RELEASE_TAG" --notes-file "$RUNNER_TEMP/release-notes.md"
