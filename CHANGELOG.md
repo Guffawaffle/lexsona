@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No unreleased changes._
 
+## [2.0.4] - 2026-09-06
+
+### Changed
+
+- Release the current source under Apache-2.0 and prepare public npm distribution.
+- Preserve Joseph Gustavson / Guffawaffle / SmarterGPT founder attribution and add
+  contribution, governance and project identity policies. Earlier package versions
+  retain their applicable license terms.
+- Verify public registry integrity without a private npm read credential; human-only
+  publication, signed tags and immutable candidate verification remain required.
+
 ## [2.0.3] - 2026-08-29
 
 ### Fixed
