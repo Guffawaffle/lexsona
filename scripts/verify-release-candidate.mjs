@@ -78,11 +78,11 @@ const definitions = [
       candidate.tarballPath,
       "--dry-run",
       "--access",
-      "restricted",
+      "public",
       "--registry",
       "https://registry.npmjs.org/",
     ],
-    evidence: "npm accepted the exact retained tarball for restricted publication in dry-run mode",
+    evidence: "npm accepted the exact retained tarball for public publication in dry-run mode",
   },
 ];
 
