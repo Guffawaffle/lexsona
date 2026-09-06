@@ -91,7 +91,8 @@ jobs:
               if len(names) != 2 or set(names) != expected:
                   raise ValueError('Unexpected candidate archive contents')
               for name in names:
-                  pathlib.Path(name).write_bytes(archive.read(name))
+                  with pathlib.Path(name).open('xb') as target_file:
+                      target_file.write(archive.read(name))
           PY
           node scripts/verify-release-candidate.mjs --check-only
           node scripts/verify-published-candidate.mjs
