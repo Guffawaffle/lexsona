@@ -19,6 +19,7 @@ _No unreleased changes._
   retain their applicable license terms.
 - Verify public registry integrity without a private npm read credential; human-only
   publication, signed tags and immutable candidate verification remain required.
+- Update qs and development-only HumanFS dependencies to patched versions.
 
 ## [2.0.3] - 2026-08-29
 
