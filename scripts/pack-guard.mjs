@@ -12,7 +12,7 @@ const lockedLex = packageLock.packages?.["node_modules/@smartergpt/lex"];
 if (
   packageJson.name !== "@smartergpt/lexsona" ||
   packageJson.engines?.node !== ">=24.0.0" ||
-  packageJson.publishConfig?.access !== "restricted" ||
+  packageJson.publishConfig?.access !== "public" ||
   packageJson.publishConfig?.registry !== "https://registry.npmjs.org/" ||
   packageJson.peerDependencies?.["@smartergpt/lex"] !== ">=4.0.1 <5" ||
   packageJson.devDependencies?.["@smartergpt/lex"] !== "4.0.3" ||
@@ -38,6 +38,10 @@ function targets(entry) {
   return [];
 }
 const required = [
+  "LICENSE.md",
+  "NOTICE.md",
+  "GOVERNANCE.md",
+  "BRAND.md",
   ...Object.values(packageJson.exports ?? {}).flatMap(targets),
   ...Object.values(packageJson.bin ?? {}),
 ].map((target) => target.replace(/^\.\//, ""));
@@ -54,6 +58,9 @@ const unexpected = files.filter(
       "README.mcp.md",
       "LICENSE",
       "LICENSE.md",
+      "NOTICE.md",
+      "GOVERNANCE.md",
+      "BRAND.md",
       "CHANGELOG.md",
     ].includes(file)
 );
