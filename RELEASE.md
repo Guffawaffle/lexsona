@@ -22,9 +22,9 @@ verify its artifact ID, name, service-recorded SHA-256, run ID, and expiry state
 artifact. Then verify the candidate receipt before publishing:
 
 ```powershell
-$artifact = gh api repos/Guffawaffle/lexsona/actions/artifacts/<artifact-id> | ConvertFrom-Json
+$artifact = gh api repos/SmarterGPT/lexsona/actions/artifacts/<artifact-id> | ConvertFrom-Json
 $artifact | Select-Object id, name, digest, expired, workflow_run
-gh run download <run-id> --repo Guffawaffle/lexsona --name npm-candidate-<commit>
+gh run download <run-id> --repo SmarterGPT/lexsona --name npm-candidate-<commit>
 npm whoami
 npm access list packages smartergpt --json
 node .\scripts\verify-release-candidate.mjs --check-only
